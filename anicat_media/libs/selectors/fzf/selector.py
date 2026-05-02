@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 
-from rich.prompt import Prompt
+from InquirerPy import inquirer
 
 from anicat_media.core.utils import detect
 
@@ -41,6 +41,9 @@ class FzfSelector(BaseSelector):
             "--header",
             self.header,
             "--header-first",
+            "--cycle",
+            "--bind",
+            "right:accept",
         ]
         if preview:
             commands.extend(["--preview", preview])
@@ -69,6 +72,9 @@ class FzfSelector(BaseSelector):
             "--header",
             f"{self.header}\nPress TAB to select multiple items, ENTER to confirm",
             "--header-first",
+            "--cycle",
+            "--bind",
+            "right:accept",
         ]
         if preview:
             commands.extend(["--preview", preview])
@@ -97,8 +103,13 @@ class FzfSelector(BaseSelector):
         return result == "Yes"
 
     def ask(self, prompt, *, default=None):
-        # cleaner to use rich
-        return Prompt.ask(prompt, default=default)
+        return inquirer.text(
+            message=prompt,
+            default=default or "",
+            keybindings={
+                "accept": [{"key": "enter"}, {"key": "right"}],
+            },
+        ).execute()
         # -- not going to be used --
         commands = [
             self.executable,
@@ -148,6 +159,9 @@ class FzfSelector(BaseSelector):
             "--bind",
             f"change:reload({search_command})",
             "--ansi",
+            "--cycle",
+            "--bind",
+            "right:accept",
         ]
 
         # If there's an initial query, set it

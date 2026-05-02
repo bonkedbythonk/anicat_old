@@ -7,7 +7,6 @@ from pathlib import Path
 
 import httpx
 from rich import print
-from rich.prompt import Confirm
 
 import yt_dlp
 from yt_dlp.utils import sanitize_filename
@@ -228,7 +227,10 @@ class YtDLPDownloader(BaseDownloader):
                 final_output_path = video_path.parent / merged_filename
 
                 if final_output_path.exists():
-                    if not params.prompt or Confirm.ask(
+                    from ..selectors.selector import create_selector
+
+                    selector = create_selector(self.config)
+                    if not params.prompt or selector.confirm(
                         f"File exists({final_output_path}) would you like to overwrite it",
                         default=True,
                     ):

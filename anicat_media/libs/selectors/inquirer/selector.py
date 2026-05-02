@@ -1,5 +1,5 @@
+from InquirerPy import inquirer
 from InquirerPy.prompts import FuzzyPrompt  # pyright: ignore[reportPrivateImportUsage]
-from rich.prompt import Confirm, Prompt
 
 from ..base import BaseSelector
 
@@ -21,10 +21,22 @@ class InquirerSelector(BaseSelector):
         ).execute()
 
     def confirm(self, prompt, *, default=False):
-        return Confirm.ask(prompt, default=default)
+        return inquirer.confirm(
+            message=prompt,
+            default=default,
+            keybindings={
+                "accept": [{"key": "enter"}, {"key": "right"}],
+            },
+        ).execute()
 
     def ask(self, prompt, *, default=None):
-        return Prompt.ask(prompt=prompt, default=default or None)
+        return inquirer.text(
+            message=prompt,
+            default=default or "",
+            keybindings={
+                "accept": [{"key": "enter"}, {"key": "right"}],
+            },
+        ).execute()
 
     def choose_multiple(
         self, prompt: str, choices: list[str], preview: str | None = None

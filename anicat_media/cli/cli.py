@@ -134,9 +134,10 @@ def cli(ctx: click.Context, **options: "Unpack[Options]"):
         if should_welcome:
             last_welcomed_at_file.write_text(str(time.time()), encoding="utf-8")
 
-            from rich.prompt import Confirm
+            from ..libs.selectors.selector import create_selector
 
-            if Confirm.ask(f"""\
+            selector = create_selector(config)
+            if selector.confirm(f"""\
 [green]How are you, {USER_NAME} 🙂?
 If you enjoy the project and would like to support it, you can give it a star at {SUPPORT_PROJECT_URL}.
 Would you like to open the project page? Select yes to continue — otherwise, enjoy your terminal-anime browsing experience 😁.[/]
@@ -179,12 +180,13 @@ You can disable this message by turning off the welcome_screen option in the con
             last_release_file.write_text(__version__, encoding="utf-8")
             from .service.feedback import FeedbackService
             from .utils.update import check_for_updates, print_release_json, update_app
-            from rich.prompt import Confirm
+            from ..libs.selectors.selector import create_selector
 
             feedback = FeedbackService(config)
+            selector = create_selector(config)
             feedback.info("Getting release notes...")
             is_latest, release_json = check_for_updates()
-            if Confirm.ask(
+            if selector.confirm(
                 "Would you also like to update your config with the latest options and config notes"
             ):
                 import subprocess

@@ -19,7 +19,6 @@ from rich.progress import (
     TimeRemainingColumn,
     TransferSpeedColumn,
 )
-from rich.prompt import Confirm
 from ..utils.file import sanitize_filename
 from ..utils.detect import get_clean_env
 from ..exceptions import AnicatError
@@ -111,7 +110,10 @@ class DefaultDownloader(BaseDownloader):
             logger.info(f"File already exists: {video_path}")
             return video_path
         elif video_path.exists() and params.prompt:
-            if not Confirm.ask(
+            from ..selectors.selector import create_selector
+
+            selector = create_selector(self.config)
+            if not selector.confirm(
                 f"File exists: {video_path.name}. Overwrite?", default=False
             ):
                 return video_path
@@ -379,7 +381,10 @@ class DefaultDownloader(BaseDownloader):
 
                 # Handle existing file
                 if final_output_path.exists():
-                    if not params.prompt or Confirm.ask(
+                    from ..selectors.selector import create_selector
+
+                    selector = create_selector(self.config)
+                    if not params.prompt or selector.confirm(
                         f"File exists ({final_output_path}). Overwrite?",
                         default=True,
                     ):

@@ -95,7 +95,7 @@ def config(
 
         print(json.dumps(user_config.model_dump(mode="json")))
     elif generate_desktop_entry:
-        _generate_desktop_entry()
+        _generate_desktop_entry(user_config)
     elif interactive:
         editor = InteractiveConfigEditor(current_config=user_config)
         new_config = editor.run()
@@ -112,7 +112,7 @@ def config(
         click.edit(filename=str(USER_CONFIG))
 
 
-def _generate_desktop_entry():
+def _generate_desktop_entry(config: AppConfig):
     """
     Generates a desktop entry for Anicat.
     """
@@ -122,7 +122,8 @@ def _generate_desktop_entry():
     from textwrap import dedent
 
     from rich import print
-    from rich.prompt import Confirm
+
+    from ...libs.selectors.selector import create_selector
 
     from ...core.constants import (
         CLI_NAME,
@@ -164,7 +165,8 @@ def _generate_desktop_entry():
         )
         desktop_entry_path = USER_APPLICATIONS / f"{CLI_NAME}.desktop"
         if desktop_entry_path.exists():
-            if not Confirm.ask(
+            selector = create_selector(config)
+            if not selector.confirm(
                 f"The file already exists {desktop_entry_path}; or would you like to rewrite it",
                 default=False,
             ):
