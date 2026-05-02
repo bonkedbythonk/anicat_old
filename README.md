@@ -1,4 +1,4 @@
-# 🐱 Anicat: The Beginner's Guide to Terminal Anime
+# Anicat: The Beginner's Guide to Terminal Anime
 
 Welcome to **Anicat**! If you’ve never used a "terminal" before, don't worry. This guide is written specifically for you. 
 
@@ -6,7 +6,7 @@ Anicat is a minimalist, high-performance tool that lets you search, stream, and 
 
 ---
 
-## 🚀 Quick Start (The "Just Give Me the Commands" Section)
+## Quick Start (The "Just Give Me the Commands" Section)
 
 If you already know what you're doing, here are the magic words:
 
@@ -18,7 +18,7 @@ If you already know what you're doing, here are the magic words:
 
 ---
 
-## 🛠 Detailed Step-by-Step Setup
+## Detailed Step-by-Step Setup
 
 ### Step 0: The "App Store" for your Terminal
 To use Anicat, we first need to install **Homebrew**. Think of this as an App Store that works inside your terminal.
@@ -79,7 +79,7 @@ AniList is a website that tracks what you watch. By connecting it to Anicat, the
 
 ---
 
-## 🎮 How to Use Anicat
+## How to Use Anicat
 
 Once installed, simply type **anicat** in your **Kitty Terminal**.
 
@@ -96,5 +96,5 @@ Once installed, simply type **anicat** in your **Kitty Terminal**.
 
 ---
 
-## 🌟 Credits
+## Credits
 Anicat is a specialized macOS fork of the [Viu](https://github.com/viu-media/viu) project. I am deeply grateful to the original creators for their incredible architecture!
