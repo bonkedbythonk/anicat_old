@@ -48,6 +48,8 @@ class ConfigLoader:
                 "Configure settings interactively",
             ],
             default="Use default settings (Recommended for new users)",
+            wrap_around=True,
+            keybindings={"accept": [{"key": "right"}, {"key": "enter"}]},
         ).execute()
 
         if "interactively" in choice:

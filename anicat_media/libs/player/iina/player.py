@@ -2,7 +2,7 @@ import subprocess
 import logging
 from typing import Optional
 
-from ...core.config import StreamConfig
+from ....core.config import StreamConfig
 from ..base import BasePlayer
 from ..params import PlayerParams
 from ..types import PlayerResult
