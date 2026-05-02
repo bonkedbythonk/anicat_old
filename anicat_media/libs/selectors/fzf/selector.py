@@ -107,7 +107,7 @@ class FzfSelector(BaseSelector):
             message=prompt,
             default=default or "",
             keybindings={
-                "accept": [{"key": "enter"}, {"key": "right"}],
+                "answer": [{"key": "enter"}, {"key": "right"}],
             },
         ).execute()
         # -- not going to be used --

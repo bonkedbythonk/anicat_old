@@ -16,7 +16,7 @@ class InquirerSelector(BaseSelector):
             validate=lambda result: result in choices,
             wrap_around=True,
             keybindings={
-                "accept": [{"key": "enter"}, {"key": "right"}],
+                "answer": [{"key": "enter"}, {"key": "right"}],
             },
         ).execute()
 
@@ -25,7 +25,7 @@ class InquirerSelector(BaseSelector):
             message=prompt,
             default=default,
             keybindings={
-                "accept": [{"key": "enter"}, {"key": "right"}],
+                "answer": [{"key": "enter"}, {"key": "right"}],
             },
         ).execute()
 
@@ -34,7 +34,7 @@ class InquirerSelector(BaseSelector):
             message=prompt,
             default=default or "",
             keybindings={
-                "accept": [{"key": "enter"}, {"key": "right"}],
+                "answer": [{"key": "enter"}, {"key": "right"}],
             },
         ).execute()
 
@@ -49,7 +49,7 @@ class InquirerSelector(BaseSelector):
             border=True,
             wrap_around=True,
             keybindings={
-                "accept": [{"key": "enter"}, {"key": "right"}],
+                "answer": [{"key": "enter"}, {"key": "right"}],
             },
         ).execute()
 
@@ -76,7 +76,7 @@ class InquirerSelector(BaseSelector):
             border=True,
             wrap_around=True,
             keybindings={
-                "accept": [{"key": "enter"}, {"key": "right"}],
+                "answer": [{"key": "enter"}, {"key": "right"}],
             },
         ).execute()
 

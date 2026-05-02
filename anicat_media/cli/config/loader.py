@@ -50,7 +50,7 @@ class ConfigLoader:
             default="Use default settings (Recommended for new users)",
             wrap_around=True,
             keybindings={
-                "accept": [{"key": "enter"}, {"key": "right"}],
+                "answer": [{"key": "enter"}, {"key": "right"}],
             },
         ).execute()
 

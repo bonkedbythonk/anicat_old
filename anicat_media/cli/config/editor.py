@@ -98,7 +98,7 @@ class InteractiveConfigEditor:
                 long_instruction=help_text,
                 wrap_around=True,
                 keybindings={
-                    "accept": [{"key": "enter"}, {"key": "right"}],
+                    "answer": [{"key": "enter"}, {"key": "right"}],
                 },
             )
 
@@ -140,7 +140,7 @@ class InteractiveConfigEditor:
                     long_instruction=help_text,
                     wrap_around=True,
                     keybindings={
-                        "accept": [{"key": "enter"}, {"key": "right"}],
+                        "answer": [{"key": "enter"}, {"key": "right"}],
                     },
                 )
             return inquirer.text(  # pyright: ignore[reportPrivateImportUsage]
