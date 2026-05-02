@@ -24,12 +24,15 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
     
     from .....core.constants import APP_ASCII_ART
     from .....core.updater import is_update_available
-    from rich import print as rprint
+    from rich.panel import Panel
+    from rich.console import Console
     
-    rprint(f"[cyan]{APP_ASCII_ART}[/]")
+    header_content = f"[cyan]{APP_ASCII_ART}[/]"
     if is_update_available():
-        rprint("✨ [bold yellow]A new update is available! Run 'anicat update' to get the latest features.[/]")
-        rprint()
+        header_content += "\n\n✨ [bold yellow]A new update is available![/]\n[dim]Run 'anicat update' to get the latest features.[/]"
+    
+    Console().print(Panel(header_content, border_style="bright_blue", expand=False))
+    print()
 
     options: Dict[str, MenuAction] = {
         f"{' ' if icons else ''}Trending": _create_media_list_action(
