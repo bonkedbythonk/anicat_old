@@ -39,7 +39,7 @@ class IinaPlayer(BasePlayer):
         if referer or user_agent:
             # Format according to user request: "Referer: <URL>, User-Agent: <AGENT>"
             header_str = f"Referer: {referer}, User-Agent: {user_agent}"
-            iina_args.extend(["--http-header-fields", header_str])
+            iina_args.append(f"--http-header-fields={header_str}")
 
         if params.title:
             iina_args.append(f"--title={params.title}")
