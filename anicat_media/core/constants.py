@@ -13,6 +13,7 @@ USER_NAME = os.environ.get("USERNAME", os.environ.get("USER", "User"))
 
 
 __version__ = metadata.version("anicat")
+VERSION = __version__
 
 AUTHOR = "bonkedbythonk"
 GIT_REPO = "github.com"

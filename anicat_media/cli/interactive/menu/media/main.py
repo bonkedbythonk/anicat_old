@@ -21,6 +21,15 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
     icons = ctx.config.general.icons
     feedback = ctx.feedback
     feedback.clear_console()
+    
+    from .....core.constants import APP_ASCII_ART
+    from .....core.updater import is_update_available
+    from rich import print as rprint
+    
+    rprint(f"[cyan]{APP_ASCII_ART}[/]")
+    if is_update_available():
+        rprint("✨ [bold yellow]A new update is available! Run 'anicat update' to get the latest features.[/]")
+        rprint()
 
     options: Dict[str, MenuAction] = {
         f"{' ' if icons else ''}Trending": _create_media_list_action(

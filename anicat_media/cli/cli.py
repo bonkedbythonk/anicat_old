@@ -80,6 +80,14 @@ def cli(ctx: click.Context, **options: "Unpack[Options]"):
         options["rich_traceback"],
         options["rich_traceback_theme"],
     )
+    
+    # Silent background update check
+    try:
+        from ..core.updater import check_for_updates
+        import threading
+        threading.Thread(target=check_for_updates, args=(True,), daemon=True).start()
+    except Exception:
+        pass
 
     logger.info(f"Current Command: {' '.join(sys.argv)}")
     cli_overrides = {}
