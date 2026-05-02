@@ -33,7 +33,7 @@ class SelectorFactory:
 
         from .inquirer import InquirerSelector
 
-        return InquirerSelector()
+        return InquirerSelector(config)
 
 
 # Simple alias for ease of use

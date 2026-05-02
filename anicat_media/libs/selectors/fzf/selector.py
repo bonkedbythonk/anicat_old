@@ -30,7 +30,7 @@ class FzfSelector(BaseSelector):
                     f"\033[38;2;{self.header_color[0]};{self.header_color[1]};{self.header_color[2]};m{line}\033[0m"
                     for line in config.header_ascii_art.replace("\t", "").split("\n")
                 ]
-            )
+            ) + "\n"
         else:
             self.header = ""
 

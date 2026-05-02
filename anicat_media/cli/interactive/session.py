@@ -229,9 +229,19 @@ class Session:
         logger.info("Application context reloaded.")
 
     def _edit_config(self):
+        import subprocess
+        import sys
         from ..config import ConfigLoader
 
-        click.edit(filename=str(USER_CONFIG))
+        if sys.platform == "darwin":
+            subprocess.run(["open", str(USER_CONFIG)])
+            click.pause("Config opened in your default editor. Press Enter here after you have saved your changes...")
+        elif sys.platform == "win32":
+            subprocess.run(["start", str(USER_CONFIG)], shell=True)
+            click.pause("Config opened in your default editor. Press Enter here after you have saved your changes...")
+        else:
+            click.edit(filename=str(USER_CONFIG))
+            
         logger.debug("Config changed; Reloading context")
         loader = ConfigLoader()
         config = loader.load()

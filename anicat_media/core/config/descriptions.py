@@ -97,8 +97,6 @@ ROFI_THEME_INPUT = "Path to the Rofi theme file for user input prompts."
 MPV_ARGS = "Comma-separated arguments to pass to the MPV player."
 MPV_PRE_ARGS = "Comma-separated arguments to prepend before the MPV command."
 
-# VlcConfig
-VLC_ARGS = "Comma-separated arguments to pass to the Vlc player."
 
 # AnilistConfig
 ANILIST_PER_PAGE = "Number of items to fetch per page from AniList."
@@ -136,7 +134,6 @@ APP_SERVICE = "Configuration for the background download service."
 APP_FZF = "Settings for the FZF selector interface."
 APP_ROFI = "Settings for the Rofi selector interface."
 APP_MPV = "Configuration for the MPV media player."
-APP_VLC = "Configuration for the VLC media player."
 APP_MEDIA_REGISTRY = "Configuration for the media registry."
 APP_SESSIONS = "Configuration for sessions."
 

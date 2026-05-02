@@ -83,8 +83,6 @@ ROFI_THEME_PREVIEW = _ROFI_THEMES_DIR / "preview.rasi"
 MPV_ARGS = ""
 MPV_PRE_ARGS = ""
 
-# VlcConfig
-VLC_ARGS = ""
 
 # AnilistConfig
 ANILIST_PER_PAGE = 15

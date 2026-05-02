@@ -233,7 +233,7 @@ class GeneralConfig(BaseModel):
 class StreamConfig(BaseModel):
     """Configuration specific to video streaming and playback."""
 
-    player: Literal["mpv", "vlc"] = Field(
+    player: Literal["mpv"] = Field(
         default=defaults.STREAM_PLAYER,
         description=desc.STREAM_PLAYER,
     )
@@ -392,10 +392,6 @@ class MpvConfig(OtherConfig):
     )
 
 
-class VlcConfig(OtherConfig):
-    """Configuration specific to the vlc player integration."""
-
-    args: str = Field(default=defaults.VLC_ARGS, description=desc.VLC_ARGS)
 
 
 class AnilistConfig(OtherConfig):
@@ -542,7 +538,6 @@ class AppConfig(BaseModel):
         description=desc.APP_ROFI,
     )
     mpv: MpvConfig = Field(default_factory=MpvConfig, description=desc.APP_MPV)
-    vlc: VlcConfig = Field(default_factory=VlcConfig, description=desc.APP_VLC)
     media_registry: MediaRegistryConfig = Field(
         default_factory=MediaRegistryConfig, description=desc.APP_MEDIA_REGISTRY
     )

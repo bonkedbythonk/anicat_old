@@ -68,6 +68,7 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
             ctx, state, UserMediaListStatus.DROPPED
         ),
         f"{' ' if icons else ''}Edit Config": lambda: InternalDirective.CONFIG_EDIT,
+        f"{'⚙️ ' if icons else ''}Manage Categories": _manage_categories_action(ctx, state),
         f"{' ' if icons else ''}Exit": lambda: InternalDirective.EXIT,
     }
 
@@ -281,4 +282,52 @@ def _create_dynamic_search_action(ctx: Context, state: State) -> MenuAction:
     def action():
         return State(menu_name=MenuName.DYNAMIC_SEARCH)
 
+    return action
+
+
+def _manage_categories_action(ctx: Context, state: State) -> MenuAction:
+    """Action to interactively manage hidden categories."""
+
+    def action():
+        from .....core.constants import USER_CONFIG
+        from ....config.generate import generate_config_toml_from_app_model
+        from InquirerPy import inquirer
+
+        # All categories available in the main menu
+        all_categories = [
+            "Trending", "Recent", "Watching", "Rewatching", "Paused", 
+            "Planned", "Search", "Search Manga", "Dynamic Search", 
+            "Downloads", "Recently Updated", "Popular", "Top Scored", 
+            "Favourites", "Random", "Upcoming", "Completed", "Dropped"
+        ]
+        
+        current_hidden = [h.lower() for h in (ctx.config.general.hidden_categories or [])]
+        
+        # Create choices for the checkbox: enabled if NOT in hidden_categories
+        choices = [
+            {"name": cat, "value": cat, "enabled": cat.lower() not in current_hidden}
+            for cat in all_categories
+        ]
+
+        selected = inquirer.checkbox(
+            message="Select categories to SHOW (uncheck to hide):",
+            choices=choices,
+            instruction="(Space to toggle, Enter to confirm)",
+            transformer=lambda result: f"{len(result)} categories visible",
+        ).execute()
+
+        if selected is not None:
+            # Hidden categories are those NOT in the selected list
+            new_hidden = [cat for cat in all_categories if cat not in selected]
+            ctx.config.general.hidden_categories = new_hidden
+            
+            # Save the updated configuration
+            try:
+                toml_content = generate_config_toml_from_app_model(ctx.config)
+                USER_CONFIG.write_text(toml_content, encoding="utf-8")
+                ctx.feedback.success(f"Categories updated. {len(new_hidden)} items hidden.")
+            except Exception as e:
+                ctx.feedback.error(f"Failed to save categories: {e}")
+            
+        return InternalDirective.RELOAD
     return action
