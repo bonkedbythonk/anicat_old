@@ -6,7 +6,7 @@ Anicat is a minimalist, high-performance tool that lets you search, stream, and 
 
 ---
 
-## Quick Start (The "Just Give Me the Commands" Section)
+## Quick Start
 
 If you already know what you're doing, here are the magic words:
 
