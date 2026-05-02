@@ -350,7 +350,7 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
         
         from ....service.feedback.service import console
         from rich.table import Table
-        from anicat_media.core.constants import VERSION
+        from anicat_media.core.constants import VERSION, LAST_COMMIT_FILE, UPDATE_STATUS_FILE, APP_DIR
 
         # Get values from updater service
         remote_version = ctx.updater.remote_version or "Unknown"
@@ -378,6 +378,14 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
             )
             console.print(panel)
             
+            # Check for Dev Mode
+            is_dev_mode = (APP_DIR.parent / ".git").exists()
+            if is_dev_mode:
+                console.print("\n[bold yellow]Dev Mode Detected:[/bold yellow] New changes are available on GitHub.")
+                console.print("Please run [bold cyan]git pull[/bold cyan] to update your local development environment.")
+                feedback.pause_for_user("return to menu")
+                return state.model_copy(update={"update_available": True})
+
             from InquirerPy import inquirer
             if inquirer.confirm(message="Would you like to update Anicat now?", default=True).execute():
                 console.print("\n[bold cyan]Updating Anicat... This will take a moment.[/]")
@@ -387,6 +395,12 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
                     # Run the update command
                     subprocess.run(["uv", "tool", "install", "--force", "git+https://github.com/bonkedbythonk/anicat.git"], check=True)
                     
+                    # Update local hash and clear status to prevent update loop
+                    if ctx.updater.remote_hash:
+                        LAST_COMMIT_FILE.write_text(ctx.updater.remote_hash, encoding="utf-8")
+                        UPDATE_STATUS_FILE.write_text("0", encoding="utf-8")
+                        logger.info(f"Updated local hash to {ctx.updater.remote_hash}")
+
                     console.print("\n[bold green]Anicat has been updated! Please restart the app to apply changes.[/]")
                     sys.exit(0)
                 except Exception as e:
