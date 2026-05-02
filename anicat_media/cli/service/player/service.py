@@ -64,4 +64,7 @@ class PlayerService:
                 self.player, params, self.provider, anime, registry, media_item
             )
         else:
-            raise AnicatError("Not implemented")
+            logger.warning(
+                f"IPC tracking is not supported for player '{self.app_config.stream.player}'. Falling back to standard playback."
+            )
+            return self.player.play(params)
