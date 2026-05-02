@@ -346,15 +346,33 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
     def action():
         feedback = ctx.feedback
         with feedback.progress("Checking for updates..."):
-            is_available = ctx.updater.check_version()
+            is_available = ctx.updater.check_version(force=True)
         
         from ....service.feedback.service import console
+        from rich.table import Table
+        from ....core.constants import VERSION
+
+        # Get values from updater service
+        remote_version = ctx.updater.remote_version or "Unknown"
+        local_version = VERSION
+        remote_hash = ctx.updater.remote_hash or "Unknown"
+        local_hash = ctx.updater.local_hash or "Unknown"
+
+        # Create detailed table
+        table = Table(title="Update Comparison", show_header=True, header_style="bold magenta", expand=True)
+        table.add_column("Property", style="dim")
+        table.add_column("Local", justify="right")
+        table.add_column("Remote", justify="right")
         
+        table.add_row("Version", local_version, remote_version)
+        table.add_row("Commit Hash", local_hash[:8] if local_hash != "Unknown" else local_hash, 
+                      remote_hash[:8] if remote_hash != "Unknown" else remote_hash)
+
         if is_available:
             panel = Panel(
-                "[bold green]✨ A new version is available![/bold green]\n\n"
-                "Run [bold yellow]pip install --upgrade anicat[/bold yellow] to update.",
-                title="Update Check",
+                table,
+                title="[bold green]✨ New Update Available![/bold green]",
+                subtitle="Run [bold yellow]pip install --upgrade anicat[/bold yellow] to update.",
                 border_style="yellow",
                 expand=False
             )
@@ -364,9 +382,9 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
             return state.model_copy(update={"update_available": True})
         else:
             panel = Panel(
-                "[bold blue]You are already on the latest version.[/bold blue]\n"
-                "Everything is current.",
-                title="Update Check",
+                table,
+                title="[bold blue]Up to Date[/bold blue]",
+                subtitle="Everything is current.",
                 border_style="green",
                 expand=False
             )
