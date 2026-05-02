@@ -1,31 +1,49 @@
-def generate_config_toml_from_app_model(*args, **kwargs) -> str:
-    return """#/\_/\
-#( o.o )
-# > ^ <  [ a n i c a t ]
+from ...core.config import AppConfig
 
-[general]
-provider = "animepahe"
-selector = "fzf"
-image_renderer = "icat"
-manga_viewer = "icat"
-hidden_categories = ["Planned", "Dropped", "Rewatching", "Paused"]
-icons = true
-
-[stream]
-player = "mpv"
-quality = "1080"
-translation_type = "sub"
-auto_next = true
-use_ipc = true
-
-[anilist]
-preferred_language = "english"
-per_page = 15
-
-[downloads]
-downloads_dir = "~/Movies/anicat"
-
-[fzf]
-opts = "--layout=reverse --border=rounded --info=inline --ansi"
-show_header_ascii_art = true
-"""
+def generate_config_toml_from_app_model(config: AppConfig) -> str:
+    """
+    Generates a TOML string from an AppConfig object.
+    
+    This is a simple implementation to avoid external dependencies like tomli_w.
+    """
+    lines = [
+        "#/\_/\ ",
+        "#( o.o )",
+        "# > ^ <  [ a n i c a t ]",
+        ""
+    ]
+    
+    for section_name, section_model in config:
+        if not hasattr(section_model, "model_fields"):
+            continue
+            
+        lines.append(f"[{section_name}]")
+        
+        for field_name in section_model.model_fields:
+            field_value = getattr(section_model, field_name)
+            
+            if field_value is None:
+                continue
+                
+            if isinstance(field_value, bool):
+                value = str(field_value).lower()
+            elif isinstance(field_value, (int, float)):
+                value = str(field_value)
+            elif isinstance(field_value, list):
+                # Simple list formatting for TOML
+                value = "[" + ", ".join(f'"{v}"' if isinstance(v, str) else str(v) for v in field_value) + "]"
+            elif hasattr(field_value, "value"): # Enum
+                value = f'"{field_value.value}"'
+            else:
+                str_val = str(field_value).replace("\\", "\\\\")
+                if "\n" in str_val:
+                    # Use multiline string for values with newlines
+                    value = f'"""\n{str_val}"""'
+                else:
+                    str_val = str_val.replace('"', '\\"')
+                    value = f'"{str_val}"'
+                
+            lines.append(f"{field_name} = {value}")
+        lines.append("")
+        
+    return "\n".join(lines)
