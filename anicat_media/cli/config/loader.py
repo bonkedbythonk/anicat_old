@@ -48,7 +48,6 @@ class ConfigLoader:
                 "Configure settings interactively",
             ],
             default="Use default settings (Recommended for new users)",
-            wrap_around=True,
             keybindings={
                 "answer": [{"key": "enter"}, {"key": "right"}],
             },
