@@ -372,12 +372,32 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
             panel = Panel(
                 table,
                 title="[bold green]✨ New Update Available![/bold green]",
-                subtitle="Run [bold yellow]pip install --upgrade anicat[/bold yellow] to update.",
+                subtitle="A newer version or commit is available on GitHub.",
                 border_style="yellow",
                 expand=False
             )
             console.print(panel)
-            feedback.pause_for_user("return to menu")
+            
+            from InquirerPy import inquirer
+            if inquirer.confirm(message="Would you like to update Anicat now?", default=True).execute():
+                console.print("\n[bold cyan]Updating Anicat... This will take a moment.[/]")
+                import subprocess
+                import sys
+                try:
+                    # Run the update command
+                    subprocess.run(["uv", "tool", "install", "--force", "git+https://github.com/bonkedbythonk/anicat.git"], check=True)
+                    
+                    console.print("\n[bold green]Anicat has been updated! Please restart the app to apply changes.[/]")
+                    sys.exit(0)
+                except Exception as e:
+                    error_panel = Panel(
+                        f"[bold red]Update Failed![/bold red]\n\n{e}\n\nPlease try running the command manually:\n[bold yellow]uv tool install --force git+https://github.com/bonkedbythonk/anicat.git[/bold yellow]",
+                        title="Error",
+                        border_style="red"
+                    )
+                    console.print(error_panel)
+                    feedback.pause_for_user("return to menu")
+            
             # Return updated state so the ✨ appears immediately
             return state.model_copy(update={"update_available": True})
         else:

@@ -32,21 +32,23 @@ class UpdaterService:
         If force is True, bypasses cache and performs fresh requests.
         """
         try:
-            # Bypass cache logic (if we had one that skipped requests, we'd check it here)
-            # For now, we always perform the requests if called, but we'll satisfy the "force" requirement
-            # by ensuring we don't return early if we had some local cache.
-            
             # 1. Fetch latest commit hash from GitHub
             commit_url = "https://api.github.com/repos/bonkedbythonk/anicat/commits/main"
             commit_resp = httpx.get(commit_url, timeout=5.0)
             if commit_resp.status_code == 200:
                 self.remote_hash = commit_resp.json().get("sha", "")
             
+            # Baseline logic: If no local hash exists, save the current remote hash
+            is_baseline = False
+            if self.remote_hash and (not LAST_COMMIT_FILE.exists() or not LAST_COMMIT_FILE.read_text().strip()):
+                LAST_COMMIT_FILE.write_text(self.remote_hash, encoding="utf-8")
+                self.local_hash = self.remote_hash
+                is_baseline = True
+
             # 2. Fetch latest version from pyproject.toml
             repo_pyproject_url = "https://raw.githubusercontent.com/bonkedbythonk/anicat/main/pyproject.toml"
             pyproject_resp = httpx.get(repo_pyproject_url, timeout=5.0)
             
-            is_available = False
             if pyproject_resp.status_code == 200:
                 import re
                 content = pyproject_resp.text
@@ -54,6 +56,11 @@ class UpdaterService:
                 if match:
                     self.remote_version = match.group(1)
                     
+                    # If this was a baseline run, we already caught up to the latest hash
+                    if is_baseline:
+                        UPDATE_STATUS_FILE.write_text("0", encoding="utf-8")
+                        return False
+
                     # Version comparison
                     version_differs = self.remote_version != VERSION
                     
