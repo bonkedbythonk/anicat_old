@@ -403,7 +403,7 @@ class AnilistConfig(OtherConfig):
         default=defaults.ANILIST_PREFERRED_LANGUAGE,
         description=desc.ANILIST_PREFERRED_LANGUAGE,
     )
-    token: Optional[str] = Field(default=None, description="Your AniList OAuth token.")
+    token: str = Field(default=defaults.ANILIST_TOKEN, description="Your AniList OAuth token.")
 
 
 class JikanConfig(OtherConfig):
