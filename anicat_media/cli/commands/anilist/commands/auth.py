@@ -135,11 +135,11 @@ def _show_auth_instructions(feedback):
         )
 
     feedback.info(
-        "After authorizing, save your token using one of these methods:\n"
-        "  • anicat anilist auth --token <token>\n"
-        "  • export ANILIST_TOKEN='<token>'\n"
-        "  • Save token to ~/.config/anicat/token.txt\n"
-        "  • Add 'token = \"<token>\"' under [anilist] in config.toml\n"
+        "After authorizing, save your token using one of these methods (Export is recommended):\n"
+        "  • export ANILIST_TOKEN='<token>'             (Best for persistence; add to your .zshrc)\n"
+        "  • anicat anilist auth '<token>'             (Direct authentication)\n"
+        "  • Save token to ~/.config/anicat/token.txt  (File-based)\n"
+        "  • Add 'token = \"<token>\"' to config.toml     (Config-based)\n"
         "\n"
-        "Then run 'anicat anilist auth' again to complete authentication."
+        "Then run 'anicat' to start streaming!"
     )

@@ -1,73 +1,100 @@
-# Anicat
+# 🐱 Anicat: The Beginner's Guide to Terminal Anime
 
-A minimalist, high-performance **Anime & Manga CLI** for macOS.
+Welcome to **Anicat**! If you’ve never used a "terminal" before, don't worry. This guide is written specifically for you. 
 
-Anicat is a terminal-native powerhouse designed for a distraction-free experience. Optimized for macOS and the Kitty terminal, it delivers lightning-fast streaming and manga reading with deep integration into the native environment.
+Anicat is a minimalist, high-performance tool that lets you search, stream, and track your favorite Anime and Manga directly from your computer's command line. No browser ads, no distractions—just pure content.
 
-## Key Features
+---
 
-*   **mpv Native Support**: High-performance playback with optimized header handling for protected streams and seamless auto-next logic.
-*   **Premium Navigation**: Interactive menus featuring infinite wrap-around scrolling and intuitive `Right-Arrow` / `Enter` selection.
-*   **High-Speed Manga Prefetching**: Proactive 15-page background buffer with intelligent resizing for instantaneous page turns.
-*   **Kitty Terminal Integration**: Crisp, high-fidelity image previews using the `icat` protocol.
-*   **AniList Integration**: Synchronize your watch history and discover new content directly through the CLI.
-*   **Fuzzy-Search TUI**: Effortlessly browse your entire library with integrated `fzf` support.
+## 🚀 Quick Start (The "Just Give Me the Commands" Section)
 
-## Installation
+If you already know what you're doing, here are the magic words:
 
-Anicat is best installed using [**uv**](https://github.com/astral-sh/uv):
+1.  **Install Homebrew:** `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+2.  **Install Tools:** `brew install mpv fzf kitty`
+3.  **Install UV:** `curl -LsSf https://astral.sh/uv/install.sh | sh`
+4.  **Install Anicat:** `uv tool install git+https://github.com/bonkedbythonk/anicat.git`
+5.  **Run:** `anicat`
 
+---
+
+## 🛠 Detailed Step-by-Step Setup
+
+### Step 0: The "App Store" for your Terminal
+To use Anicat, we first need to install **Homebrew**. Think of this as an App Store that works inside your terminal.
+
+1.  Open your "Terminal" app (search for it in Spotlight).
+2.  Copy and paste this command and press **Enter**:
+    ```bash
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    ```
+3.  Wait for it to finish (it might ask for your Mac password).
+
+### Step 1: Install the Required Tools
+Now we need to install the "engines" that Anicat uses to show images and play videos.
+
+> [!IMPORTANT]
+> **You MUST use the Kitty Terminal!** Standard Apple Terminal (the white/black box) cannot show the beautiful anime posters and manga pages. **Kitty** is a special terminal that makes images work.
+
+Copy and paste this command to install everything you need:
 ```bash
-uv tool install git+https://github.com/bonkedbythonk/anicat.git
+brew install mpv fzf kitty
 ```
+*   **mpv**: Plays the videos.
+*   **fzf**: Powers the search menus.
+*   **kitty**: The "window" you'll use to run Anicat.
 
-### Prerequisites
+### Step 2: Install Anicat
+We use a modern tool called `uv` to install Anicat safely.
 
-To unlock the full potential of Anicat, the following tools are required/recommended:
+1.  **Install uv first:**
+    ```bash
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    ```
+2.  **Install Anicat using uv:**
+    ```bash
+    uv tool install git+https://github.com/bonkedbythonk/anicat.git
+    ```
 
-*   [**mpv**](https://mpv.io/): The primary and required media player.
-*   [**Kitty Terminal**](https://sw.kovidgoyal.net/kitty/): For high-performance image previews.
-*   [**fzf**](https://github.com/junegunn/fzf): For the interactive selection menu.
+---
 
-## Linking AniList
+## 🔗 Connecting your AniList Account
+**Why do I need this?** 
+AniList is a website that tracks what you watch. By connecting it to Anicat, the app will automatically remember which episode you stopped at and update your "Watching" list for you!
 
-To synchronize your progress with AniList, simply run the following command:
-
-1.  **Start Authorization**:
+1.  Open the **Kitty Terminal** you just installed.
+2.  Run the following command to open the authorization page:
     ```bash
     anicat anilist auth
     ```
-    This will automatically open your browser to the AniList authorization page.
-2.  **Get Your Token**: Authorize the application and copy the provided access token.
-3.  **Save the Token**:
+3.  Your browser will open to the [AniList Developer Settings](https://anilist.co/settings/developer). Click **"Authorize"** and copy the long code (the "Token") that appears.
+4.  **Save the Token (The Easiest Way):** 
+    Copy and paste this command into your terminal, but replace **YOUR_TOKEN_HERE** with the code you just copied:
+    ```bash
+    echo 'export ANILIST_TOKEN="YOUR_TOKEN_HERE"' >> ~/.zshrc
+    ```
+5.  **Restart your Terminal** (close Kitty and open it again), and you’re all set! Now when you type `anicat`, your progress will be saved.
 
-### Recommendation: Environment Variable (Persistent)
-Add this to your `.zshrc` or `.bashrc` for the most reliable connection:
-```bash
-export ANILIST_TOKEN="YOUR_PERSONAL_ACCESS_TOKEN"
-```
+*Note: The `export` method is the most reliable for macOS users. You can also try adding it directly to your config file, but we recommend the steps above for a hassle-free setup.*
 
-### Alternative: Quick Save
-You can also save the token directly to Anicat's internal registry:
-```bash
-anicat anilist auth "YOUR_PERSONAL_ACCESS_TOKEN"
-```
+---
 
-## Shortcuts (Manga Viewer)
+## 🎮 How to Use Anicat
 
-*   `l` / `Right Arrow`: Next Page
-*   `h` / `Left Arrow`: Previous Page
-*   `s`: Toggle Spread Mode (Double Page View)
-*   `b`: Toggle Information Banner
-*   `q`: Exit Viewer
+Once installed, simply type **anicat** in your **Kitty Terminal**.
 
-## Configuration
+*   **Search**: Type the name of an anime and press Enter.
+*   **Navigate**: Use your **Up/Down Arrows** to browse.
+*   **Select**: Press **Right-Arrow** or **Enter** to pick an anime or episode.
+*   **Manga Viewer Keys**:
+    *   `Right Arrow`: Next Page
+    *   `Left Arrow`: Previous Page
+    *   `q`: Exit Viewer
 
-Anicat maintains a minimalist `config.toml` for easy customization.
-**Path:** `~/Library/Application Support/anicat/config.toml`
+> [!CAUTION]
+> **Reminder**: If you use the default Apple Terminal, you will see text but **NO IMAGES**. Always open the **Kitty** app to get the full experience!
 
-## Credits
+---
 
-Anicat is a streamlined, macOS-specific fork of the [**Viu**](https://github.com/viu-media/viu) project.
-
-This tool would not be possible without the incredible foundation laid by the original Viu development team. While Anicat has been refactored to specialize in the macOS ecosystem and Anime/Manga content, we remain deeply grateful to the original creators for their vision and architecture.
+## 🌟 Credits
+Anicat is a specialized macOS fork of the [Viu](https://github.com/viu-media/viu) project. I am deeply grateful to the original creators for their incredible architecture!
