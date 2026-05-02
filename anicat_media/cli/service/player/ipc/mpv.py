@@ -489,6 +489,9 @@ class MpvIPCPlayer(BaseIPCPlayer):
         elif event == "file-loaded":
             time.sleep(0.1)
             self._configure_player()
+        elif event == "end-of-file":
+            if message.get("reason") == "eof":
+                self._auto_next_episode()
         elif event:
             logger.debug(f"MPV event: {event}")
 
@@ -500,14 +503,8 @@ class MpvIPCPlayer(BaseIPCPlayer):
         elif name == "duration" and isinstance(data, (int, float)):
             self.player_state.total_time_secs = data
         elif name == "percent-pos" and isinstance(data, (int, float)):
-            if (
-                self.stream_config.auto_next
-                and data >= self.stream_config.episode_complete_at
-                and not self.player_fetching
-                and not self.auto_next_triggered
-            ):
-                self.auto_next_triggered = True
-                self._auto_next_episode()
+            # Percentage position changed
+            pass
 
     def _handle_client_message(self, message: Dict[str, Any]):
         args = message.get("args", [])
