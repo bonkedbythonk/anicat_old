@@ -23,6 +23,31 @@ class IinaPlayer(BasePlayer):
         This call is blocking because it waits for the IINA process to close,
         which allows Anicat's auto_next loop to function natively.
         """
+        # IINA is based on mpv and supports mpv-style arguments.
+        # We pass these through the macOS 'open' command using --args.
+        iina_args = []
+        
+        if params.headers:
+            other_headers = []
+            for k, v in params.headers.items():
+                if k.lower() == "user-agent":
+                    iina_args.append(f"--user-agent={v}")
+                elif k.lower() == "referer":
+                    iina_args.append(f"--referrer={v}")
+                else:
+                    # mpv format for multiple headers is k1:v1,k2:v2
+                    other_headers.append(f"{k}:{v}")
+            
+            if other_headers:
+                iina_args.append(f"--http-header-fields={','.join(other_headers)}")
+
+        if params.title:
+            iina_args.append(f"--title={params.title}")
+
+        if params.start_time:
+            iina_args.append(f"--start={params.start_time}")
+
+        # Construct final command
         commands = [
             "open",
             "-W",  # Wait for the application to exit
@@ -30,18 +55,9 @@ class IinaPlayer(BasePlayer):
             "-a",
             "IINA",
             "--args",
+            *iina_args,
             params.url
         ]
-        
-        # Format HTTP headers for IINA
-        headers_str = ""
-        if params.headers:
-            header_list = []
-            for k, v in params.headers.items():
-                header_list.append(f"{k}: {v}")
-            if header_list:
-                headers_str = ", ".join(header_list)
-                commands.append(f"--http-header-fields={headers_str}")
 
         logger.info(f"Launching IINA: {' '.join(commands)}")
 

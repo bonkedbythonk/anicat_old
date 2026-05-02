@@ -15,7 +15,10 @@ class InquirerSelector(BaseSelector):
             border=True,
             validate=lambda result: result in choices,
             wrap_around=True,
-            keybindings={"answer": [{"key": "right"}, {"key": "enter"}]},
+            keybindings={
+                "answer": [{"key": "enter"}, {"key": "right"}],
+                "accept": [{"key": "enter"}, {"key": "right"}],
+            },
         ).execute()
 
     def confirm(self, prompt, *, default=False):
@@ -34,7 +37,38 @@ class InquirerSelector(BaseSelector):
             multiselect=True,
             border=True,
             wrap_around=True,
-            keybindings={"answer": [{"key": "right"}, {"key": "enter"}]},
+            keybindings={
+                "answer": [{"key": "enter"}, {"key": "right"}],
+                "accept": [{"key": "enter"}, {"key": "right"}],
+            },
+        ).execute()
+
+    def search(
+        self,
+        prompt: str,
+        search_command: str,
+        *,
+        preview: str | None = None,
+        header: str | None = None,
+        initial_query: str | None = None,
+        initial_results: list[str] | None = None,
+    ) -> str | None:
+        if header:
+            print(f"[bold cyan]{header}[/bold cyan]")
+        
+        # InquirerPy doesn't have a native dynamic search/reload like fzf,
+        # so we fallback to a static fuzzy selection of initial results if provided,
+        # or we just provide the fuzzy prompt.
+        return FuzzyPrompt(
+            message=prompt,
+            choices=initial_results or [],
+            height="100%",
+            border=True,
+            wrap_around=True,
+            keybindings={
+                "answer": [{"key": "enter"}, {"key": "right"}],
+                "accept": [{"key": "enter"}, {"key": "right"}],
+            },
         ).execute()
 
 
