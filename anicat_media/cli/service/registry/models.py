@@ -76,10 +76,12 @@ class MediaRegistryIndexEntry(BaseModel):
     def watch_completion_percentage(self) -> float:
         """Watch completion percentage."""
         if self.total_duration and self.last_watch_position:
-            return (
-                converter.time_to_seconds(self.last_watch_position)
-                / converter.time_to_seconds(self.total_duration)
-            ) * 100
+            total_secs = converter.time_to_seconds(self.total_duration)
+            if total_secs > 0:
+                return (
+                    converter.time_to_seconds(self.last_watch_position)
+                    / total_secs
+                ) * 100
         return 0.0
 
 

@@ -36,7 +36,7 @@ class IinaPlayer(BasePlayer):
                 header_fields.append(f"{header_key}: {v}")
             
             if header_fields:
-                iina_args.append(f'--http-header-fields={",".join(header_fields)}')
+                iina_args.append(f'--http-header-fields="{",".join(header_fields)}"')
 
         if params.title:
             iina_args.append(f"--title={params.title}")
@@ -47,17 +47,15 @@ class IinaPlayer(BasePlayer):
         # Construct final command
         commands = [
             "open",
-            "-W",  # Wait for the application to exit
-            "-n",  # Open a new instance of the application
             "-a",
             "IINA",
+            "--args",
         ]
         
-        commands.append(params.url)
-        
         if iina_args:
-            commands.append("--args")
             commands.extend(iina_args)
+        
+        commands.append(params.url)
 
         logger.info(f"Launching IINA: {' '.join(commands)}")
 
