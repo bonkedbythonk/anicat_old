@@ -58,7 +58,7 @@ We use a modern tool called `uv` to install Anicat safely.
 
 ---
 
-## 🔗 Connecting your AniList Account
+## Connecting your AniList Account
 **Why do I need this?** 
 AniList is a website that tracks what you watch. By connecting it to Anicat, the app will automatically remember which episode you stopped at and update your "Watching" list for you!
 
