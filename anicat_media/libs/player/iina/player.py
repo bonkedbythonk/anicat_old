@@ -19,24 +19,27 @@ class IinaPlayer(BasePlayer):
 
     def play(self, params: PlayerParams) -> PlayerResult:
         """
-        Play the media using IINA by executing it via the macOS open command.
-        This call is blocking because it waits for the IINA process to close,
-        which allows Anicat's auto_next loop to function natively.
+        Play the media using IINA by executing the binary directly if available, 
+        or falling back to the macOS open command.
         """
-        # IINA is based on mpv and supports mpv-style arguments.
-        # We pass these through the macOS 'open' command using --args.
+        import os
+        iina_binary = "/Applications/IINA.app/Contents/MacOS/IINA"
+        use_binary = os.path.exists(iina_binary)
+
         iina_args = []
         
-        if params.headers:
-            header_fields = []
-            for k, v in params.headers.items():
-                # mpv/IINA prefers "Field: Value" format in http-header-fields
-                # We use "Referer" instead of "Referrer" for the header field name
-                header_key = "Referer" if k.lower() == "referer" else k
-                header_fields.append(f"{header_key}: {v}")
-            
-            if header_fields:
-                iina_args.append(f'--http-header-fields="{",".join(header_fields)}"')
+        # Extract and clean headers
+        referer = params.headers.get("Referer", params.headers.get("referer", ""))
+        user_agent = params.headers.get("User-Agent", params.headers.get("user-agent", ""))
+        
+        # Ensure strings and clean newlines
+        referer = str(referer).strip().replace("\n", "").replace("\r", "")
+        user_agent = str(user_agent).strip().replace("\n", "").replace("\r", "")
+
+        if referer or user_agent:
+            # Format according to user request: "Referer: <URL>, User-Agent: <AGENT>"
+            header_str = f"Referer: {referer}, User-Agent: {user_agent}"
+            iina_args.extend(["--http-header-fields", header_str])
 
         if params.title:
             iina_args.append(f"--title={params.title}")
@@ -45,17 +48,11 @@ class IinaPlayer(BasePlayer):
             iina_args.append(f"--start={params.start_time}")
 
         # Construct final command
-        commands = [
-            "open",
-            "-a",
-            "IINA",
-            "--args",
-        ]
-        
-        if iina_args:
-            commands.extend(iina_args)
-        
-        commands.append(params.url)
+        if use_binary:
+            commands = [iina_binary] + iina_args + [params.url]
+        else:
+            # Fallback to open -a IINA
+            commands = ["open", "-a", "IINA", "--args"] + iina_args + [params.url]
 
         logger.info(f"Launching IINA: {' '.join(commands)}")
 
