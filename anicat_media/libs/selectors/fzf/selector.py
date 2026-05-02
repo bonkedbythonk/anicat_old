@@ -24,12 +24,15 @@ class FzfSelector(BaseSelector):
         os.environ["FZF_DEFAULT_OPTS"] = self.config.opts
 
         self.header_color = config.header_color.split(",")
-        self.header = "\n".join(
-            [
-                f"\033[38;2;{self.header_color[0]};{self.header_color[1]};{self.header_color[2]};m{line}\033[0m"
-                for line in config.header_ascii_art.replace("\t", "").split("\n")
-            ]
-        )
+        if config.show_header_ascii_art:
+            self.header = "\n".join(
+                [
+                    f"\033[38;2;{self.header_color[0]};{self.header_color[1]};{self.header_color[2]};m{line}\033[0m"
+                    for line in config.header_ascii_art.replace("\t", "").split("\n")
+                ]
+            )
+        else:
+            self.header = ""
 
     def choose(self, prompt, choices, *, preview=None, header=None):
         fzf_input = "\n".join(choices)

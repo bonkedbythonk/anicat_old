@@ -82,6 +82,9 @@ FZF_PREVIEW_HEADER_COLOR = "RGB color for preview pane headers."
 FZF_PREVIEW_SEPARATOR_COLOR = "RGB color for preview pane separators."
 FZF_OPTS = "The FZF options, formatted with leading tabs for the config file."
 FZF_HEADER_ASCII_ART = "The ASCII art to display as a header in the FZF interface."
+FZF_SHOW_HEADER_ASCII_ART = (
+    "Whether to display the ASCII art header in the FZF interface."
+)
 
 
 # RofiConfig
