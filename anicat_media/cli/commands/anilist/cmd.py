@@ -9,7 +9,6 @@ commands = {
     "search": "search.search",
     "download": "download.download",
     "downloads": "downloads.downloads",
-    "auth": "auth.auth",
     "stats": "stats.stats",
     "notifications": "notifications.notifications",
 }

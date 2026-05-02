@@ -122,7 +122,7 @@ class Context:
             media_api = create_api_client(self.config.general.media_api, self.config)
 
             auth = self.auth
-            token = auth.resolve_token()
+            token = self.config.anilist.token
             if token:
                 try:
                     p = media_api.authenticate(token)
@@ -135,7 +135,10 @@ class Context:
                 except httpx.ConnectError as e:
                     logger.warning(f"It seems you are offline: {e}")
             else:
-                logger.debug("Not authenticated — no token found in any source.")
+                self.feedback.warning(
+                    "You are not logged in.",
+                    "Please run 'anicat login' to continue."
+                )
             self._media_api = media_api
 
         return self._media_api

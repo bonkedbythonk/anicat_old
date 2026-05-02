@@ -21,14 +21,14 @@ def notifications(config: AppConfig):
     auth = AuthService(config.general.media_api)
     api_client = create_api_client(config.general.media_api, config)
 
-    token = auth.resolve_token()
+    token = auth.resolve_token(config)
     if token:
         api_client.authenticate(token)
 
     if not api_client.is_authenticated():
         feedback.error(
             "Authentication Required",
-            "No valid token found. Set $ANILIST_TOKEN or run 'anicat anilist auth --token <token>'.",
+            "You are not logged in. Please run 'anicat login' to continue.",
         )
         return
 

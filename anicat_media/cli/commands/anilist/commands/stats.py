@@ -29,20 +29,12 @@ def stats(config: "AppConfig"):
 
     try:
         # Check authentication
-        token = auth.resolve_token()
+        token = auth.resolve_token(config)
         if token:
             if not media_api_client.authenticate(token):
-                feedback.error(
-                    "Authentication Failed",
-                    "The token may be invalid or expired.\n"
-                    "Set $ANILIST_TOKEN or run 'anicat anilist auth --token <token>'.",
-                )
-                raise click.Abort()
-        else:
             feedback.error(
                 "Authentication Required",
-                f"You must be logged in to {config.general.media_api} to view stats.\n"
-                "Set $ANILIST_TOKEN or run 'anicat anilist auth --token <token>'.",
+                "You are not logged in. Please run 'anicat login' to continue.",
             )
             raise click.Abort()
 
