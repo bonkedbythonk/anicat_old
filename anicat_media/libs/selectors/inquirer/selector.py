@@ -15,7 +15,7 @@ class InquirerSelector(BaseSelector):
             border=True,
             validate=lambda result: result in choices,
             wrap_around=True,
-            keybindings={"accept": [{"key": "right"}, {"key": "enter"}]},
+            keybindings={"answer": [{"key": "right"}, {"key": "enter"}]},
         ).execute()
 
     def confirm(self, prompt, *, default=False):
@@ -34,7 +34,7 @@ class InquirerSelector(BaseSelector):
             multiselect=True,
             border=True,
             wrap_around=True,
-            keybindings={"accept": [{"key": "right"}, {"key": "enter"}]},
+            keybindings={"answer": [{"key": "right"}, {"key": "enter"}]},
         ).execute()
 
 

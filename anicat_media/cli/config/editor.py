@@ -97,7 +97,7 @@ class InteractiveConfigEditor:
                 default=current_value,
                 long_instruction=help_text,
                 wrap_around=True,
-                keybindings={"accept": [{"key": "right"}, {"key": "enter"}]},
+                keybindings={"answer": [{"key": "right"}, {"key": "enter"}]},
             )
 
         # Numeric fields
@@ -137,7 +137,7 @@ class InteractiveConfigEditor:
                     default=str(current_value),
                     long_instruction=help_text,
                     wrap_around=True,
-                    keybindings={"accept": [{"key": "right"}, {"key": "enter"}]},
+                    keybindings={"answer": [{"key": "right"}, {"key": "enter"}]},
                 )
             return inquirer.text(  # pyright: ignore[reportPrivateImportUsage]
                 message=message, default=str(current_value), long_instruction=help_text
