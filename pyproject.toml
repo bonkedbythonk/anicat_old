@@ -23,6 +23,9 @@ dependencies = [
 Repository = "https://github.com/bonkedbythonk/anicat"
 Homepage = "https://github.com/bonkedbythonk/anicat"
 
+[tool.hatch.build.targets.wheel]
+packages = ["anicat_media"]
+
 [project.scripts]
 anicat = 'anicat_media.cli.main:main'
 
