@@ -37,8 +37,9 @@ class IinaPlayer(BasePlayer):
         user_agent = str(user_agent).strip().replace("\n", "").replace("\r", "")
 
         if referer or user_agent:
-            # Format according to user request: "Referer: <URL>, User-Agent: <AGENT>"
-            header_str = f"Referer: {referer}, User-Agent: {user_agent}"
+            # Format according to user request: "Referer: <URL>,User-Agent: <AGENT>"
+            # Removed spaces to ensure stricter compatibility with mpv/IINA parser
+            header_str = f"Referer:{referer},User-Agent:{user_agent}"
             iina_args.append(f"--http-header-fields={header_str}")
 
         if params.title:
@@ -54,7 +55,8 @@ class IinaPlayer(BasePlayer):
             # Fallback to open -a IINA
             commands = ["open", "-a", "IINA", "--args"] + iina_args + [params.url]
 
-        logger.info(f"Launching IINA: {' '.join(commands)}")
+        import shlex
+        logger.info(f"Launching IINA: {shlex.join(commands)}")
 
         try:
             # We run blocking here. When the user quits IINA, it returns.
