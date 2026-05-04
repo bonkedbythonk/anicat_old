@@ -53,8 +53,22 @@ class WatchHistoryService:
                 logger.info(
                     f"Not updating remote watch history since completion percentage ({completion_percentage} is not greater than episode complete at ({self.config.stream.episode_complete_at}))"
                 )
-                return
+                return True
+
         if self.media_api and self.media_api.is_authenticated():
+            # --- Progress Regression Check ---
+            if self.config.stream.force_forward_tracking and media_item.user_status:
+                try:
+                    current_progress = int(media_item.user_status.progress or 0)
+                    watched_episode = int(player_result.episode)
+                    if watched_episode <= current_progress:
+                        logger.info(
+                            f"Skipping AniList sync: Episode {watched_episode} is not an advancement over current progress {current_progress}."
+                        )
+                        return True
+                except (ValueError, TypeError):
+                    pass
+
             success = self.media_api.update_list_entry(
                 UpdateUserMediaListEntryParams(
                     media_id=media_item.id,
@@ -77,47 +91,58 @@ class WatchHistoryService:
 
     def get_episode(self, media_item: MediaItem):
         index_entry = self.media_registry.get_media_index_entry(media_item.id)
-        current_remote_episode = None
-        current_local_episode = None
-        start_time = None
-        episode = None
-
+        
+        # 1. Get baseline from AniList (Remote)
+        remote_progress = 0
         if media_item.user_status:
-            # TODO: change mediaa item progress to a string
-            current_remote_episode = str(media_item.user_status.progress)
+            remote_progress = int(media_item.user_status.progress or 0)
+        
+        # 2. Get baseline from Local Registry
+        local_progress = remote_progress
+        start_time = None
+        total_duration = None
+        
         if index_entry:
-            current_local_episode = index_entry.progress
-            start_time = index_entry.last_watch_position
-            total_duration = index_entry.total_duration
-            if start_time and total_duration and current_local_episode:
-                from ....core.utils.converter import calculate_completion_percentage
+            try:
+                local_progress = int(index_entry.progress or 0)
+                start_time = index_entry.last_watch_position
+                total_duration = index_entry.total_duration
+            except (ValueError, TypeError):
+                local_progress = remote_progress
 
-                if (
-                    calculate_completion_percentage(start_time, total_duration)
-                    >= self.config.stream.episode_complete_at
-                ):
-                    start_time = None
-                    try:
-                        current_local_episode = str(int(current_local_episode) + 1)
-                    except Exception:
-                        # incase its a float
-                        pass
-        else:
-            current_local_episode = current_remote_episode
-        if not media_item.user_status:
-            current_remote_episode = current_local_episode
-        if current_local_episode != current_remote_episode:
+        # 3. Handle Completion and Increment
+        # If we have a local session, check if it was completed
+        if start_time and total_duration:
+            from ....core.utils.converter import calculate_completion_percentage
+            
+            if (
+                calculate_completion_percentage(start_time, total_duration)
+                >= self.config.stream.episode_complete_at
+            ):
+                # Episode is considered finished, move to next
+                local_progress += 1
+                start_time = None
+        elif not index_entry or not start_time:
+            # No active local session (either finished or never started)
+            # Default to the next episode based on progress
             if self.config.general.preferred_tracker == "local":
-                episode = current_local_episode
+                local_progress += 1
             else:
-                # remote or anilist
-                episode = current_remote_episode
-        else:
-            episode = current_local_episode
+                remote_progress += 1
+                local_progress = remote_progress
 
-        # TODO: check if start time is mostly complete and increment the episode
+        # 4. Resolve Final Episode Number
+        if self.config.general.preferred_tracker == "local":
+            episode = str(local_progress)
+        else:
+            # Remote/AniList preference
+            # If local is ahead and force_forward is off, maybe allow it?
+            # But usually we want remote_progress + 1 if no active local session.
+            episode = str(remote_progress if remote_progress > local_progress else local_progress)
+
         if episode == "0":
             episode = "1"
+            
         return episode, start_time
 
     def update(
