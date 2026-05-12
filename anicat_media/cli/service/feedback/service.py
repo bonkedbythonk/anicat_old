@@ -12,12 +12,8 @@ from rich.progress import (
     TextColumn,
 )
 
-<<<<<<< Updated upstream
 from anicat_media.core.config import AppConfig
-=======
-from ....core.config import AppConfig
-from ....core.theme import ICONS
->>>>>>> Stashed changes
+from anicat_media.core.theme import ICONS
 
 logger = logging.getLogger(__name__)
 

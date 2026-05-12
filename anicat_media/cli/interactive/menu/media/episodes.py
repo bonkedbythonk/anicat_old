@@ -1,10 +1,6 @@
 from ...session import Context, session
-<<<<<<< Updated upstream
-from ...state import InternalDirective, MenuName, State
-=======
 from ...state import InternalDirective, MenuName, ProviderState, State
-from .....core.theme import ICONS
->>>>>>> Stashed changes
+from anicat_media.core.theme import ICONS
 
 
 @session.menu

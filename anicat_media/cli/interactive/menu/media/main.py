@@ -12,7 +12,7 @@ from .....libs.media_api.types import (
 from rich.panel import Panel
 from ...session import Context, session
 from ...state import InternalDirective, MediaApiState, MenuName, State
-from .....core.theme import ICONS
+from anicat_media.core.theme import ICONS
 
 logger = logging.getLogger(__name__)
 MenuAction = Callable[[], State | InternalDirective]
@@ -69,20 +69,13 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
         f"{ICONS.get('DROPPED', icons)}Dropped": _create_user_list_action(
             ctx, state, UserMediaListStatus.DROPPED
         ),
-<<<<<<< Updated upstream
-        f"{' ' if icons else ''}Edit Config": lambda: InternalDirective.CONFIG_EDIT,
-        f"{'⚙️ ' if icons else ''}Manage Categories": _manage_categories_action(ctx, state),
-        f"{'✨ ' if state.update_available else ''}Check for Updates": _check_for_updates_action(ctx, state),
-        f"{' ' if icons else ''}Exit": lambda: InternalDirective.EXIT,
-=======
         f"{ICONS.get('EDIT', icons)}Edit Config": lambda: InternalDirective.CONFIG_EDIT,
         f"{ICONS.get('MANAGE', icons)}Manage Categories": _manage_categories_action(ctx, state),
-        f"{ICONS.get('UPDATE', icons)}Check for Updates": _update_action(ctx, state),
+        f"{ICONS.get('UPDATE', icons)}Check for Updates": _check_for_updates_action(ctx, state),
         f"{ICONS.get('LOGOUT' if ctx.media_api.is_authenticated() else 'LOGIN', icons)}{'Logout' if ctx.media_api.is_authenticated() else 'Login'}": _auth_action(
             ctx, state
         ),
         f"{ICONS.get('EXIT', icons)}Exit": lambda: InternalDirective.EXIT,
->>>>>>> Stashed changes
     }
 
     if not ctx.config.anilist.token:
@@ -351,7 +344,6 @@ def _manage_categories_action(ctx: Context, state: State) -> MenuAction:
         return InternalDirective.RELOAD
     return action
 
-<<<<<<< Updated upstream
 def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
     """Action to manually check for updates."""
 
@@ -438,7 +430,8 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
             feedback.pause_for_user("return to menu")
             return state.model_copy(update={"update_available": False})
             
-=======
+    return action
+
 
 def _auth_action(ctx: Context, state: State) -> MenuAction:
     """Action to handle login/logout from the TUI."""
@@ -464,34 +457,4 @@ def _auth_action(ctx: Context, state: State) -> MenuAction:
         return InternalDirective.MAIN
 
     return action
-
-
-def _update_action(ctx: Context, state: State) -> MenuAction:
-    """Action to check for and apply updates from the TUI."""
-
-    def action():
-        from ....utils.update import check_for_updates, print_release_json, update_app
-
-        ctx.feedback.info("Checking for updates...")
-        is_latest, release_json = check_for_updates()
-
-        if is_latest:
-            ctx.feedback.success("You are already on the latest version!")
-            ctx.selector.ask("Press Enter to continue...")
-        else:
-            if release_json:
-                print_release_json(release_json)
-
-            if ctx.selector.confirm("Would you like to update now?"):
-                success, _ = update_app()
-                if success:
-                    ctx.feedback.success("Update complete! Please restart Anicat.")
-                    return InternalDirective.EXIT
-                else:
-                    ctx.feedback.error("Update failed.")
-                    ctx.selector.ask("Press Enter to continue...")
-
-        return InternalDirective.MAIN
-
->>>>>>> Stashed changes
     return action
