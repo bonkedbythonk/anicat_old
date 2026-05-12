@@ -1,0 +1,28 @@
+Usage: run_cli.py config [OPTIONS] COMMAND [ARGS]...
+
+  Manage your config with ease
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  desktop-entry  Generate the desktop entry for anicat (Linux only)
+  open           Open the config file in your default system editor (macOS)
+  path           Print the config location and exit
+  update         Persist all the config options passed to anicat to your...
+  view           View the current contents of your config
+  view-json      View the current contents of your config in json format
+
+  Examples:
+    # Edit your config in your default editor 
+    # NB: If it opens vim or vi exit with `:q`
+    anicat config
+  
+    # get the path of the config file
+    anicat config path
+  
+    # open the config file in your default system editor (macOS)
+    anicat config open
+   
+    # view the current contents of your config
+    anicat config view

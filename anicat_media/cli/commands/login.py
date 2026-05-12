@@ -23,8 +23,13 @@ def login_flow(config: AppConfig):
     The core logic for the AniList login process.
     """
     from anicat_media.core.constants import ANILIST_AUTH
+    from ..config.generate import generate_config_toml_from_app_model
     
     rprint("[bold cyan]AniList Login[/]")
+    
+    # Ensure config file is up to date with all fields (including token placeholder)
+    USER_CONFIG.write_text(generate_config_toml_from_app_model(config), encoding="utf-8")
+    
     rprint(f"Opening your browser for authentication: [link={ANILIST_AUTH}]{ANILIST_AUTH}[/link]")
     click.launch(ANILIST_AUTH)
     
@@ -41,7 +46,7 @@ def login_flow(config: AppConfig):
     
     rprint("\n[bold green]Instructions:[/]")
     rprint("1. Copy the 'access_token' from the URL after authorizing.")
-    rprint(f"2. Paste it in the file behind [bold white]token = [/] (located under the [bold white][[anilist]][/] section).")
+    rprint(f"2. Paste it in the file behind [bold white]token = [/] (located under the [bold white]\[anilist][/] section).")
     rprint("3. Save ([bold white]Cmd+S[/]) and close the editor.")
     
     input("\nPress Enter here once you have saved and closed the file...")

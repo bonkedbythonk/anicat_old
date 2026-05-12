@@ -34,30 +34,11 @@ class ConfigLoader:
     def _handle_first_run(self) -> AppConfig:
         """Handles the configuration process when no config.toml file is found."""
         click.echo(
-            "[bold yellow]Welcome to Anicat![/bold yellow] No configuration file found."
+            "[bold yellow]Welcome to Anicat![/bold yellow] No configuration file found. Creating default configuration..."
         )
-        from InquirerPy import inquirer
-
-        from .editor import InteractiveConfigEditor
         from .generate import generate_config_toml_from_app_model
 
-        choice = inquirer.select(  # type: ignore
-            message="How would you like to proceed?",
-            choices=[
-                "Use default settings (Recommended for new users)",
-                "Configure settings interactively",
-            ],
-            default="Use default settings (Recommended for new users)",
-            keybindings={
-                "answer": [{"key": "enter"}, {"key": "right"}],
-            },
-        ).execute()
-
-        if "interactively" in choice:
-            editor = InteractiveConfigEditor(AppConfig())
-            app_config = editor.run()
-        else:
-            app_config = AppConfig()
+        app_config = AppConfig()
 
         config_toml_content = generate_config_toml_from_app_model(app_config)
         try:

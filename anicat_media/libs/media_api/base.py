@@ -102,6 +102,11 @@ class BaseApiClient(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def get_media_item(self, media_id: int) -> Optional[MediaItem]:
+        """Fetch a single media item by ID."""
+        pass
+
+    @abc.abstractmethod
     def transform_raw_search_data(self, raw_data: Dict) -> Optional[MediaSearchResult]:
         """
         Transform raw API response data into a MediaSearchResult.

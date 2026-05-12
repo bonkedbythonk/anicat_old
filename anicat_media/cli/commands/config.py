@@ -14,9 +14,6 @@ from anicat_media.core.config import AppConfig
   # NB: If it opens vim or vi exit with `:q`
   anicat config
 \b
-  # Start the interactive configuration wizard
-  anicat config edit
-\b
   # get the path of the config file
   anicat config path
 \b
@@ -75,20 +72,6 @@ def config_view_json(user_config: AppConfig):
     print(json.dumps(user_config.model_dump(mode="json")))
 
 
-@config.command(name="edit", help="Start the interactive configuration wizard")
-@click.pass_obj
-def config_edit(user_config: AppConfig):
-    from anicat_media.core.constants import USER_CONFIG
-    from ..config.editor import InteractiveConfigEditor
-    from ..config.generate import generate_config_toml_from_app_model
-
-    print(f"Editing config at: {USER_CONFIG}")
-    editor = InteractiveConfigEditor(current_config=user_config)
-    new_config = editor.run()
-    USER_CONFIG.write_text(
-        generate_config_toml_from_app_model(new_config), encoding="utf-8"
-    )
-    click.echo(f"Configuration saved successfully to {USER_CONFIG}")
 
 
 @config.command(

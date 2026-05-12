@@ -13,6 +13,7 @@ from rich.panel import Panel
 from ...session import Context, session
 from ...state import InternalDirective, MediaApiState, MenuName, State
 from anicat_media.core.theme import ICONS
+from ....service.feedback.service import console
 
 logger = logging.getLogger(__name__)
 MenuAction = Callable[[], State | InternalDirective]
@@ -23,6 +24,17 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
     icons = ctx.config.general.icons
     feedback = ctx.feedback
     feedback.clear_console()
+
+    # Visual indicator for updates
+    if state.update_available:
+        console.print(Panel(
+            f"[bold green]✨ A new update is available![/bold green]\n"
+            f"Please select [bold cyan]Check for Updates[/bold cyan] in the menu to install the latest version.",
+            title="[yellow]Update Notification[/yellow]",
+            border_style="yellow",
+            expand=False,
+        ))
+        console.print()
 
     options: Dict[str, MenuAction] = {
         f"{ICONS.get('TRENDING', icons)}Trending": _create_media_list_action(
@@ -80,7 +92,7 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
 
     if not ctx.config.anilist.token:
         login_label = f"{'🔑 ' if icons else '-> '}Login to AniList"
-        new_options = {login_label: lambda: InternalDirective.LOGIN}
+        new_options: Dict[str, MenuAction] = {login_label: lambda: InternalDirective.LOGIN}
         new_options.update(options)
         options = new_options
 
@@ -352,7 +364,6 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
         with feedback.progress("Checking for updates..."):
             is_available = ctx.updater.check_version(force=True)
         
-        from ....service.feedback.service import console
         from rich.table import Table
         from anicat_media.core.constants import VERSION, LAST_COMMIT_FILE, UPDATE_STATUS_FILE, APP_DIR
 
@@ -456,5 +467,4 @@ def _auth_action(ctx: Context, state: State) -> MenuAction:
 
         return InternalDirective.MAIN
 
-    return action
     return action

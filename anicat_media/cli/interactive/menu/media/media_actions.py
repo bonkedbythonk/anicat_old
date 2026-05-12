@@ -50,7 +50,7 @@ def media_actions(ctx: Context, state: State) -> State | InternalDirective:
     options: Dict[str, MenuAction] = {}
     is_manga = media_item.type == MediaType.MANGA or media_item.format in (MediaFormat.MANGA, MediaFormat.NOVEL, MediaFormat.ONE_SHOT)
 
-    if state.is_offline:
+    if ctx.is_offline:
         if is_manga:
             options = {
                 f"{ICONS.get('INFO', icons)}View Info": _view_info(ctx, state),
@@ -441,32 +441,6 @@ def _change_provider(ctx: Context, state: State) -> MenuAction:
     return action
 
 
-def _toggle_config_state(
-    ctx: Context,
-    state: State,
-    config_state: Literal[
-        "AUTO_ANIME", "AUTO_EPISODE", "CONTINUE_FROM_HISTORY", "TRANSLATION_TYPE"
-    ],
-) -> MenuAction:
-    def action():
-        match config_state:
-            case "AUTO_ANIME":
-                ctx.config.general.auto_select_anime_result = (
-                    not ctx.config.general.auto_select_anime_result
-                )
-            case "AUTO_EPISODE":
-                ctx.config.stream.auto_next = not ctx.config.stream.auto_next
-            case "CONTINUE_FROM_HISTORY":
-                ctx.config.stream.continue_from_watch_history = (
-                    not ctx.config.stream.continue_from_watch_history
-                )
-            case "TRANSLATION_TYPE":
-                ctx.config.stream.translation_type = (
-                    "sub" if ctx.config.stream.translation_type == "dub" else "dub"
-                )
-        return InternalDirective.RELOAD
-
-    return action
 
 
 def _score_anime(ctx: Context, state: State) -> MenuAction:

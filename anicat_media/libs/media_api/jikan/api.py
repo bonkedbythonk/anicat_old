@@ -63,6 +63,13 @@ class JikanApi(BaseApiClient):
         }
         raw_data = self._execute_request("/anime", params=jikan_params)
         return mapper.to_generic_search_result(raw_data) if raw_data else None
+    
+    def get_media_item(self, media_id: int) -> Optional[MediaItem]:
+        """Fetch a single media item by ID via Jikan."""
+        raw_data = self._execute_request(f"/anime/{media_id}")
+        if raw_data and "data" in raw_data:
+            return mapper._to_generic_media_item(raw_data["data"])
+        return None
 
     def fetch_trending_media(
         self, page: int, per_page: int

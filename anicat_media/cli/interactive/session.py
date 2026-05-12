@@ -98,6 +98,7 @@ class Context:
     _auth: Optional["AuthService"] = None
     _player: Optional["PlayerService"] = None
     _updater: Optional["UpdaterService"] = None
+    is_offline: bool = False
 
     @property
     def provider(self) -> "BaseAnimeProvider":
@@ -137,6 +138,7 @@ class Context:
                         )
                 except httpx.ConnectError as e:
                     logger.warning(f"It seems you are offline: {e}")
+                    self.is_offline = True
             else:
                 self.feedback.warning(
                     "You are not logged in.",
@@ -304,6 +306,20 @@ class Session:
         else:
             update_available = self._context.updater.get_cached_status()
             self._history.append(State(menu_name=MenuName.MAIN, update_available=update_available))
+            
+            # Trigger a background check for updates
+            def background_check():
+                try:
+                    if self._context.updater.check_version():
+                        # If update found, update the initial state in history
+                        if self._history and self._history[0].menu_name == MenuName.MAIN:
+                            self._history[0].update_available = True
+                            logger.info("Background update check found a new version!")
+                except Exception as e:
+                    logger.debug(f"Background update check failed: {e}")
+
+            import threading
+            threading.Thread(target=background_check, daemon=True).start()
 
         try:
             self._run_main_loop()
