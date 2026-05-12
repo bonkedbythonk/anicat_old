@@ -10,6 +10,7 @@ from .....libs.media_api.types import (
 )
 from ...session import Context, session
 from ...state import InternalDirective, MediaApiState, MenuName, State
+from .....core.theme import ICONS
 
 logger = logging.getLogger(__name__)
 MenuAction = Callable[[], State | InternalDirective]
@@ -23,53 +24,53 @@ def downloads(ctx: Context, state: State) -> State | InternalDirective:
     feedback.clear_console()
 
     options: Dict[str, MenuAction] = {
-        f"{'🔥 ' if icons else ''}Trending (Local)": _create_local_media_list_action(
+        f"{ICONS.get('TRENDING', icons)}Trending (Local)": _create_local_media_list_action(
             ctx, state, MediaSort.TRENDING_DESC
         ),
-        f"{'🎞️ ' if icons else ''}Recent (Local)": _create_local_recent_media_action(
+        f"{ICONS.get('RECENT', icons)}Recent (Local)": _create_local_recent_media_action(
             ctx, state
         ),
-        f"{'📺 ' if icons else ''}Watching (Local)": _create_local_status_action(
+        f"{ICONS.get('WATCHING', icons)}Watching (Local)": _create_local_status_action(
             ctx, state, UserMediaListStatus.WATCHING
         ),
-        f"{'🔁 ' if icons else ''}Rewatching (Local)": _create_local_status_action(
+        f"{ICONS.get('REWATCHING', icons)}Rewatching (Local)": _create_local_status_action(
             ctx, state, UserMediaListStatus.REPEATING
         ),
-        f"{'⏸️ ' if icons else ''}Paused (Local)": _create_local_status_action(
+        f"{ICONS.get('PAUSED', icons)}Paused (Local)": _create_local_status_action(
             ctx, state, UserMediaListStatus.PAUSED
         ),
-        f"{'📑 ' if icons else ''}Planned (Local)": _create_local_status_action(
+        f"{ICONS.get('PLANNED', icons)}Planned (Local)": _create_local_status_action(
             ctx, state, UserMediaListStatus.PLANNING
         ),
-        f"{'🔎 ' if icons else ''}Search (Local)": _create_local_search_media_list(
+        f"{ICONS.get('SEARCH', icons)}Search (Local)": _create_local_search_media_list(
             ctx, state
         ),
-        f"{'🔔 ' if icons else ''}Recently Updated (Local)": _create_local_media_list_action(
+        f"{ICONS.get('UPDATED', icons)}Recently Updated (Local)": _create_local_media_list_action(
             ctx, state, MediaSort.UPDATED_AT_DESC
         ),
-        f"{'✨ ' if icons else ''}Popular (Local)": _create_local_media_list_action(
+        f"{ICONS.get('POPULAR', icons)}Popular (Local)": _create_local_media_list_action(
             ctx, state, MediaSort.POPULARITY_DESC
         ),
-        f"{'💯 ' if icons else ''}Top Scored (Local)": _create_local_media_list_action(
+        f"{ICONS.get('TOP_SCORED', icons)}Top Scored (Local)": _create_local_media_list_action(
             ctx, state, MediaSort.SCORE_DESC
         ),
-        f"{'💖 ' if icons else ''}Favourites (Local)": _create_local_media_list_action(
+        f"{ICONS.get('FAVOURITES', icons)}Favourites (Local)": _create_local_media_list_action(
             ctx, state, MediaSort.FAVOURITES_DESC
         ),
-        f"{'🎲 ' if icons else ''}Random (Local)": _create_local_random_media_list(
+        f"{ICONS.get('RANDOM', icons)}Random (Local)": _create_local_random_media_list(
             ctx, state
         ),
-        f"{'🎬 ' if icons else ''}Upcoming (Local)": _create_local_media_list_action(
+        f"{ICONS.get('UPCOMING', icons)}Upcoming (Local)": _create_local_media_list_action(
             ctx, state, MediaSort.POPULARITY_DESC, MediaStatus.NOT_YET_RELEASED
         ),
-        f"{'✅ ' if icons else ''}Completed (Local)": _create_local_status_action(
+        f"{ICONS.get('COMPLETED', icons)}Completed (Local)": _create_local_status_action(
             ctx, state, UserMediaListStatus.COMPLETED
         ),
-        f"{'🚮 ' if icons else ''}Dropped (Local)": _create_local_status_action(
+        f"{ICONS.get('DROPPED', icons)}Dropped (Local)": _create_local_status_action(
             ctx, state, UserMediaListStatus.DROPPED
         ),
-        f"{'↩️ ' if icons else ''}Back to Main": lambda: InternalDirective.BACK,
-        f"{'❌ ' if icons else ''}Exit": lambda: InternalDirective.EXIT,
+        f"{ICONS.get('BACK', icons)}Back to Main": lambda: InternalDirective.BACK,
+        f"{ICONS.get('EXIT', icons)}Exit": lambda: InternalDirective.EXIT,
     }
 
     choice = ctx.selector.choose(

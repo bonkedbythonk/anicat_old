@@ -2,6 +2,11 @@ from typing import Callable, Dict, Literal, Union
 
 from ...session import Context, session
 from ...state import InternalDirective, MenuName, State
+<<<<<<< Updated upstream
+=======
+from ._shared import toggle_config_state
+from .....core.theme import ICONS
+>>>>>>> Stashed changes
 
 MenuAction = Callable[[], Union[State, InternalDirective]]
 
@@ -50,14 +55,15 @@ def player_controls(ctx: Context, state: State) -> Union[State, InternalDirectiv
     options: Dict[str, Callable[[], Union[State, InternalDirective]]] = {}
 
     if current_index < len(available_episodes) - 1:
-        options[f"{'⏭️ ' if icons else ''}Next Episode"] = _next_episode(ctx, state)
+        options[f"{ICONS.get('NEXT', icons)}Next Episode"] = _next_episode(ctx, state)
     if current_index:
-        options[f"{'⏪ ' if icons else ''}Previous Episode"] = _previous_episode(
+        options[f"{ICONS.get('PREVIOUS', icons)}Previous Episode"] = _previous_episode(
             ctx, state
         )
 
     options.update(
         {
+<<<<<<< Updated upstream
             f"{'🔂 ' if icons else ''}Replay": _replay(ctx, state),
             f"{'💽 ' if icons else ''}Change Server": _change_server(ctx, state),
             f"{'📀 ' if icons else ''}Change Quality": _change_quality(ctx, state),
@@ -66,11 +72,21 @@ def player_controls(ctx: Context, state: State) -> Union[State, InternalDirectiv
                 ctx, state, "AUTO_EPISODE"
             ),
             f"{'🔘 ' if icons else ''}Toggle Translation Type  (Current: {ctx.config.stream.translation_type.upper()})": _toggle_config_state(
+=======
+            f"{ICONS.get('REPLAY', icons)}Replay": _replay(ctx, state),
+            f"{ICONS.get('PROVIDER', icons)}Change Server": _change_server(ctx, state),
+            f"{ICONS.get('PROVIDER', icons)}Change Quality": _change_quality(ctx, state),
+            f"{ICONS.get('EPISODES', icons)}Episode List": _episodes_list(ctx, state),
+            f"{ICONS.get('TOGGLE', icons)}Toggle Auto Next Episode (Current: {ctx.config.stream.auto_next})": toggle_config_state(
+                ctx, state, "AUTO_EPISODE"
+            ),
+            f"{ICONS.get('TOGGLE', icons)}Toggle Translation Type  (Current: {ctx.config.stream.translation_type.upper()})": toggle_config_state(
+>>>>>>> Stashed changes
                 ctx, state, "TRANSLATION_TYPE"
             ),
-            f"{'🎥 ' if icons else ''}Media Actions Menu": lambda: InternalDirective.BACKX4,
-            f"{'🏠 ' if icons else ''}Main Menu": lambda: InternalDirective.MAIN,
-            f"{'❌ ' if icons else ''}Exit": lambda: InternalDirective.EXIT,
+            f"{ICONS.get('TRAILER', icons)}Media Actions Menu": lambda: InternalDirective.BACKX4,
+            f"{ICONS.get('HOME', icons)}Main Menu": lambda: InternalDirective.MAIN,
+            f"{ICONS.get('EXIT', icons)}Exit": lambda: InternalDirective.EXIT,
         }
     )
 

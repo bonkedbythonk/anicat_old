@@ -1,5 +1,10 @@
 from ...session import Context, session
+<<<<<<< Updated upstream
 from ...state import InternalDirective, MenuName, State
+=======
+from ...state import InternalDirective, MenuName, ProviderState, State
+from .....core.theme import ICONS
+>>>>>>> Stashed changes
 
 
 @session.menu
@@ -35,7 +40,7 @@ def episodes(ctx: Context, state: State) -> State | InternalDirective:
         chosen_episode, start_time = ctx.watch_history.get_episode(media_item)
 
     if not chosen_episode or ctx.switch.show_episodes_menu:
-        back_text = f"{' ' if ctx.config.general.icons else ''}Back"
+        back_text = f"{ICONS.get('BACK', ctx.config.general.icons)}Back"
         choices = [*available_episodes, back_text]
 
         preview_command = None

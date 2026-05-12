@@ -68,10 +68,32 @@ Just type `anicat` and press **Enter** to start browsing!
 ---
 
 ## Features
--   **✨ Manual Updates**: Check for the latest features manually from the main menu whenever you want.
--   **🔄 Auto-Next**: Automatically plays the next episode when you finish one.
--   **☁️ Sync**: Your progress is automatically saved to your AniList profile.
--   **📺 High Quality**: Supports up to 1080p streaming.
+
+Anicat is packed with features designed for the ultimate terminal-based anime experience:
+
+-   **🔍 Advanced Search**: Find any Anime or Manga with lightning-fast dynamic search and real-time results.
+-   **🎥 Premium Streaming**: Stream in high quality (up to 1080p) with support for multiple providers (AnimePahe, HiAnime, AllAnime) and servers.
+-   **📖 Manga Support**: Read your favorite Manga chapters directly in the terminal using Kitty's high-resolution image protocol.
+-   **🔗 AniList Sync**: Automatically synchronize your watch and read progress with your AniList profile.
+-   **📥 Offline Downloads**: Download episodes for viewing anytime using `yt-dlp` or torrents.
+-   **📅 Airing Schedule**: Stay up to date with a built-in release calendar for upcoming episodes.
+-   **🔄 Auto-Next & Auto-Update**: Seamlessly transition between episodes and keep your app current with manual or automatic updates.
+
+---
+
+## MPV IPC Integration
+
+When `use_ipc = true` is set in your config, Anicat provides powerful in-player controls without needing to close MPV. This allows you to navigate episodes, change settings, and sync progress seamlessly.
+
+### Key Bindings (while MPV is open):
+
+| Key | Action |
+| :--- | :--- |
+| **Shift + N** | Play the next episode |
+| **Shift + P** | Play the previous episode |
+| **Shift + R** | Reload the current episode |
+| **Shift + A** | Toggle auto-play for the next episode |
+| **Shift + T** | Toggle between Dub and Sub |
 
 ---
 

@@ -3,6 +3,7 @@ from typing import Callable, Dict, Literal, Union
 from .....libs.player.params import PlayerParams
 from ...session import Context, session
 from ...state import InternalDirective, MenuName, State
+from .....core.theme import ICONS
 
 MenuAction = Callable[[], Union[State, InternalDirective]]
 
@@ -159,22 +160,22 @@ def downloads_player_controls(
     options: Dict[str, Callable[[], Union[State, InternalDirective]]] = {}
 
     if current_index < len(available_episodes) - 1:
-        options[f"{'⏭️ ' if icons else ''}Next Episode"] = _next_episode(ctx, state)
+        options[f"{ICONS.get('NEXT', icons)}Next Episode"] = _next_episode(ctx, state)
     if current_index:
-        options[f"{'⏪ ' if icons else ''}Previous Episode"] = _previous_episode(
+        options[f"{ICONS.get('PREVIOUS', icons)}Previous Episode"] = _previous_episode(
             ctx, state
         )
 
     options.update(
         {
-            f"{'🔂 ' if icons else ''}Replay": _replay(ctx, state),
-            f"{'🎞️ ' if icons else ''}Episode List": _episodes_list(ctx, state),
-            f"{'🔘 ' if icons else ''}Toggle Auto Next Episode (Current: {ctx.config.stream.auto_next})": _toggle_config_state(
+            f"{ICONS.get('REPLAY', icons)}Replay": _replay(ctx, state),
+            f"{ICONS.get('EPISODES', icons)}Episode List": _episodes_list(ctx, state),
+            f"{ICONS.get('TOGGLE', icons)}Toggle Auto Next Episode (Current: {ctx.config.stream.auto_next})": _toggle_config_state(
                 ctx, state, "AUTO_EPISODE"
             ),
-            f"{'🎥 ' if icons else ''}Media Actions Menu": lambda: InternalDirective.BACKX2,
-            f"{'🏠 ' if icons else ''}Main Menu": lambda: InternalDirective.MAIN,
-            f"{'❌ ' if icons else ''}Exit": lambda: InternalDirective.EXIT,
+            f"{ICONS.get('TRAILER', icons)}Media Actions Menu": lambda: InternalDirective.BACKX2,
+            f"{ICONS.get('HOME', icons)}Main Menu": lambda: InternalDirective.MAIN,
+            f"{ICONS.get('EXIT', icons)}Exit": lambda: InternalDirective.EXIT,
         }
     )
 

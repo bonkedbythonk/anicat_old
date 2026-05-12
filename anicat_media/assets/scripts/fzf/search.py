@@ -45,7 +45,7 @@ QUERY, PARSED_FILTERS = parse_filters(RAW_QUERY)
 
 # If query is empty and no filters, show help hint
 if not RAW_QUERY.strip():
-    print("💡 Tip: Use @genre:action @status:airing for filters (type @help for syntax)")
+    print("󰌵 Tip: Use @genre:action @status:airing for filters (type @help for syntax)")
     sys.exit(0)
 
 # Show filter help if requested
@@ -152,14 +152,14 @@ def main():
     )
 
     if error:
-        print(f"❌ {error}")
+        print(f" {error}")
         # Also show what we tried to search for debugging
         print(f"   Query: {QUERY or '(none)'}")
         print(f"   Filters: {json.dumps(PARSED_FILTERS) if PARSED_FILTERS else '(none)'}")
         sys.exit(1)
 
     if response is None:
-        print("❌ Search failed: No response received")
+        print(" Search failed: No response received")
         sys.exit(1)
 
     # Check for GraphQL errors first (these come in the response body)
@@ -168,7 +168,7 @@ def main():
         if errors:
             # Extract error messages
             error_msgs = [e.get("message", str(e)) for e in errors]
-            print(f"❌ API Error: {'; '.join(error_msgs)}")
+            print(f" API Error: {'; '.join(error_msgs)}")
             # Show variables for debugging
             print(f"   Filters used: {json.dumps(PARSED_FILTERS, indent=2) if PARSED_FILTERS else '(none)'}")
             sys.exit(1)
@@ -181,7 +181,7 @@ def main():
         with open(LAST_QUERY_FILE, "w", encoding="utf-8") as f:
             f.write(RAW_QUERY)
     except IOError as e:
-        print(f"❌ Failed to save results: {e}")
+        print(f" Failed to save results: {e}")
         sys.exit(1)
 
     # Navigate the response structure
@@ -190,7 +190,7 @@ def main():
     media_list = page.get("media", [])
 
     if not media_list:
-        print("🔍 No results found")
+        print(" No results found")
         if PARSED_FILTERS:
             print("   Try adjusting your filters")
         sys.exit(0)
@@ -207,5 +207,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         sys.exit(0)
     except Exception as e:
-        print(f"❌ Unexpected error: {type(e).__name__}: {e}")
+        print(f" Unexpected error: {type(e).__name__}: {e}")
         sys.exit(1)

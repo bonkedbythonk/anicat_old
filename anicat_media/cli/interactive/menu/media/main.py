@@ -12,6 +12,7 @@ from .....libs.media_api.types import (
 from rich.panel import Panel
 from ...session import Context, session
 from ...state import InternalDirective, MediaApiState, MenuName, State
+from .....core.theme import ICONS
 
 logger = logging.getLogger(__name__)
 MenuAction = Callable[[], State | InternalDirective]
@@ -24,54 +25,64 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
     feedback.clear_console()
 
     options: Dict[str, MenuAction] = {
-        f"{' ' if icons else ''}Trending": _create_media_list_action(
+        f"{ICONS.get('TRENDING', icons)}Trending": _create_media_list_action(
             ctx, state, MediaSort.TRENDING_DESC
         ),
-        f"{' ' if icons else ''}Recent": _create_recent_media_action(ctx, state),
-        f"{' ' if icons else ''}Watching": _create_user_list_action(
+        f"{ICONS.get('RECENT', icons)}Recent": _create_recent_media_action(ctx, state),
+        f"{ICONS.get('WATCHING', icons)}Watching": _create_user_list_action(
             ctx, state, UserMediaListStatus.WATCHING
         ),
-        f"{' ' if icons else ''}Rewatching": _create_user_list_action(
+        f"{ICONS.get('REWATCHING', icons)}Rewatching": _create_user_list_action(
             ctx, state, UserMediaListStatus.REPEATING
         ),
-        f"{' ' if icons else ''}Paused": _create_user_list_action(
+        f"{ICONS.get('PAUSED', icons)}Paused": _create_user_list_action(
             ctx, state, UserMediaListStatus.PAUSED
         ),
-        f"{' ' if icons else ''}Planned": _create_user_list_action(
+        f"{ICONS.get('PLANNED', icons)}Planned": _create_user_list_action(
             ctx, state, UserMediaListStatus.PLANNING
         ),
-        f"{' ' if icons else ''}Search": _create_search_media_list(ctx, state),
-        f"{' ' if icons else ''}Search Manga": _create_search_manga_list(ctx, state),
-        f"{' ' if icons else ''}Dynamic Search": _create_dynamic_search_action(
+        f"{ICONS.get('SEARCH', icons)}Search": _create_search_media_list(ctx, state),
+        f"{ICONS.get('SEARCH_MANGA', icons)}Search Manga": _create_search_manga_list(ctx, state),
+        f"{ICONS.get('DYNAMIC_SEARCH', icons)}Dynamic Search": _create_dynamic_search_action(
             ctx, state
         ),
-        f"{' ' if icons else ''}Downloads": _create_downloads_action(ctx, state),
-        f"{' ' if icons else ''}Recently Updated": _create_media_list_action(
+        f"{ICONS.get('DOWNLOADS', icons)}Downloads": _create_downloads_action(ctx, state),
+        f"{ICONS.get('UPDATED', icons)}Recently Updated": _create_media_list_action(
             ctx, state, MediaSort.UPDATED_AT_DESC
         ),
-        f"{' ' if icons else ''}Popular": _create_media_list_action(
+        f"{ICONS.get('POPULAR', icons)}Popular": _create_media_list_action(
             ctx, state, MediaSort.POPULARITY_DESC
         ),
-        f"{' ' if icons else ''}Top Scored": _create_media_list_action(
+        f"{ICONS.get('TOP_SCORED', icons)}Top Scored": _create_media_list_action(
             ctx, state, MediaSort.SCORE_DESC
         ),
-        f"{' ' if icons else ''}Favourites": _create_media_list_action(
+        f"{ICONS.get('FAVOURITES', icons)}Favourites": _create_media_list_action(
             ctx, state, MediaSort.FAVOURITES_DESC
         ),
-        f"{' ' if icons else ''}Random": _create_random_media_list(ctx, state),
-        f"{' ' if icons else ''}Upcoming": _create_media_list_action(
+        f"{ICONS.get('RANDOM', icons)}Random": _create_random_media_list(ctx, state),
+        f"{ICONS.get('UPCOMING', icons)}Upcoming": _create_media_list_action(
             ctx, state, MediaSort.POPULARITY_DESC, MediaStatus.NOT_YET_RELEASED
         ),
-        f"{' ' if icons else ''}Completed": _create_user_list_action(
+        f"{ICONS.get('COMPLETED', icons)}Completed": _create_user_list_action(
             ctx, state, UserMediaListStatus.COMPLETED
         ),
-        f"{' ' if icons else ''}Dropped": _create_user_list_action(
+        f"{ICONS.get('DROPPED', icons)}Dropped": _create_user_list_action(
             ctx, state, UserMediaListStatus.DROPPED
         ),
+<<<<<<< Updated upstream
         f"{' ' if icons else ''}Edit Config": lambda: InternalDirective.CONFIG_EDIT,
         f"{'⚙️ ' if icons else ''}Manage Categories": _manage_categories_action(ctx, state),
         f"{'✨ ' if state.update_available else ''}Check for Updates": _check_for_updates_action(ctx, state),
         f"{' ' if icons else ''}Exit": lambda: InternalDirective.EXIT,
+=======
+        f"{ICONS.get('EDIT', icons)}Edit Config": lambda: InternalDirective.CONFIG_EDIT,
+        f"{ICONS.get('MANAGE', icons)}Manage Categories": _manage_categories_action(ctx, state),
+        f"{ICONS.get('UPDATE', icons)}Check for Updates": _update_action(ctx, state),
+        f"{ICONS.get('LOGOUT' if ctx.media_api.is_authenticated() else 'LOGIN', icons)}{'Logout' if ctx.media_api.is_authenticated() else 'Login'}": _auth_action(
+            ctx, state
+        ),
+        f"{ICONS.get('EXIT', icons)}Exit": lambda: InternalDirective.EXIT,
+>>>>>>> Stashed changes
     }
 
     if not ctx.config.anilist.token:
@@ -340,6 +351,7 @@ def _manage_categories_action(ctx: Context, state: State) -> MenuAction:
         return InternalDirective.RELOAD
     return action
 
+<<<<<<< Updated upstream
 def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
     """Action to manually check for updates."""
 
@@ -426,4 +438,60 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
             feedback.pause_for_user("return to menu")
             return state.model_copy(update={"update_available": False})
             
+=======
+
+def _auth_action(ctx: Context, state: State) -> MenuAction:
+    """Action to handle login/logout from the TUI."""
+
+    def action():
+        auth = ctx.auth
+        if ctx.media_api.is_authenticated():
+            if ctx.selector.confirm("Are you sure you want to log out?"):
+                auth.clear_user_profile()
+                ctx.feedback.success("Logged out successfully.")
+                return InternalDirective.RELOAD
+        else:
+            from .....core.constants import ANILIST_AUTH
+            import webbrowser
+
+            ctx.feedback.info("Opening browser for AniList authorization...")
+            webbrowser.open(ANILIST_AUTH)
+            ctx.feedback.info(
+                "After authorizing, run 'anicat anilist auth --token <your_token>' in your terminal."
+            )
+            ctx.selector.ask("Press Enter to continue...")
+
+        return InternalDirective.MAIN
+
+    return action
+
+
+def _update_action(ctx: Context, state: State) -> MenuAction:
+    """Action to check for and apply updates from the TUI."""
+
+    def action():
+        from ....utils.update import check_for_updates, print_release_json, update_app
+
+        ctx.feedback.info("Checking for updates...")
+        is_latest, release_json = check_for_updates()
+
+        if is_latest:
+            ctx.feedback.success("You are already on the latest version!")
+            ctx.selector.ask("Press Enter to continue...")
+        else:
+            if release_json:
+                print_release_json(release_json)
+
+            if ctx.selector.confirm("Would you like to update now?"):
+                success, _ = update_app()
+                if success:
+                    ctx.feedback.success("Update complete! Please restart Anicat.")
+                    return InternalDirective.EXIT
+                else:
+                    ctx.feedback.error("Update failed.")
+                    ctx.selector.ask("Press Enter to continue...")
+
+        return InternalDirective.MAIN
+
+>>>>>>> Stashed changes
     return action

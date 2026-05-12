@@ -5,6 +5,7 @@ from .....libs.media_api.params import MediaSearchParams, UserMediaListSearchPar
 from .....libs.media_api.types import MediaItem, MediaStatus, UserMediaListStatus
 from ...session import Context, session
 from ...state import InternalDirective, MediaApiState, MenuName, State
+from .....core.theme import ICONS
 
 
 @session.menu
@@ -13,7 +14,7 @@ def results(ctx: Context, state: State) -> State | InternalDirective:
     feedback.clear_console()
 
     search_result = state.media_api.search_result
-    page_info = state.media_api.page_info_
+    page_info = state.media_api.page_info
 
     search_result_dict = {
         _format_title(ctx, media_item): media_item
@@ -126,7 +127,7 @@ def _format_title(ctx: Context, media_item: MediaItem) -> str:
         last_aired = media_item.next_airing.episode - 1
         unwatched = last_aired - (media_item.user_status.progress or 0)
         if unwatched > 0:
-            icon = "🔹" if config.general.icons else "!"
+            icon = ICONS.get('NEW', config.general.icons) if config.general.icons else "!"
             display_title += f" {icon}{unwatched} new{icon}"
 
     return display_title

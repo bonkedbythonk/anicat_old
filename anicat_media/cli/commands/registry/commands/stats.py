@@ -15,6 +15,7 @@ from rich.table import Table
 from .....core.config import AppConfig
 from ....service.feedback import FeedbackService
 from ....service.registry.service import MediaRegistryService
+from .....core.theme import ICONS
 
 if TYPE_CHECKING:
     from ....service.registry.service import StatBreakdown
@@ -100,7 +101,7 @@ def _display_stats_overview(
     console.print(
         Panel(
             overview_table,
-            title=f"{'📊 ' if icons else ''}Registry Overview",
+            title=f"{ICONS.get('STATS', icons)}Registry Overview",
             border_style="cyan",
         )
     )
@@ -110,7 +111,7 @@ def _display_stats_overview(
     status_breakdown = stats.get("status_breakdown", {})
     if status_breakdown:
         status_table = _create_breakdown_table(
-            title=f"{'📋 ' if icons else ''}Status Breakdown",
+            title=f"{ICONS.get('LIST', icons)}Status Breakdown",
             data=status_breakdown,
             key_header="Status",
             value_header="Count",
@@ -123,7 +124,7 @@ def _display_stats_overview(
     download_stats = stats.get("download_stats", {})
     if download_stats:
         download_table = _create_breakdown_table(
-            title=f"{'💾 ' if icons else ''}Download Status",
+            title=f"{ICONS.get('SAVE', icons)}Download Status",
             data=download_stats,
             key_header="Status",
             value_header="Count",
@@ -138,7 +139,7 @@ def _display_detailed_stats(console: Console, stats: "StatBreakdown", icons: boo
     Display detailed breakdowns by various categories using a column layout.
     """
     genre_table = _create_breakdown_table(
-        title=f"{'🎭 ' if icons else ''}Top {TOP_N_STATS} Genres",
+        title=f"{ICONS.get('GENRE', icons)}Top {TOP_N_STATS} Genres",
         data=stats.get("genre_breakdown", {}),
         key_header="Genre",
         value_header="Count",
@@ -146,7 +147,7 @@ def _display_detailed_stats(console: Console, stats: "StatBreakdown", icons: boo
     )
 
     format_table = _create_breakdown_table(
-        title=f"{'📺 ' if icons else ''}Format Breakdown",
+        title=f"{ICONS.get('FORMAT', icons)}Format Breakdown",
         data=stats.get("format_breakdown", {}),
         key_header="Format",
         value_header="Count",
@@ -154,7 +155,7 @@ def _display_detailed_stats(console: Console, stats: "StatBreakdown", icons: boo
     )
 
     year_table = _create_breakdown_table(
-        title=f"{'📅 ' if icons else ''}Top {TOP_N_STATS} Release Years",
+        title=f"{ICONS.get('CALENDAR', icons)}Top {TOP_N_STATS} Release Years",
         data=stats.get("year_breakdown", {}),
         key_header="Year",
         value_header="Count",
@@ -163,7 +164,7 @@ def _display_detailed_stats(console: Console, stats: "StatBreakdown", icons: boo
     )
 
     rating_table = _create_breakdown_table(
-        title=f"{'⭐ ' if icons else ''}Score Distribution",
+        title=f"{ICONS.get('STAR', icons)}Score Distribution",
         data=stats.get("rating_breakdown", {}),
         key_header="Score Range",
         value_header="Count",

@@ -3,6 +3,7 @@ import logging
 from .....libs.provider.anime.types import SearchResult
 from ...session import Context, session
 from ...state import InternalDirective, MenuName, ProviderState, State
+from .....core.theme import ICONS
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ def provider_search(ctx: Context, state: State) -> State | InternalDirective:
         selected_provider_anime = provider_results_map[best_match_title]
     else:
         choices = list(provider_results_map.keys())
-        back_text = f"{' ' if config.general.icons else ''}Back"
+        back_text = f"{ICONS.get('BACK', config.general.icons)}Back"
         choices.append(back_text)
 
         chosen_title = selector.choose(

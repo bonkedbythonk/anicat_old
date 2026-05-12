@@ -15,6 +15,7 @@ def notifications(config: AppConfig):
     from anicat_media.libs.media_api.api import create_api_client
 
     from ....service.auth import AuthService
+    from .....core.theme import ICONS
 
     feedback = FeedbackService(config)
     console = Console()
@@ -40,7 +41,7 @@ def notifications(config: AppConfig):
         return
 
     table = Table(
-        title="🔔 AniList Notifications", show_header=True, header_style="bold magenta"
+        title=f"{ICONS.BELL}AniList Notifications", show_header=True, header_style="bold magenta"
     )
     table.add_column("Date", style="dim", width=12)
     table.add_column("Anime Title", style="cyan")

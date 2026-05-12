@@ -19,6 +19,7 @@ from .....libs.media_api.types import (
 )
 from ....service.feedback import FeedbackService
 from ....service.registry.service import MediaRegistryService
+from .....core.theme import ICONS
 
 if TYPE_CHECKING:
     from .....libs.media_api.types import MediaSearchResult
@@ -166,7 +167,7 @@ def _build_search_params(
 def _display_search_results(console: Console, result: "MediaSearchResult", icons: bool):
     """Display search results in a formatted table."""
     table = Table(
-        title=f"{'🔍 ' if icons else ''}Search Results ({len(result.media)} found)"
+        title=f"{ICONS.get('SEARCH', icons)}Search Results ({len(result.media)} found)"
     )
     table.add_column("Title", style="cyan", min_width=30, overflow="ellipsis")
     table.add_column("Year", style="dim", justify="center")

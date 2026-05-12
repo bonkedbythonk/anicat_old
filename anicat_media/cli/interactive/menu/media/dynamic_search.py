@@ -8,6 +8,7 @@ from .....core.utils.detect import get_python_executable
 from .....libs.media_api.params import MediaSearchParams
 from ...session import Context, session
 from ...state import InternalDirective, MediaApiState, MenuName, State
+from .....core.theme import ICONS
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +104,8 @@ def dynamic_search(ctx: Context, state: State) -> State | InternalDirective:
     )
 
     # Header hint for filter syntax
-    filter_hint = "💡 Filters: @genre:action @status:airing @year:2024 @sort:score (type @help for more)"
+    icons = ctx.config.general.icons
+    filter_hint = f"{ICONS.get('LIGHTBULB', icons)}Filters: @genre:action @status:airing @year:2024 @sort:score (type @help for more)"
 
     # Only load previous query if we're in restore mode (coming back from media_actions)
     initial_query = None
@@ -128,7 +130,7 @@ def dynamic_search(ctx: Context, state: State) -> State | InternalDirective:
                 preview_command = preview_ctx.get_dynamic_anime_preview(ctx.config)
 
                 choice = ctx.selector.search(
-                    prompt="Search Anime",
+                    prompt=f"{ICONS.get('SEARCH', icons)}Search Anime",
                     search_command=search_command_final,
                     preview=preview_command,
                     header=filter_hint,
@@ -137,7 +139,7 @@ def dynamic_search(ctx: Context, state: State) -> State | InternalDirective:
                 )
         else:
             choice = ctx.selector.search(
-                prompt="Search Anime",
+                prompt=f"{ICONS.get('SEARCH', icons)}Search Anime",
                 search_command=search_command_final,
                 header=filter_hint,
                 initial_query=initial_query,

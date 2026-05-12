@@ -15,6 +15,11 @@ from .....libs.media_api.types import (
 from .....libs.player.params import PlayerParams
 from ...session import Context, session
 from ...state import InternalDirective, MediaApiState, MenuName, State
+<<<<<<< Updated upstream
+=======
+from ._shared import toggle_config_state
+from .....core.theme import ICONS
+>>>>>>> Stashed changes
 
 MenuAction = Callable[[], State | InternalDirective]
 
@@ -48,32 +53,56 @@ def media_actions(ctx: Context, state: State) -> State | InternalDirective:
     options: Dict[str, MenuAction] = {}
     is_manga = media_item.type == MediaType.MANGA or media_item.format in (MediaFormat.MANGA, MediaFormat.NOVEL, MediaFormat.ONE_SHOT)
 
+<<<<<<< Updated upstream
     if is_manga:
+=======
+    if state.is_offline:
+        if is_manga:
+            options = {
+                f"{ICONS.get('INFO', icons)}View Info": _view_info(ctx, state),
+                f"{ICONS.get('BACK', icons)}Back to Results": lambda: InternalDirective.BACK,
+                f"{ICONS.get('EXIT', icons)}Exit": lambda: InternalDirective.EXIT,
+            }
+        else:
+            if has_downloads:
+                options = {
+                    f"{ICONS.get('PLAY', icons)}Play (Downloaded)": _stream_downloads(ctx, state),
+                    f"{ICONS.get('EPISODES', icons)}Episodes (Downloaded)": _stream_downloads(ctx, state, force_episodes_menu=True),
+                }
+            
+            options.update({
+                f"{ICONS.get('INFO', icons)}View Info": _view_info(ctx, state),
+                f"{ICONS.get('BACK', icons)}Back to Results": lambda: InternalDirective.BACK,
+                f"{ICONS.get('EXIT', icons)}Exit": lambda: InternalDirective.EXIT,
+            })
+    elif is_manga:
+>>>>>>> Stashed changes
         options = {
-            f"{' ' if icons else ''}Read Chapters": _read_chapters(ctx, state),
-            f"{' ' if icons else ''}Recommendations": _view_recommendations(ctx, state),
-            f"{' ' if icons else ''}Related Manga": _view_relations(ctx, state),
-            f"{' ' if icons else ''}Characters": _view_characters(ctx, state),
-            f"{' ' if icons else ''}View Reviews": _view_reviews(ctx, state),
-            f"{' ' if icons else ''}Add/Update List": _manage_user_media_list(ctx, state),
-            f"{' ' if icons else ''}Score Manga": _score_anime(ctx, state),
-            f"{' ' if icons else ''}Open AniList Page": _open_anilist_page(ctx, state),
-            f"{' ' if icons else ''}View Info": _view_info(ctx, state),
-            f"{' ' if icons else ''}Back to Results": lambda: InternalDirective.BACK,
-            f"{' ' if icons else ''}Exit": lambda: InternalDirective.EXIT,
+            f"{ICONS.get('SEARCH_MANGA', icons)}Read Chapters": _read_chapters(ctx, state),
+            f"{ICONS.get('RECOMMENDATIONS', icons)}Recommendations": _view_recommendations(ctx, state),
+            f"{ICONS.get('RELATIONS', icons)}Related Manga": _view_relations(ctx, state),
+            f"{ICONS.get('CHARACTERS', icons)}Characters": _view_characters(ctx, state),
+            f"{ICONS.get('REVIEWS', icons)}View Reviews": _view_reviews(ctx, state),
+            f"{ICONS.get('ADD', icons)}Add/Update List": _manage_user_media_list(ctx, state),
+            f"{ICONS.get('SCORE', icons)}Score Manga": _score_anime(ctx, state),
+            f"{ICONS.get('BROWSER', icons)}Open AniList Page": _open_anilist_page(ctx, state),
+            f"{ICONS.get('INFO', icons)}View Info": _view_info(ctx, state),
+            f"{ICONS.get('BACK', icons)}Back to Results": lambda: InternalDirective.BACK,
+            f"{ICONS.get('EXIT', icons)}Exit": lambda: InternalDirective.EXIT,
         }
     else:
         options = {
-            f"{' ' if icons else ''}Stream {progress}": _stream(ctx, state),
-            f"{' ' if icons else ''}Episodes": _stream(ctx, state, force_episodes_menu=True),
+            f"{ICONS.get('PLAY', icons)}Stream {progress}": _stream(ctx, state),
+            f"{ICONS.get('EPISODES', icons)}Episodes": _stream(ctx, state, force_episodes_menu=True),
         }
 
         if has_downloads:
-            options[f"{' ' if icons else ''}Stream (Downloads)"] = _stream_downloads(ctx, state)
-            options[f"{' ' if icons else ''}Episodes (Downloads)"] = _stream_downloads(ctx, state, force_episodes_menu=True)
+            options[f"{ICONS.get('SAVE', icons)}Stream (Downloads)"] = _stream_downloads(ctx, state)
+            options[f"{ICONS.get('PROVIDER', icons)}Episodes (Downloads)"] = _stream_downloads(ctx, state, force_episodes_menu=True)
 
         options.update(
             {
+<<<<<<< Updated upstream
                 f"{' ' if icons else ''}Download": _download_episodes(ctx, state),
                 f"{' ' if icons else ''}Watch Trailer": _watch_trailer(ctx, state),
                 f"{' ' if icons else ''}Recommendations": _view_recommendations(ctx, state),
@@ -93,6 +122,27 @@ def media_actions(ctx: Context, state: State) -> State | InternalDirective:
                 f"{' ' if icons else ''}Toggle Translation Type  (Current: {ctx.config.stream.translation_type.upper()})": _toggle_config_state(ctx, state, "TRANSLATION_TYPE"),
                 f"{' ' if icons else ''}Back to Results": lambda: InternalDirective.BACK,
                 f"{' ' if icons else ''}Exit": lambda: InternalDirective.EXIT,
+=======
+                f"{ICONS.get('DOWNLOADS', icons)}Download": _download_episodes(ctx, state),
+                f"{ICONS.get('TRAILER', icons)}Watch Trailer": _watch_trailer(ctx, state),
+                f"{ICONS.get('RECOMMENDATIONS', icons)}Recommendations": _view_recommendations(ctx, state),
+                f"{ICONS.get('RELATIONS', icons)}Related Anime": _view_relations(ctx, state),
+                f"{ICONS.get('CHARACTERS', icons)}Characters": _view_characters(ctx, state),
+                f"{ICONS.get('SCHEDULE', icons)}Airing Schedule": _view_airing_schedule(ctx, state),
+                f"{ICONS.get('REVIEWS', icons)}View Reviews": _view_reviews(ctx, state),
+                f"{ICONS.get('ADD', icons)}Add/Update List": _manage_user_media_list(ctx, state),
+                f"{ICONS.get('ADD', icons)}Add/Update List (Bulk)": _manage_user_media_list_in_bulk(ctx, state),
+                f"{ICONS.get('SCORE', icons)}Score Anime": _score_anime(ctx, state),
+                f"{ICONS.get('BROWSER', icons)}Open AniList Page": _open_anilist_page(ctx, state),
+                f"{ICONS.get('INFO', icons)}View Info": _view_info(ctx, state),
+                f"{ICONS.get('PROVIDER', icons)}Change Provider (Current: {ctx.config.general.provider.value.upper()})": _change_provider(ctx, state),
+                f"{ICONS.get('TOGGLE', icons)}Toggle Auto Select Anime (Current: {ctx.config.general.auto_select_anime_result})": toggle_config_state(ctx, state, "AUTO_ANIME"),
+                f"{ICONS.get('TOGGLE', icons)}Toggle Auto Next Episode (Current: {ctx.config.stream.auto_next})": toggle_config_state(ctx, state, "AUTO_EPISODE"),
+                f"{ICONS.get('TOGGLE', icons)}Toggle Continue From History (Current: {ctx.config.stream.continue_from_watch_history})": toggle_config_state(ctx, state, "CONTINUE_FROM_HISTORY"),
+                f"{ICONS.get('TOGGLE', icons)}Toggle Translation Type  (Current: {ctx.config.stream.translation_type.upper()})": toggle_config_state(ctx, state, "TRANSLATION_TYPE"),
+                f"{ICONS.get('BACK', icons)}Back to Results": lambda: InternalDirective.BACK,
+                f"{ICONS.get('EXIT', icons)}Exit": lambda: InternalDirective.EXIT,
+>>>>>>> Stashed changes
             }
         )
 
@@ -131,7 +181,7 @@ def _get_progress_string(ctx: Context, media_item: Optional[MediaItem]) -> str:
         last_aired = media_item.next_airing.episode - 1
         unwatched = last_aired - (media_item.user_status.progress or 0)
         if unwatched > 0:
-            icon = "🔹" if config.general.icons else "!"
+            icon = ICONS.get('NEW', config.general.icons) if config.general.icons else "!"
             display_title += f" {icon}{unwatched} new{icon}"
 
     return display_title
