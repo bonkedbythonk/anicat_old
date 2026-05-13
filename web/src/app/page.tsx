@@ -69,6 +69,18 @@ function HomeView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
     load();
   }, []);
 
+  const [heroItem, setHeroItem] = useState<MediaItem | null>(null);
+
+  useEffect(() => {
+    if (watchingList.length > 0) {
+      // Pick a random item from the top 10 watching items for variety
+      const randomIndex = Math.floor(Math.random() * Math.min(watchingList.length, 10));
+      setHeroItem(watchingList[randomIndex]);
+    } else if (trendingList.length > 0) {
+      setHeroItem(trendingList[0]);
+    }
+  }, [watchingList, trendingList]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -76,8 +88,6 @@ function HomeView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
       </div>
     );
   }
-
-  const heroItem = watchingList[0] || trendingList[0];
 
   return (
     <div className="space-y-12 animate-fade-in pb-12">
@@ -1050,20 +1060,25 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [dismissedOffline, setDismissedOffline] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
 
-  // Poll health for offline banner
+  // Poll health for offline banner and notifications
   useEffect(() => {
-    async function checkHealth() {
+    async function checkSystem() {
       try {
-        const status = await mediaApi.getHealthStatus();
+        const [status, notifications] = await Promise.all([
+          mediaApi.getHealthStatus(),
+          mediaApi.getNotifications()
+        ]);
         setIsOffline(status.is_offline);
         if (!status.is_offline) setDismissedOffline(false);
+        setNotificationCount(notifications.length);
       } catch {
         setIsOffline(true);
       }
     }
-    checkHealth();
-    const interval = setInterval(checkHealth, 30000);
+    checkSystem();
+    const interval = setInterval(checkSystem, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -1100,7 +1115,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen relative">
-      <Sidebar activeView={activeView} onNavigate={setActiveView} />
+      <Sidebar activeView={activeView} onNavigate={setActiveView} notificationCount={notificationCount} />
 
       {/* Main content */}
       <main className="flex-1 ml-[72px] lg:ml-60 overflow-y-auto scrollbar-hide relative">

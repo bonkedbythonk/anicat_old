@@ -139,10 +139,28 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0 
         })}
       </nav>
       
-      {/* Footer — Sync Status */}
-      <div className="px-5 py-3 mt-auto hidden lg:flex items-center space-x-3">
-        <div className={`w-2 h-2 rounded-full shrink-0 ${syncColor}`} />
-        <p className="text-[10px] uppercase font-bold tracking-[0.12em] text-gray-600">{syncLabel}</p>
+      {/* Footer — Sync Status & Updates */}
+      <div className="px-5 py-3 mt-auto space-y-3">
+        {health?.update_available && (
+          <button 
+            onClick={async () => {
+              if (confirm("Update Anicat to the latest version?")) {
+                const res = await mediaApi.triggerUpdate();
+                alert(res.message);
+                if (res.status === "success") window.location.reload();
+              }
+            }}
+            className="w-full flex items-center space-x-2 px-3 py-2 bg-accent/20 border border-accent/30 rounded-lg text-accent hover:bg-accent/30 transition-all group"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Update</span>
+          </button>
+        )}
+        
+        <div className="hidden lg:flex items-center space-x-3">
+          <div className={`w-2 h-2 rounded-full shrink-0 ${syncColor}`} />
+          <p className="text-[10px] uppercase font-bold tracking-[0.12em] text-gray-600">{syncLabel}</p>
+        </div>
       </div>
 
       {/* Mobile sync dot */}

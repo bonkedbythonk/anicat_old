@@ -19,6 +19,8 @@ class HealthInfo(BaseModel):
     api_connected: bool
     worker_running: bool
     is_offline: bool
+    update_available: bool = False
+    current_version: str = "unknown"
 
 # Module-level storage for last playback event
 _last_playback: Optional[PlaybackInfo] = None
@@ -71,14 +73,47 @@ async def get_health():
     """Get system health status."""
     try:
         ctx = get_ctx()
+        
+        # Check for updates (cached logic)
+        update_available = False
+        import subprocess
+        try:
+            # Check if we are behind origin/main
+            # We use --quiet to avoid spamming logs
+            subprocess.run(["git", "fetch", "--quiet"], capture_output=True, timeout=5)
+            status = subprocess.check_output(["git", "status", "-uno"], encoding="utf-8")
+            if "Your branch is behind" in status:
+                update_available = True
+        except Exception:
+            pass
+
+        from ..core.constants import VERSION
         return HealthInfo(
             api_connected=ctx.media_api.is_authenticated(),
             worker_running=ctx._download is not None,
             is_offline=ctx.is_offline,
+            update_available=update_available,
+            current_version=VERSION
         )
     except Exception:
         return HealthInfo(
             api_connected=False,
             worker_running=False,
             is_offline=True,
+            update_available=False,
+            current_version="unknown"
         )
+
+@router.post("/update")
+async def trigger_update():
+    """Trigger a git pull to update the application."""
+    import subprocess
+    try:
+        # Run git pull
+        result = subprocess.run(["git", "pull"], capture_output=True, text=True, timeout=30)
+        if result.returncode == 0:
+            return {"status": "success", "message": "Update pulled successfully. Please restart Anicat."}
+        else:
+            return {"status": "error", "message": result.stderr}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

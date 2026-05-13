@@ -125,6 +125,8 @@ export type HealthStatus = {
   api_connected: boolean;
   worker_running: boolean;
   is_offline: boolean;
+  update_available?: boolean;
+  current_version?: string;
 };
 
 export type SearchFilters = {
@@ -249,6 +251,9 @@ export const mediaApi = {
 
   triggerBackup: () =>
     fetchFromApi('/registry/backup', { method: 'POST' }),
+
+  triggerUpdate: (): Promise<{ status: string; message: string }> =>
+    fetchFromApi('/status/update', { method: 'POST' }),
 
   getHealthStatus: (): Promise<HealthStatus> =>
     fetchFromApi('/status/health'),
