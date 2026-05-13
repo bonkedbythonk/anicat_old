@@ -6,5 +6,18 @@
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#050505",
-  "icons": []
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/anicat_logo.webp",
+      "sizes": "485x346",
+      "type": "image/webp",
+      "purpose": "any"
+    }
+  ]
 }
