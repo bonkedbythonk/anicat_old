@@ -339,7 +339,14 @@ class AniListApi(BaseApiClient):
         logger.error(f"Failed to fetch notifications: {response.text}")
         return None
 
-    def transform_raw_search_data(self, raw_data: Any) -> Optional[MediaSearchResult]:
+    def mark_notifications_as_read(self) -> bool:
+        """Mark all notifications as read on AniList."""
+        if not self.token:
+            return False
+        response = execute_graphql(
+            ANILIST_ENDPOINT, self.http_client, gql.MARK_NOTIFICATIONS_AS_READ, {}
+        )
+        return response.json() is not None and "errors" not in response.json()
         """
         Transform raw AniList API response data into a MediaSearchResult.
 

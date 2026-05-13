@@ -102,6 +102,11 @@ class BaseApiClient(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def mark_notifications_as_read(self) -> bool:
+        """Mark all notifications as read."""
+        pass
+
+    @abc.abstractmethod
     def get_media_item(self, media_id: int) -> Optional[MediaItem]:
         """Fetch a single media item by ID."""
         pass

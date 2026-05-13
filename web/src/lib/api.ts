@@ -245,6 +245,9 @@ export const mediaApi = {
   getNotifications: (): Promise<Notification[]> =>
     fetchFromApi('/notifications/'),
 
+  markNotificationsAsRead: () =>
+    fetchFromApi('/notifications/read', { method: 'POST' }),
+
   // ─── Registry & Health ──────────────────────────────
   getRegistryStats: () =>
     fetchFromApi('/registry/stats'),

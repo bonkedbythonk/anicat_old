@@ -909,7 +909,21 @@ function NotificationsView({ onSelect }: { onSelect: (item: MediaItem) => void }
 
   return (
     <div className="space-y-8 animate-fade-in max-w-3xl">
-      <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white">Notifications</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white">Notifications</h1>
+        {notifications.length > 0 && (
+          <button 
+            onClick={async () => {
+              await mediaApi.markNotificationsAsRead();
+              window.location.reload();
+            }}
+            className="flex items-center space-x-2 px-4 py-2 bg-white/[0.04] hover:bg-accent hover:text-white border border-white/[0.06] rounded-xl text-sm font-bold transition-all"
+          >
+            <CheckCircle2 size={16} />
+            <span>Mark all as read</span>
+          </button>
+        )}
+      </div>
       
       {notifications.length === 0 ? (
         <div className="text-center py-20 bg-white/[0.02] border border-white/[0.04] rounded-3xl">

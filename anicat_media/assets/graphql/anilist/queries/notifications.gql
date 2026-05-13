@@ -3,7 +3,7 @@ query {
     pageInfo {
       total
     }
-    notifications(resetNotificationCount: true, type: AIRING) {
+    notifications(resetNotificationCount: false, type: AIRING) {
       ... on AiringNotification {
         id
         type
