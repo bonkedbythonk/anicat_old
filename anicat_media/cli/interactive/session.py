@@ -3,7 +3,7 @@ import importlib.util
 import logging
 import pkgutil
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, List, Optional, Union
 
 import click
 
@@ -87,7 +87,7 @@ class Context:
     config: "AppConfig"
     switch: Switch = field(default_factory=Switch)
     _provider: Optional["BaseAnimeProvider"] = None
-    _manga_provider: Optional[object] = None
+    _manga_provider: Optional[Any] = None
     _selector: Optional["BaseSelector"] = None
     _media_api: Optional["BaseApiClient"] = None
 
@@ -102,7 +102,7 @@ class Context:
     is_offline: bool = False
 
     @property
-    def manga_provider(self) -> object:
+    def manga_provider(self) -> Any:
         if not self._manga_provider:
             from ...libs.provider.manga.MangaProvider import create_manga_provider
             self._manga_provider = create_manga_provider(self.config.general.manga_provider)

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 
@@ -8,8 +8,6 @@ router = APIRouter()
 def get_ctx():
     from ..main import ctx
     return ctx
-
-from ...core.constants import VERSION
 
 class PlaybackInfo(BaseModel):
     media_id: int

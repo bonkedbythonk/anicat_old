@@ -5,7 +5,7 @@
 
 import importlib
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from . import manga_sources
 
@@ -103,6 +103,3 @@ class MangaProvider:
             logger.error(e)
             results = None
         return results  # pyright:ignore
-
-def create_manga_provider(provider: str) -> MangaProvider:
-    return MangaProvider(provider=provider)

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 from fastapi import APIRouter, HTTPException
 from ...libs.media_api.types import MediaType, MediaSearchResult, MediaItem, CharacterSearchResult, MediaReview, MediaSort, MediaSeason, MediaGenre, MediaStatus, MediaFormat
 from ...libs.media_api.params import MediaSearchParams, MediaCharactersParams, MediaReviewsParams, MediaRecommendationParams
@@ -138,7 +138,6 @@ async def get_media_episodes(media_id: int):
         if not media:
             raise HTTPException(status_code=404, detail="Media not found")
         
-        from typing import Any, List
         from ...libs.media_api.types import MediaType
         is_manga = media.type == MediaType.MANGA
         title = media.title.romaji or media.title.english
