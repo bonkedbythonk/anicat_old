@@ -30,35 +30,9 @@ That's it! Now choose how you want to use it below.
 
 Choose the setup that works best for you:
 
-### Option 1: Web Dashboard (Recommended for Most Users)
+### Option 1: Quick Start - macOS Desktop App (Recommended)
 
-Perfect for development, cross-platform, and maximum control.
-
-The easiest way to use Anicat is through the **Progressive Web App (PWA)** in your browser.
-
-1. **Start the backend first** (in a terminal, keep it running):
-   ```bash
-   anicat dashboard --no-browser
-   ```
-
-2. **Open your browser** and navigate to `http://localhost:3000`
-
-3. **Bookmark or Install as PWA**: 
-   - **macOS Safari**: Press `Cmd+Shift+B` to bookmark, or use "Add to Dock" from the Share menu
-   - **Any browser**: Look for the "Install" or "+" icon in the address bar to install as a standalone app
-
-4. **Enjoy**: Full Netflix-style dashboard with all features in your browser
-
-**Advantages:** 
-- Works in any browser on any device on your network
-- No extra dependencies or installation scripts
-- Easy to update (changes reflect immediately)
-
----
-
-### Option 2: macOS Desktop App (Optional)
-
-For a native macOS experience with everything in one click:
+**The absolute easiest way.** One click and everything starts.
 
 ```bash
 bash ~/path/to/anicat/scripts/install.sh
@@ -67,12 +41,34 @@ bash ~/path/to/anicat/scripts/install.sh
 Then:
 1. **Open Launchpad**: Press `F4` or search for **Anicat** in Spotlight (`Cmd+Space`)
 2. **Add to Dock**: Drag the **Anicat** icon into your Dock
-3. **Click Once**: The app automatically:
-   - Starts the backend API server
-   - Launches your browser to `http://localhost:8000`
-   - You're ready to go—no terminal needed!
+3. **Click Once**: Done! The app:
+   - Starts the backend API server in the background
+   - Opens your dashboard automatically (`http://localhost:8000`)
+   - Everything works with zero terminal commands
 
-**Why use this?** Everything runs in the background with a single click. Perfect for non-technical users or quick access from your Dock.
+**Perfect for:** Users who just want to watch anime, no technical setup needed.
+
+---
+
+### Option 2: Developer Setup - Web Dashboard + Terminal
+
+For developers who want control over what's running and easier code updates.
+
+1. **Start the backend** (in a terminal, keep it running):
+   ```bash
+   anicat dashboard --no-browser
+   ```
+
+2. **Open your browser** and navigate to `http://localhost:3000`
+
+3. **Optional - Install as PWA**: 
+   - **macOS Safari**: Press `Cmd+Shift+B` to bookmark, or use "Add to Dock" from the Share menu
+   - **Any browser**: Look for the "Install" or "+" icon in the address bar to install as a standalone app
+
+**Advantages:** 
+- Works in any browser on any device on your network
+- Easy to modify code and see changes live
+- More control over when services start/stop
 
 ---
 
