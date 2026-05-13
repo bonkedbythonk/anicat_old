@@ -4,26 +4,27 @@ Your anime streaming app for macOS. Search, stream, and track anime all in one p
 
 ---
 
-## Quick Start (3 Steps)
+## Quick Start (2 Steps)
 
-### Step 1: Get the App
+### Step 1: Open Terminal & Copy-Paste This
 
-Download Anicat from GitHub:
-1. Go to: https://github.com/bonkedbythonk/anicat/releases
-2. Look for the latest **Anicat.dmg** file
-3. Download it
+Open the **Terminal** app (press `Cmd+Space`, type `terminal`, and press Enter).
 
-### Step 2: Install
+Then copy and paste **all of this** into Terminal and press Enter:
 
-1. **Double-click** the downloaded `Anicat.dmg` file
-2. **Drag** the Anicat icon to your `Applications` folder
-3. Close the window
+```bash
+git clone https://github.com/bonkedbythonk/anicat.git && cd anicat && ./scripts/install.sh
+```
 
-### Step 3: Launch
+It will ask for your password—this is normal. Just type it in and press Enter.
 
-1. Open your `Applications` folder (or press `Cmd+Shift+A`)
-2. **Double-click Anicat**
-3. The app opens automatically—that's it!
+**That's it!** The app is now installed to your Applications folder.
+
+### Step 2: Launch
+
+1. Press `Cmd+Space` and type **Anicat**
+2. Press Enter
+3. The app opens—enjoy!
 
 ---
 
@@ -39,23 +40,40 @@ Download Anicat from GitHub:
 
 ## Getting Started
 
-### First Time Setup
+### First Time You Use Anicat
 
-1. **Open Anicat** from your Applications folder
-2. **Sign in with AniList** (optional) to sync your watch list
-3. **Search for anime** and start watching!
+1. **Open Anicat** (press `Cmd+Space`, type `Anicat`, press Enter)
+2. **Sign in with AniList** (optional, to sync your watch list)
+3. **Search for anime** and start watching
+
+### Want to Update Later?
+
+Just run this in Terminal to get the latest:
+
+```bash
+cd anicat && git pull
+```
+
+(If you don't remember where anicat is, that's fine—you don't need to update manually. Just use the app and it'll keep working.)
 
 ---
 
 ## Troubleshooting
 
-**App won't open?**
-- Try restarting your Mac
+**Installation says "command not found"?**
+- Make sure you copied the command exactly as shown
+- You might need to install Xcode Command Line Tools:
+  ```bash
+  xcode-select --install
+  ```
+
+**App won't open after installation?**
+- Restart your Mac
 - Make sure you have at least 2GB free disk space
 
 **Videos won't play?**
 - Check your internet connection
-- Try a different video quality (Settings → Quality)
+- Try a different video quality in Settings
 
 ---
 
