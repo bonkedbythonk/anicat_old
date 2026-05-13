@@ -1,71 +1,78 @@
-# Anicat: The Beginner's Guide to Terminal Anime and Manga
+# anicat
 
-Welcome to **Anicat**! If you’ve never used a "terminal" before, don't worry. This guide is written specifically to help you get up and running in minutes.
+Anicat is a high-performance media management suite designed for macOS. It provides both a sophisticated web-based dashboard and a robust command-line interface (CLI) for searching, streaming, downloading, and tracking anime and manga.
 
-Anicat is a minimalist, high-performance tool that lets you search, stream, and track your favorite Anime and Manga directly from your computer's command line or a beautiful web dashboard.
+The project bridges the gap between terminal efficiency and modern streaming experiences, featuring deep AniList integration and a local-first architecture.
 
 ---
 
-## 🚀 One-Minute Setup
+## Installation
 
-If you have a Mac, just copy and paste this into your terminal:
+Anicat is optimized for macOS and can be installed with a single command using the [uv](https://astral.sh/uv/) package manager.
 
+### Prerequisites
+Ensure you have the core media engines installed on your system:
 ```bash
-# 1. Install the engines (Kitty, MPV, UV)
-brew install --cask kitty && brew install mpv fzf
-curl -LsSf https://astral.sh/uv/install.sh | sh
+brew install mpv fzf
+```
 
-# 2. Install Anicat
+### One-Line Install
+```bash
 uv tool install git+https://github.com/bonkedbythonk/anicat.git
 ```
 
 ---
 
-## 🎮 How to Open
+## Core Interfaces
 
-### Method 1: The Modern Dashboard (Recommended)
-Just type this in your terminal to launch the beautiful "Netflix-style" interface:
-```bash
-anicat dashboard
-```
-*The dashboard will automatically open in your browser. You can even install it as a **PWA (App)** for a native desktop experience.*
+Anicat offers two primary ways to interact with your media library, both sharing a unified backend.
 
-### Method 2: The Terminal Pro (Classic)
-Open the **Kitty** app from your Applications folder and type:
-```bash
-anicat
-```
-*This opens the interactive terminal menu where you can browse and play anime directly in the window.*
+### 1. Unified Web Dashboard
+The dashboard provides a modern, "Netflix-style" Progressive Web App (PWA) experience for local streaming and management.
+- **Launch Command:** `anicat dashboard`
+- **Features:**
+    - **Intelligent Search:** Global media discovery with paginated results for deep browsing.
+    - **Enriched Metadata:** Access to episode lists, character profiles, user reviews, and media recommendations.
+    - **AniList Synchronization:** Real-time 10-star rating system and list management (Watching, Planning, Completed, etc.).
+    - **Responsive Design:** Optimized for both standard browser use and installation as a standalone desktop PWA with custom theme-aware icons.
 
----
-
-## 🔑 First Run: Login
-To sync your watch progress, you need to link your AniList account:
-1. Run `anicat login`.
-2. Authorize in your browser.
-3. Paste the token into the config file that opens.
-4. Save and close. Done!
+### 2. Interactive CLI (TUI)
+For terminal-focused workflows, Anicat features a fast, keyboard-driven interface.
+- **Launch Command:** `anicat`
+- **Features:**
+    - **Rapid Navigation:** Browse lists and trigger playback using optimized terminal bindings.
+    - **Offline Registry:** Track your local media library and watch history without requiring a persistent internet connection.
+    - **Background Sync:** Watch history recorded while offline is automatically synchronized to your AniList profile upon reconnection.
 
 ---
 
-## ✨ Features
+## Technical Functionality
 
-- **🔍 Search & Discovery**: Lightning-fast search across Anime and Manga.
-- **🎥 Premium Streaming**: Stream in up to 1080p with auto-next and tracking.
-- **📥 Offline Downloads**: Queue episodes to watch later without buffering.
-- **🔗 AniList Sync**: Automatic progress tracking for everything you watch.
-- **📱 PWA Ready**: Install the dashboard as a native app on macOS, Windows, or Linux.
+### High-Performance Streaming
+- **Quality Control:** Support for streaming in up to 1080p with configurable provider preferences.
+- **Auto-Tracking:** Playback progress is automatically tracked and updated on your account as you watch.
+- **Media Engine:** Uses `mpv` for lightweight, hardware-accelerated playback.
+
+### Download Management
+- **Queue System:** Queue individual episodes or entire ranges directly from the dashboard or CLI.
+- **Task Resilience:** Automatic support for retrying failed tasks and managing the local download queue.
+- **Local Library:** Visual interface for monitoring storage and managing completed downloads.
+
+### Account Management
+- **Secure Authentication:** Integrated OAuth2 login flow for AniList.
+- **Profile Management:** Instantly update your watch status, episode progress, and personal ratings.
 
 ---
 
-## ⌨️ Controls (Terminal Mode)
+## Configuration
 
-- **Arrow Keys**: Move up/down.
-- **Enter**: Select.
-- **Escape**: Go back.
-- **Shift + N**: Next episode (in-player).
+Anicat is highly customizable through its `config.toml` file. These settings can be managed visually through the dashboard settings panel.
+
+- **Provider Preferences:** Configure default scrapers, streaming quality, and translation types (Sub/Dub).
+- **Library Management:** Define custom directories for downloads and the local media registry.
+- **Interface Settings:** Toggle categories and customize the visual experience.
 
 ---
 
-## 🛠️ Credits
-Anicat is a specialized macOS fork of the [Viu](https://github.com/viu-media/viu) project. Deeply grateful to the original creators!
+## Credits
+Anicat is a specialized macOS fork of the [Viu](https://github.com/viu-media/viu) project, refined for a premium dashboard experience and enhanced automation.
