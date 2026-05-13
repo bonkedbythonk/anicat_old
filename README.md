@@ -8,62 +8,86 @@ The project bridges the gap between terminal efficiency and modern streaming exp
 
 ## Installation
 
-Anicat is optimized for macOS and can be installed with a single command using the [uv](https://astral.sh/uv/) package manager.
-
 ### Prerequisites
-Ensure you have the core media engines and a compatible terminal installed on your system:
+Ensure you have the core media engines installed on your system:
 ```bash
-# Kitty is required for terminal image support (covers/thumbnails)
-brew install --cask kitty
-brew install mpv fzf
+brew install --cask kitty  # Required for terminal image support (covers/thumbnails)
+brew install mpv fzf       # Required for playback and terminal features
 ```
 
-### One-Line Install
+### Setup Anicat
+
+**Step 1:** Install with [uv](https://astral.sh/uv/) package manager:
 ```bash
 uv tool install git+https://github.com/bonkedbythonk/anicat.git
 ```
 
----
-
-## One-Click Desktop Setup (macOS)
-
-For the easiest experience, run this command in your terminal from the project root:
-
+**Step 2:** Start the backend service:
 ```bash
-bash ./scripts/install.sh
+anicat dashboard --no-browser
 ```
 
-Or from any directory:
+This starts the API backend on `localhost:8000`. Keep this running in the background.
+
+---
+
+## Getting Started
+
+### Option 1: Web Dashboard (Recommended for Most Users)
+
+The easiest way to use Anicat is through the **Progressive Web App (PWA)** in your browser. No additional setup needed.
+
+1. **Open your browser** and navigate to `http://localhost:3000`
+2. **Bookmark or Install as PWA**: 
+   - **macOS Safari**: Press `Cmd+Shift+B` to bookmark, or use "Add to Dock" from the Share menu
+   - **Any browser**: Look for the "Install" or "+" icon in the address bar to install as a standalone app
+3. **Enjoy**: Full Netflix-style dashboard with all features in your browser
+
+---
+
+### Option 2: macOS Desktop App (Optional)
+
+If you prefer a native-looking macOS application in your Launchpad:
+
 ```bash
 bash ~/path/to/anicat/scripts/install.sh
 ```
 
-1. **Open Launchpad**: Press `F4` or search for **Anicat** in Spotlight (`Cmd+Space`).
-2. **Add to Dock**: Drag the **Anicat** icon into your Dock.
-3. **Enjoy**: Click the icon anytime to start the backend and open the Dashboard automatically.
+Then:
+1. **Open Launchpad**: Press `F4` or search for **Anicat** in Spotlight (`Cmd+Space`)
+2. **Add to Dock**: Drag the **Anicat** icon into your Dock
+3. **Click to Launch**: Opens the dashboard automatically
+
+**Note:** This is a convenience wrapper around the web dashboard—the PWA option in your browser provides the same experience without the extra setup.
 
 ---
 
 ## Core Interfaces
 
-Anicat offers two primary ways to interact with your media library, both sharing a unified backend.
+Anicat provides a unified web-based dashboard backed by a powerful CLI layer for terminal workflows.
 
-### 1. Unified Web Dashboard
-The dashboard provides a modern, "Netflix-style" Progressive Web App (PWA) experience for local streaming and management.
-- **Launch Command:** `anicat dashboard`
-- **Features:**
-    - **Intelligent Search:** Global media discovery with paginated results for deep browsing.
-    - **Enriched Metadata:** Access to episode lists, character profiles, user reviews, and media recommendations.
-    - **AniList Synchronization:** Real-time 10-star rating system and list management (Watching, Planning, Completed, etc.).
-    - **Responsive Design:** Optimized for both standard browser use and installation as a standalone desktop PWA with custom theme-aware icons.
+### 1. Web Dashboard (Primary Interface)
 
-### 2. Interactive CLI (TUI)
-For terminal-focused workflows, Anicat features a fast, keyboard-driven interface.
-- **Launch Command:** `anicat`
-- **Features:**
-    - **Rapid Navigation:** Browse lists and trigger playback using optimized terminal bindings.
-    - **Offline Registry:** Track your local media library and watch history without requiring a persistent internet connection.
-    - **Background Sync:** Watch history recorded while offline is automatically synchronized to your AniList profile upon reconnection.
+The main way to interact with Anicat is through the **Progressive Web App (PWA)** dashboard accessible at `http://localhost:3000`.
+
+**Features:**
+- **Intelligent Search:** Global media discovery with paginated results for deep browsing
+- **Enriched Metadata:** Episode lists, character profiles, user reviews, and recommendations
+- **AniList Sync:** Real-time 10-star rating system and list management (Watching, Planning, Completed, etc.)
+- **Playback Management:** Queue episodes directly from the interface with intelligent resume functionality
+- **Responsive Design:** Optimized for desktop browsers and installable as a standalone PWA
+- **Local Library:** Monitor downloads and manage your media collection visually
+
+### 2. Interactive CLI (Terminal-Focused Workflows)
+
+For power users who prefer the terminal, the CLI provides fast keyboard-driven access to the same media library.
+
+**Launch:** `anicat`
+
+**Features:**
+- **Rapid Navigation:** Browse lists and trigger playback using optimized terminal bindings
+- **Offline Registry:** Track your local media library and watch history without persistent internet
+- **Background Sync:** Watch history recorded offline automatically syncs to AniList upon reconnection
 
 ---
 
