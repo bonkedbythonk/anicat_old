@@ -277,12 +277,17 @@ class AniListApi(BaseApiClient):
     def get_characters_of(
         self, params: MediaCharactersParams
     ) -> Optional[CharacterSearchResult]:
-        variables = {"id": params.id, "type": params.type.value if params.type else None}
+        variables = {"id": params.id, "type": params.type.value if params.type else "ANIME"}
+        logger.info(f"Fetching characters for media {params.id} (type: {variables['type']})")
         response = execute_graphql(
             ANILIST_ENDPOINT, self.http_client, gql.GET_MEDIA_CHARACTERS, variables
         )
         if response and "errors" not in response.json():
             return mapper.to_generic_characters_result(response.json())
+        
+        if response and "errors" in response.json():
+            logger.error(f"AniList GQL Errors: {response.json()['errors']}")
+            
         return None
 
     def get_related_anime_for(

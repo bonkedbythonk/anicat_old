@@ -74,9 +74,20 @@ def download_episodes(ctx: Context, state: State) -> State | InternalDirective:
     feedback.info(
         f"Starting download of {len(selected_episodes)} episodes. This may take a while..."
     )
-    ctx.download.download_episodes_sync(media_item, selected_episodes)
-
-    feedback.success(f"Finished downloading {len(selected_episodes)} episodes.")
+    success_count, failed_episodes = ctx.download.download_episodes_sync(media_item, selected_episodes)
+    
+    if success_count == len(selected_episodes):
+        feedback.success(f"Successfully downloaded all {len(selected_episodes)} episodes!")
+    elif success_count > 0:
+        feedback.warning(
+            f"Partial success: {success_count} episodes downloaded, {len(failed_episodes)} failed.",
+            details=f"Failed episodes: {', '.join(failed_episodes)}"
+        )
+    else:
+        feedback.error(
+            f"Failed to download all {len(selected_episodes)} episodes.",
+            details="Check logs or your internet connection. (403 errors are common if cookies are expired)"
+        )
 
     # After downloading, return to the media actions menu
     return InternalDirective.BACK

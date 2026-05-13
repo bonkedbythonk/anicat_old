@@ -26,8 +26,8 @@ from .models import (
 
 
 class StatBreakdown(TypedDict):
-    total_media_breakdown: Dict[int, int]
-    status_breakdown: Dict[int, int]
+    total_media_breakdown: Dict[str, int]
+    status_breakdown: Dict[str, int]
     last_updated: str
 
 
@@ -42,7 +42,7 @@ class MediaRegistryService:
         self._ensure_directories()
         self._index = None
         self._index_file = self.config.index_dir / "registry.json"
-        self._index_file_modified_time = 0
+        self._index_file_modified_time = 0.0
         _lock_file = self.config.media_dir / "registry.lock"
         self._lock = FileLock(_lock_file)
 
@@ -132,7 +132,7 @@ class MediaRegistryService:
             index = self._load_index()
             index_entry = MediaRegistryIndexEntry(
                 media_id=media_id,
-                media_api=self._media_api,  # pyright:ignore
+                media_api=self._media_api,  # type: ignore
             )
             index.media_index[f"{self._media_api}_{media_id}"] = index_entry
             self._save_index(index)

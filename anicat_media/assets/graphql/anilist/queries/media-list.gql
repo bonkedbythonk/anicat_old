@@ -61,6 +61,10 @@ query (
           day
         }
         status
+        bannerImage
+        season
+        seasonYear
+        duration
         description
         mediaListEntry {
           status

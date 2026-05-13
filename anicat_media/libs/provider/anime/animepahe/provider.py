@@ -243,15 +243,17 @@ class AnimePahe(BaseAnimeProvider):
                 links.append(
                     EpisodeStream(
                         link=stream_link,
-                        quality=quality,
+                        quality=quality,  # type: ignore
                         translation_type=translation_type_map[translation_type],
                     )
                 )
 
         if links:
+            cookies_str = "; ".join([f"{k}={v}" for k, v in self.client.cookies.items()])
             headers = {
                 "Referer": "https://kwik.cx/",
-                "User-Agent": self.client.headers["User-Agent"]
+                "User-Agent": self.client.headers["User-Agent"],
+                "Cookie": cookies_str
             }
             yield Server(name="kwik", links=links, episode_title=episode.title, headers=headers)
 

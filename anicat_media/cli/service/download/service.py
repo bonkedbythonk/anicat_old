@@ -90,6 +90,9 @@ class DownloadService:
         Performs downloads SYNCHRONOUSLY and blocks until complete.
         This is for the direct `download` command.
         """
+        success_count = 0
+        failed_episodes = []
+        
         for episode_number in episodes:
             title = (
                 media_item.title.english
@@ -99,7 +102,12 @@ class DownloadService:
             logger.info(
                 f"Starting synchronous download for '{title}' Episode {episode_number}"
             )
-            self._execute_download_job(media_item, episode_number)
+            if self._execute_download_job(media_item, episode_number):
+                success_count += 1
+            else:
+                failed_episodes.append(episode_number)
+
+        return success_count, failed_episodes
 
     def resume_unfinished_downloads(self):
         """Finds and re-queues any downloads that were left in an unfinished state."""
@@ -245,7 +253,13 @@ class DownloadService:
                     except StopIteration:
                         break
 
-            stream_link = server.links[0]
+            preferred_quality = self.app_config.stream.quality
+            stream_link = next((link for link in server.links if link.quality == preferred_quality), None)
+            if not stream_link:
+                try:
+                    stream_link = sorted(server.links, key=lambda x: int(x.quality), reverse=True)[0]
+                except Exception:
+                    stream_link = server.links[-1]
             episode_title = f"{media_item.title.english}; Episode {episode_number}"
             if media_item.streaming_episodes and media_item.streaming_episodes.get(
                 episode_number
@@ -301,6 +315,7 @@ class DownloadService:
                 except:  # noqa: E722
                     pass
                 logger.info(message)
+                return True
             else:
                 raise ValueError(result.error_message or "Unknown download error")
 
@@ -331,6 +346,7 @@ class DownloadService:
                 status=DownloadStatus.FAILED,
                 error_message=str(e),
             )
+            return False
         finally:
             # Remove from in-flight tracking regardless of outcome
             try:

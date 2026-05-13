@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #050505;
+  --color-foreground: #ffffff;
+  --color-accent: #6366f1;
+  --color-accent-light: #818cf8;
+  --color-secondary: #a78bfa;
+  --color-card: #0c0c0f;
+  --color-surface: #111116;
+  --color-border: rgba(255, 255, 255, 0.06);
+}
+
+:root {
+  --background: #050505;
+  --foreground: #ffffff;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}
+
+/* Glassmorphism */
+.glass {
+  background: rgba(10, 10, 15, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Card hover glow */
+.card-glow {
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform, box-shadow;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.card-glow:hover {
+  transform: translateY(-6px);
+  box-shadow: 
+    0 15px 35px -5px rgba(0, 0, 0, 0.9),
+    0 0 20px -5px rgba(99, 102, 241, 0.4);
+}
+
+/* Gradients */
+.hero-gradient {
+  background: linear-gradient(to top, var(--background) 0%, rgba(5, 5, 5, 0.6) 40%, transparent 100%);
+}
+.side-gradient {
+  background: linear-gradient(to right, var(--background) 0%, transparent 100%);
+}
+
+/* Scrollbar hide */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Shimmer animation */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* Slide in from right */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in-right {
+  animation: slideInRight 0.35s ease-out;
+}
+
+/* Pulse glow for active status */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(99, 102, 241, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.6); }
+}
+.animate-pulse-glow {
+  animation: pulseGlow 2s infinite;
+}
+
+/* Custom select styling */
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236366f1' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+}
+select option {
+  background: #111116;
+  color: #fff;
+}

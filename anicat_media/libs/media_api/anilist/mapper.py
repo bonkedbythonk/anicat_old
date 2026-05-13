@@ -472,8 +472,11 @@ def to_generic_characters_result(data: Dict) -> Optional[CharacterSearchResult]:
         return None
 
     try:
-        page_data = data["data"]["Page"]["media"][0]
-        characters_data = page_data["characters"]["nodes"]
+        media_data = data["data"].get("Media")
+        if not media_data:
+             return CharacterSearchResult(characters=[])
+             
+        characters_data = media_data.get("characters", {}).get("nodes", [])
 
         characters = []
         for char_data in characters_data:
@@ -482,11 +485,11 @@ def to_generic_characters_result(data: Dict) -> Optional[CharacterSearchResult]:
 
         return CharacterSearchResult(
             characters=characters,
-            page_info=None,  # Characters don't typically have pagination
+            page_info=None,
         )
-    except (KeyError, IndexError, TypeError) as e:
+    except Exception as e:
         logger.error(f"Error parsing character data: {e}")
-        return None
+        return CharacterSearchResult(characters=[])
 
 
 def _to_generic_airing_schedule_item(

@@ -191,18 +191,18 @@ def stream_anime(
         for ep_stream in server.links
         if ep_stream.quality == config.stream.quality
     ]
-    if not quality:
+    if quality:
+        stream_link = quality[0]
+    else:
         feedback.warning("Preferred quality not found, selecting quality...")
-        stream_link = selector.choose(
+        chosen_quality = selector.choose(
             "Select Quality", [link.quality for link in server.links]
         )
-        if not stream_link:
+        if not chosen_quality:
             raise AnicatError("Quality not selected")
         stream_link = next(
-            (link.link for link in server.links if link.quality == stream_link), None
+            (link.link for link in server.links if link.quality == chosen_quality), None
         )
-
-    stream_link = server.links[0].link
     if not stream_link:
         raise AnicatError(
             f"Failed to get stream link for anime: {anime.title}, episode: {episode}"

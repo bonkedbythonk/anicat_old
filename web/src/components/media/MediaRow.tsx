@@ -1,0 +1,73 @@
+"use client";
+
+import { useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import MediaCard from "./MediaCard";
+import type { MediaItem } from "@/lib/api";
+
+interface MediaRowProps {
+  title: string;
+  items: MediaItem[];
+  onSelect?: (item: MediaItem) => void;
+}
+
+export default function MediaRow({ title, items, onSelect }: MediaRowProps) {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const scroll = (direction: "left" | "right") => {
+    if (rowRef.current) {
+      const { scrollLeft, clientWidth } = rowRef.current;
+      const scrollTo = direction === "left" 
+        ? scrollLeft - clientWidth * 0.75 
+        : scrollLeft + clientWidth * 0.75;
+      
+      rowRef.current.scrollTo({ left: scrollTo, behavior: "smooth" });
+    }
+  };
+
+  if (!items.length) return null;
+
+  return (
+    <div 
+      className="space-y-4 relative group/row"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <h2 className="text-lg font-bold text-white tracking-wide px-1">{title}</h2>
+      
+      <div className="relative">
+        {/* Left arrow */}
+        <div className={`absolute left-0 top-0 bottom-6 w-14 bg-gradient-to-r from-background to-transparent z-40 flex items-center justify-start transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'} pointer-events-none`}>
+          <button 
+            onClick={() => scroll("left")} 
+            className="p-2 ml-1 rounded-full bg-black/80 hover:bg-accent hover:text-white transition-colors pointer-events-auto border border-white/10"
+          >
+            <ChevronLeft size={20} />
+          </button>
+        </div>
+
+        <div 
+          ref={rowRef}
+          className="flex space-x-4 overflow-x-auto scrollbar-hide scroll-smooth pb-2"
+        >
+          {items.map((item, idx) => (
+            <div key={`${item.id}-${idx}`} className="w-[150px] md:w-[180px] flex-none">
+              <MediaCard item={item} onSelect={onSelect} />
+            </div>
+          ))}
+        </div>
+
+        {/* Right arrow */}
+        <div className={`absolute right-0 top-0 bottom-6 w-14 bg-gradient-to-l from-background to-transparent z-40 flex items-center justify-end transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'} pointer-events-none`}>
+          <button 
+            onClick={() => scroll("right")} 
+            className="p-2 mr-1 rounded-full bg-black/80 hover:bg-accent hover:text-white transition-colors pointer-events-auto border border-white/10"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

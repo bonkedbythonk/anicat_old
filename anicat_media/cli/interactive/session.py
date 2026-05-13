@@ -336,7 +336,7 @@ class Session:
                             index_entry = registry.get_media_index_entry(record.media_item.id)
                             # Sync if is_synced is False or if it's an old entry without the field (it defaults to True so it won't be synced unnecessarily)
                             if index_entry and getattr(index_entry, "is_synced", True) is False and index_entry.status:
-                                from .....libs.media_api.params import UpdateUserMediaListEntryParams
+                                from ...libs.media_api.params import UpdateUserMediaListEntryParams
                                 update_params = UpdateUserMediaListEntryParams(
                                     media_id=record.media_item.id,
                                     status=index_entry.status,

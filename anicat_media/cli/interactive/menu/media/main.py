@@ -36,57 +36,48 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
         ))
         console.print()
 
+    # --- Search & Explore ---
     options: Dict[str, MenuAction] = {
-        f"{ICONS.get('TRENDING', icons)}Trending": _create_media_list_action(
-            ctx, state, MediaSort.TRENDING_DESC
-        ),
-        f"{ICONS.get('RECENT', icons)}Recent": _create_recent_media_action(ctx, state),
-        f"{ICONS.get('WATCHING', icons)}Watching": _create_user_list_action(
-            ctx, state, UserMediaListStatus.WATCHING
-        ),
-        f"{ICONS.get('READING', icons)}Reading": _create_user_list_action(
-            ctx, state, UserMediaListStatus.WATCHING, MediaType.MANGA
-        ),
-        f"{ICONS.get('REWATCHING', icons)}Rewatching": _create_user_list_action(
-            ctx, state, UserMediaListStatus.REPEATING
-        ),
-        f"{ICONS.get('PAUSED', icons)}Paused": _create_user_list_action(
-            ctx, state, UserMediaListStatus.PAUSED
-        ),
-        f"{ICONS.get('PLANNED', icons)}Planned": _create_user_list_action(
-            ctx, state, UserMediaListStatus.PLANNING
-        ),
-        f"{ICONS.get('SEARCH', icons)}Search": _create_search_media_list(ctx, state),
+        f"{ICONS.get('DYNAMIC_SEARCH', icons)}Dynamic Search": _create_dynamic_search_action(ctx, state),
+        f"{ICONS.get('SEARCH', icons)}Search Anime": _create_search_media_list(ctx, state),
         f"{ICONS.get('SEARCH_MANGA', icons)}Search Manga": _create_search_manga_list(ctx, state),
-        f"{ICONS.get('DYNAMIC_SEARCH', icons)}Dynamic Search": _create_dynamic_search_action(
-            ctx, state
-        ),
-        f"{ICONS.get('DOWNLOADS', icons)}Downloads": _create_downloads_action(ctx, state),
-        f"{ICONS.get('UPDATED', icons)}Recently Updated": _create_media_list_action(
-            ctx, state, MediaSort.UPDATED_AT_DESC
-        ),
-        f"{ICONS.get('POPULAR', icons)}Popular": _create_media_list_action(
-            ctx, state, MediaSort.POPULARITY_DESC
-        ),
-        f"{ICONS.get('TOP_SCORED', icons)}Top Scored": _create_media_list_action(
-            ctx, state, MediaSort.SCORE_DESC
-        ),
-        f"{ICONS.get('FAVOURITES', icons)}Favourites": _create_media_list_action(
-            ctx, state, MediaSort.FAVOURITES_DESC
-        ),
+        f"{ICONS.get('TRENDING', icons)}Trending": _create_media_list_action(ctx, state, MediaSort.TRENDING_DESC),
+        f"{ICONS.get('POPULAR', icons)}Popular": _create_media_list_action(ctx, state, MediaSort.POPULARITY_DESC),
+        f"{ICONS.get('TOP_SCORED', icons)}Top Scored": _create_media_list_action(ctx, state, MediaSort.SCORE_DESC),
         f"{ICONS.get('RANDOM', icons)}Random": _create_random_media_list(ctx, state),
-        f"{ICONS.get('UPCOMING', icons)}Upcoming": _create_media_list_action(
-            ctx, state, MediaSort.POPULARITY_DESC, MediaStatus.NOT_YET_RELEASED
-        ),
-        f"{ICONS.get('COMPLETED', icons)}Completed": _create_user_list_action(
-            ctx, state, UserMediaListStatus.COMPLETED
-        ),
-        f"{ICONS.get('DROPPED', icons)}Dropped": _create_user_list_action(
-            ctx, state, UserMediaListStatus.DROPPED
-        ),
+        f"{ICONS.get('UPCOMING', icons)}Upcoming": _create_media_list_action(ctx, state, MediaSort.POPULARITY_DESC, MediaStatus.NOT_YET_RELEASED),
+        f"{ICONS.get('BROWSER', icons)}Open GUI Dashboard": lambda: State(menu_name=MenuName.OPEN_GUI),
+    }
+
+    # --- My Anime ---
+    options.update({
+        f"{ICONS.get('WATCHING', icons)}Watching": _create_user_list_action(ctx, state, UserMediaListStatus.WATCHING),
+        f"{ICONS.get('RECENT', icons)}Recently Watched": _create_recent_anime_action(ctx, state),
+        f"{ICONS.get('REWATCHING', icons)}Rewatching": _create_user_list_action(ctx, state, UserMediaListStatus.REPEATING),
+        f"{ICONS.get('PAUSED', icons)}Paused Anime": _create_user_list_action(ctx, state, UserMediaListStatus.PAUSED),
+        f"{ICONS.get('PLANNED', icons)}Planned Anime": _create_user_list_action(ctx, state, UserMediaListStatus.PLANNING),
+        f"{ICONS.get('COMPLETED', icons)}Completed Anime": _create_user_list_action(ctx, state, UserMediaListStatus.COMPLETED),
+        f"{ICONS.get('DROPPED', icons)}Dropped Anime": _create_user_list_action(ctx, state, UserMediaListStatus.DROPPED),
+    })
+
+    # --- My Manga ---
+    options.update({
+        f"{ICONS.get('READING', icons)}Reading": _create_user_list_action(ctx, state, UserMediaListStatus.WATCHING, MediaType.MANGA),
+        f"{ICONS.get('RECENT', icons)}Recently Read": _create_recent_manga_action(ctx, state),
+    })
+
+    # --- Local & Library ---
+    options.update({
+        f"{ICONS.get('DOWNLOADS', icons)}Downloads": _create_downloads_action(ctx, state),
+        f"{ICONS.get('UPDATED', icons)}Recently Updated": _create_media_list_action(ctx, state, MediaSort.UPDATED_AT_DESC),
+        f"{ICONS.get('FAVOURITES', icons)}Favourites": _create_media_list_action(ctx, state, MediaSort.FAVOURITES_DESC),
+    })
+
+    # --- System ---
+    options.update({
         f"{ICONS.get('EDIT', icons)}Edit Config": lambda: InternalDirective.CONFIG_EDIT,
         f"{ICONS.get('MANAGE', icons)}Manage Categories": _manage_categories_action(ctx, state),
-    }
+    })
 
     # Build the "Check for Updates" label with a visual indicator if update is available
     update_label = f"{ICONS.get('UPDATE', icons)}Check for Updates"
@@ -201,6 +192,23 @@ def _create_search_media_list(ctx: Context, state: State) -> MenuAction:
             result = ctx.media_api.search_media(search_params)
 
         if result:
+            # Auto-select if single result and config enabled
+            if (
+                ctx.config.general.auto_select_anime_result
+                and result.page_info.total == 1
+            ):
+                return State(
+                    menu_name=MenuName.MEDIA_ACTIONS,
+                    media_api=MediaApiState(
+                        search_result={
+                            media_item.id: media_item for media_item in result.media
+                        },
+                        media_id=result.media[0].id,
+                        search_params=search_params,
+                        page_info=result.page_info,
+                    ),
+                )
+
             return State(
                 menu_name=MenuName.RESULTS,
                 media_api=MediaApiState(
@@ -233,6 +241,23 @@ def _create_search_manga_list(ctx: Context, state: State) -> MenuAction:
             result = ctx.media_api.search_media(search_params)
 
         if result:
+            # Auto-select if single result and config enabled
+            if (
+                ctx.config.general.auto_select_anime_result
+                and result.page_info.total == 1
+            ):
+                return State(
+                    menu_name=MenuName.MEDIA_ACTIONS,
+                    media_api=MediaApiState(
+                        search_result={
+                            media_item.id: media_item for media_item in result.media
+                        },
+                        media_id=result.media[0].id,
+                        search_params=search_params,
+                        page_info=result.page_info,
+                    ),
+                )
+
             return State(
                 menu_name=MenuName.RESULTS,
                 media_api=MediaApiState(
@@ -283,9 +308,9 @@ def _create_user_list_action(
     return action
 
 
-def _create_recent_media_action(ctx: Context, state: State) -> MenuAction:
+def _create_recent_anime_action(ctx: Context, state: State) -> MenuAction:
     def action():
-        result = ctx.media_registry.get_recently_watched()
+        result = ctx.media_registry.get_recently_watched(type=MediaType.ANIME)
         if result:
             return State(
                 menu_name=MenuName.RESULTS,
@@ -297,6 +322,27 @@ def _create_recent_media_action(ctx: Context, state: State) -> MenuAction:
                 ),
             )
         else:
+            ctx.feedback.info("No recently watched anime found.")
+            return InternalDirective.MAIN
+
+    return action
+
+
+def _create_recent_manga_action(ctx: Context, state: State) -> MenuAction:
+    def action():
+        result = ctx.media_registry.get_recently_watched(type=MediaType.MANGA)
+        if result:
+            return State(
+                menu_name=MenuName.RESULTS,
+                media_api=MediaApiState(
+                    search_result={
+                        media_item.id: media_item for media_item in result.media
+                    },
+                    page_info=result.page_info,
+                ),
+            )
+        else:
+            ctx.feedback.info("No recently read manga found.")
             return InternalDirective.MAIN
 
     return action

@@ -16,4 +16,5 @@ __all__ = [
     "provider_search",
     "results",
     "servers",
+    "open_gui",
 ]

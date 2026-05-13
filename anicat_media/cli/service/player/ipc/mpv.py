@@ -259,8 +259,14 @@ class PlayerState:
     @property
     def stream_url(self) -> Optional[str]:
         if server := self.server:
-            # Simple quality selection for now
-            return server.links[0].link
+            preferred_quality = self.stream_config.quality
+            selected_link = next((link for link in server.links if link.quality == preferred_quality), None)
+            if not selected_link:
+                try:
+                    selected_link = sorted(server.links, key=lambda x: int(x.quality), reverse=True)[0]
+                except Exception:
+                    selected_link = server.links[-1]
+            return selected_link.link
         return None
 
     @property

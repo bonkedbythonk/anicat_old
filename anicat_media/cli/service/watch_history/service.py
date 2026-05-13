@@ -60,7 +60,7 @@ class WatchHistoryService:
             # --- Progress Regression Check ---
             if self.config.stream.force_forward_tracking and media_item.user_status:
                 try:
-                    current_progress = int(media_item.user_status.progress or 0)
+                    current_progress = media_item.user_status.progress or 0
                     watched_episode = int(player_result.episode)
                     if watched_episode <= current_progress:
                         logger.info(
@@ -100,7 +100,7 @@ class WatchHistoryService:
         # 1. Get baseline from AniList (Remote)
         remote_progress = 0
         if media_item.user_status:
-            remote_progress = int(media_item.user_status.progress or 0)
+            remote_progress = media_item.user_status.progress or 0
         
         # 2. Get baseline from Local Registry
         local_progress = remote_progress

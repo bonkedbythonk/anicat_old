@@ -85,6 +85,7 @@ def media_actions(ctx: Context, state: State) -> State | InternalDirective:
         if has_downloads:
             options[f"{ICONS.get('PLAY', icons)}Play Downloaded"] = _stream_downloads(ctx, state)
             options[f"{ICONS.get('EPISODES', icons)}Episodes (Downloaded)"] = _stream_downloads(ctx, state, force_episodes_menu=True)
+            options[f"{ICONS.get('TRASH', icons)}Remove Download(s)"] = _remove_downloads(ctx, state)
 
         options.update({
             f"{ICONS.get('PLAY', icons)}Stream {progress}": _stream(ctx, state),
@@ -153,6 +154,51 @@ def _get_progress_string(ctx: Context, media_item: Optional[MediaItem]) -> str:
             display_title += f" {icon}{unwatched} new{icon}"
 
     return display_title
+
+
+def _remove_downloads(ctx: Context, state: State) -> MenuAction:
+    def action():
+        media_item = state.media_api.media_item
+        if not media_item:
+            return InternalDirective.RELOAD
+
+        if not ctx.selector.confirm(f"Are you sure you want to remove ALL downloaded episodes for '{media_item.title.english or media_item.title.romaji}'?"):
+            return InternalDirective.RELOAD
+
+        record = ctx.media_registry.get_media_record(media_item.id)
+        if not record:
+            return InternalDirective.RELOAD
+
+        removed_count = 0
+        from ....service.registry.models import DownloadStatus
+        for ep in record.media_episodes:
+            if ep.download_status == DownloadStatus.COMPLETED and ep.file_path:
+                try:
+                    if ep.file_path.exists():
+                        ep.file_path.unlink()
+                    for sub in ep.subtitle_paths:
+                        if sub.exists():
+                            sub.unlink()
+                    # Also try to remove the directory if it's empty
+                    if ep.file_path.parent.exists() and not any(ep.file_path.parent.iterdir()):
+                        ep.file_path.parent.rmdir()
+                        
+                    ep.download_status = DownloadStatus.NOT_DOWNLOADED
+                    ep.file_path = None
+                    ep.subtitle_paths = []
+                    removed_count += 1
+                except Exception as e:
+                    ctx.feedback.error(f"Failed to remove episode {ep.episode_number}: {e}")
+
+        if removed_count > 0:
+            ctx.media_registry.save_media_record(record)
+            ctx.feedback.success(f"Removed {removed_count} downloaded episodes.")
+        else:
+            ctx.feedback.warning("No downloaded episodes were found or removed.")
+        
+        return InternalDirective.RELOAD
+
+    return action
 
 
 def _read_chapters(ctx: Context, state: State) -> MenuAction:
@@ -554,7 +600,7 @@ def _view_info(ctx: Context, state: State) -> MenuAction:
         info_table.add_row(
             "Format", media_item.format.value if media_item.format else "N/A"
         )
-        status = str(media_item.status.value) if media_item.status else "Unknown"
+        status = media_item.status.value if media_item.status else "Unknown"
         status_color = "white"
         if status == "RELEASING":
             status_color = "green"

@@ -1,0 +1,17 @@
+{
+  "name": "anicat",
+  "short_name": "anicat",
+  "description": "anicat PWA Dashboard — Search, stream, and download anime from your local machine.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#050505",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

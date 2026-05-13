@@ -119,8 +119,14 @@ def servers(ctx: Context, state: State) -> State | InternalDirective:
 
 
 def _filter_by_quality(links, quality):
-    # Simplified version of your filter_by_quality for brevity
+    # Filter by exact quality first
     for link in links:
         if str(link.quality) == quality:
             return link
-    return links[0] if links else None
+    # Fallback to the highest available quality
+    if not links:
+        return None
+    try:
+        return sorted(links, key=lambda x: int(x.quality), reverse=True)[0]
+    except Exception:
+        return links[-1]

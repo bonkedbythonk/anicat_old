@@ -104,16 +104,17 @@ class YtDLPDownloader(BaseDownloader):
                 },
             }
         if params.hls_use_mpegts:
+            outtmpl_str = str(opts.get("outtmpl", ""))
             opts = opts | {
                 "hls_use_mpegts": True,
-                "outtmpl": ".".join(opts["outtmpl"].split(".")[:-1])
-                + ".ts",  # force .ts extension
+                "outtmpl": ".".join(outtmpl_str.split(".")[:-1]) + ".ts",  # force .ts extension
             }
         elif params.hls_use_h264:
+            ext_args = opts.get("external_downloader_args", {})
             opts = (
                 opts
                 | {
-                    "external_downloader_args": opts["external_downloader_args"]
+                    "external_downloader_args": ext_args
                     | {
                         "ffmpeg_o1": [
                             "-c:v",
@@ -227,7 +228,7 @@ class YtDLPDownloader(BaseDownloader):
                 final_output_path = video_path.parent / merged_filename
 
                 if final_output_path.exists():
-                    from ..selectors.selector import create_selector
+                    from ...libs.selectors.selector import create_selector
 
                     selector = create_selector(self.config)
                     if not params.prompt or selector.confirm(

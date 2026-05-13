@@ -111,6 +111,9 @@ query (
       }
       status
       description
+      bannerImage
+      season
+      seasonYear
       nextAiringEpisode {
         timeUntilAiring
         airingAt
