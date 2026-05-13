@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Play, Loader2, Star, Users, Calendar, Clock, Building2 } from "lucide-react";
+import { X, Play, Loader2, Star, Users, Calendar, Clock, Building2, Monitor, CheckCircle2, Bookmark, Pause, XCircle, RotateCcw } from "lucide-react";
 import { mediaApi, type MediaItem, type Episode, type Character, type Review } from "@/lib/api";
 import EpisodeList from "./EpisodeList";
 
@@ -22,7 +22,9 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [fullItem, setFullItem] = useState<MediaItem>(item);
   const [rating, setRating] = useState(item.user_status?.score || 0);
+  const [status, setStatus] = useState(item.user_status?.status || "");
   const [isUpdatingRating, setIsUpdatingRating] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const title = fullItem.title.english || fullItem.title.romaji || "Unknown";
 
@@ -40,12 +42,15 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
     setActiveTab("episodes");
     if (item.user_status?.score) setRating(item.user_status.score);
     else setRating(0);
+    if (item.user_status?.status) setStatus(item.user_status.status);
+    else setStatus("");
 
     // Load full details
     mediaApi.getDetails(item.id)
       .then(data => {
         setFullItem(data);
         if (data.user_status?.score) setRating(data.user_status.score);
+        if (data.user_status?.status) setStatus(data.user_status.status);
       })
       .catch(console.error);
 
@@ -92,6 +97,26 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
       setIsUpdatingRating(false);
     }
   };
+
+  const handleStatusChange = async (newStatus: string) => {
+    setIsUpdatingStatus(true);
+    try {
+      await mediaApi.updateStatus(item.id, newStatus);
+      setStatus(newStatus);
+    } catch (err) {
+      console.error("Failed to update status:", err);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const STATUS_OPTIONS = [
+    { value: "watching", label: "Watching", icon: Monitor, color: "text-accent" },
+    { value: "completed", label: "Completed", icon: CheckCircle2, color: "text-green-400" },
+    { value: "planning", label: "Planning", icon: Bookmark, color: "text-blue-400" },
+    { value: "paused", label: "Paused", icon: Pause, color: "text-yellow-400" },
+    { value: "dropped", label: "Dropped", icon: XCircle, color: "text-red-400" },
+  ];
 
 
   return (
@@ -172,7 +197,7 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
           </div>
 
           {/* User Score / Rating */}
-          <div className="absolute top-4 left-4 z-10">
+          <div className="absolute top-4 left-4 z-10 flex flex-col space-y-2">
             <div className="flex items-center space-x-1 bg-black/60 backdrop-blur-md p-2 rounded-xl border border-white/10 group/rating">
               {[...Array(10)].map((_, i) => (
                 <button
@@ -191,6 +216,34 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
               <span className="text-[10px] font-bold text-gray-400 ml-2 group-hover/rating:text-white transition-colors">
                 {rating > 0 ? `${rating}/10` : "Rate"}
               </span>
+            </div>
+
+            {/* Status Selector */}
+            <div className="flex items-center bg-black/60 backdrop-blur-md p-1 rounded-xl border border-white/10 overflow-hidden">
+              {STATUS_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  disabled={isUpdatingStatus}
+                  onClick={() => handleStatusChange(opt.value)}
+                  className={`p-2 rounded-lg transition-all relative group/status ${
+                    status === opt.value 
+                      ? "bg-white/10 text-white" 
+                      : "text-gray-500 hover:text-white hover:bg-white/5"
+                  }`}
+                  title={opt.label}
+                >
+                  {isUpdatingStatus && status === opt.value ? (
+                    <Loader2 size={16} className="animate-spin text-accent" />
+                  ) : (
+                    <opt.icon size={16} className={status === opt.value ? opt.color : ""} />
+                  )}
+                  
+                  {/* Tooltip-like label on hover */}
+                  <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover/status:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-white/10">
+                    {opt.label}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
         </div>

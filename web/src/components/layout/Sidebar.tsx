@@ -31,19 +31,6 @@ interface SidebarProps {
 export default function Sidebar({ activeView, onNavigate }: SidebarProps) {
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-[72px] lg:w-60 bg-black/60 backdrop-blur-xl border-r border-white/[0.04] z-50 flex flex-col py-6 transition-all duration-300">
-      {/* Logo */}
-      <div className="px-4 lg:px-6 mb-10 flex items-center justify-center lg:justify-start">
-        <button onClick={() => onNavigate("home")} className="relative group flex items-center">
-          <div className="w-12 h-12 lg:w-48 lg:h-20 relative overflow-hidden rounded-xl">
-            <Image
-              src="/logo-dark.png"
-              alt="anicat"
-              fill
-              className="object-contain transition-transform duration-300 group-hover:scale-105"
-            />
-          </div>
-        </button>
-      </div>
 
       {/* Nav Items */}
       <nav className="flex-1 space-y-1 px-3">

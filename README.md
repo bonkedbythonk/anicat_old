@@ -11,8 +11,10 @@ The project bridges the gap between terminal efficiency and modern streaming exp
 Anicat is optimized for macOS and can be installed with a single command using the [uv](https://astral.sh/uv/) package manager.
 
 ### Prerequisites
-Ensure you have the core media engines installed on your system:
+Ensure you have the core media engines and a compatible terminal installed on your system:
 ```bash
+# Kitty is required for terminal image support (covers/thumbnails)
+brew install --cask kitty
 brew install mpv fzf
 ```
 

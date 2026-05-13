@@ -308,8 +308,10 @@ class Session:
             main_state = State(menu_name=MenuName.MAIN, update_available=update_available)
             self._history.append(main_state)
             
-            # Trigger a background check for updates
+            # Trigger a background check for updates if enabled
             def background_check():
+                if not self._context.config.general.check_for_updates:
+                    return
                 try:
                     if self._context.updater.check_version():
                         # If update found, update the initial state in history

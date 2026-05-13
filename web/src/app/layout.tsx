@@ -12,10 +12,6 @@ export default function RootLayout({
         <meta name="description" content="anicat PWA Dashboard — Search, stream, and download anime from your local machine." />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
         <meta name="theme-color" content="#050505" />
-        <link rel="icon" href="/logo.png" media="(prefers-color-scheme: light)" />
-        <link rel="icon" href="/logo-dark.png" media="(prefers-color-scheme: dark)" />
-        <link rel="apple-touch-icon" href="/logo.png" media="(prefers-color-scheme: light)" />
-        <link rel="apple-touch-icon" href="/logo-dark.png" media="(prefers-color-scheme: dark)" />
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
             const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;

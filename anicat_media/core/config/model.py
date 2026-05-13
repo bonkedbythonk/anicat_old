@@ -225,6 +225,10 @@ class GeneralConfig(BaseConfig):
         default_factory=list,
         description=desc.GENERAL_HIDDEN_CATEGORIES,
     )
+    check_for_updates: bool = Field(
+        default=defaults.GENERAL_CHECK_FOR_UPDATES,
+        description="Whether to automatically check for updates on startup.",
+    )
 
 
 class StreamConfig(BaseConfig):
