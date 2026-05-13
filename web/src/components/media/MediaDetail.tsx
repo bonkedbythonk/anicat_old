@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Play, Loader2, Star, Users, Calendar, Clock, Building2, Monitor, CheckCircle2, Bookmark, Pause, XCircle, Download } from "lucide-react";
+import { X, Play, Loader2, Star, Users, Calendar, Clock, Building2, Monitor, CheckCircle2, Bookmark, Pause, XCircle, Download, BookOpen } from "lucide-react";
 import { mediaApi, type MediaItem, type Episode, type Character, type Review } from "@/lib/api";
 import EpisodeList from "./EpisodeList";
 
@@ -16,6 +16,7 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [recommendations, setRecommendations] = useState<MediaItem[]>([]);
   const [activeTab, setActiveTab] = useState<"episodes" | "characters" | "reviews" | "recommendations">("episodes");
+  const isManga = item.type === "MANGA";
   const [loadingEps, setLoadingEps] = useState(true);
   const [loadingChars, setLoadingChars] = useState(false);
   const [loadingReviews, setLoadingReviews] = useState(false);
@@ -181,7 +182,10 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
                   <span className="text-gray-600">•</span>
                   <span>{fullItem.status}</span>
                   {fullItem.episodes && (
-                    <><span className="text-gray-600">•</span><span>{fullItem.episodes} eps</span></>
+                    <><span className="text-gray-600">•</span><span>{fullItem.episodes} {isManga ? "chs" : "eps"}</span></>
+                  )}
+                  {isManga && fullItem.chapters && !fullItem.episodes && (
+                    <><span className="text-gray-600">•</span><span>{fullItem.chapters} chs</span></>
                   )}
                   {fullItem.average_score && (
                     <><span className="text-gray-600">•</span><div className="flex items-center text-yellow-400"><Star size={10} fill="currentColor" className="mr-1" /><span>{fullItem.average_score}%</span></div></>
@@ -205,8 +209,8 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
                   disabled={isPlayingNext}
                   className="flex-1 flex items-center justify-center space-x-2 py-2.5 bg-accent hover:bg-accent-light text-white font-extrabold text-sm rounded-xl transition-all shadow-lg shadow-accent/20 active:scale-95 disabled:opacity-50"
                 >
-                  {isPlayingNext ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" />}
-                  <span>{isPlayingNext ? "Starting..." : fullItem.user_status?.progress ? `Continue Episode ${fullItem.user_status.progress + 1}` : "Play Now"}</span>
+                  {isPlayingNext ? <Loader2 size={16} className="animate-spin" /> : (isManga ? <BookOpen size={16} /> : <Play size={16} fill="currentColor" />)}
+                  <span>{isPlayingNext ? "Starting..." : fullItem.user_status?.progress ? `Continue ${isManga ? 'Chapter' : 'Episode'} ${fullItem.user_status.progress + 1}` : (isManga ? "Read Now" : "Play Now")}</span>
                 </button>
                 {canDownload && remainingEpsCount > 0 && (
                   <button
@@ -215,7 +219,7 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
                     className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-white/[0.1] hover:bg-white/[0.15] text-white font-bold text-sm rounded-xl transition-all active:scale-95 disabled:opacity-50"
                   >
                     {isDownloadingRemaining ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-                    <span>Download {remainingEpsCount} eps</span>
+                    <span>Download {remainingEpsCount} {isManga ? "chs" : "eps"}</span>
                   </button>
                 )}
               </div>
@@ -289,12 +293,18 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
 
           <div className="flex space-x-1 p-1 bg-white/[0.03] border border-white/[0.06] rounded-xl">
             {(["episodes", "characters", "reviews", "recommendations"] as const).map((tab) => (
-              <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${activeTab === tab ? "bg-accent text-white shadow-lg" : "text-gray-500 hover:text-white"}`}>{tab}</button>
+              <button 
+                key={tab} 
+                onClick={() => setActiveTab(tab)} 
+                className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${activeTab === tab ? "bg-accent text-white shadow-lg" : "text-gray-500 hover:text-white"}`}
+              >
+                {tab === "episodes" ? (isManga ? "Chapters" : "Episodes") : tab}
+              </button>
             ))}
           </div>
 
           <div className="animate-fade-in">
-            {activeTab === "episodes" && <EpisodeList mediaId={item.id} episodes={episodes} loading={loadingEps} progress={fullItem.user_status?.progress} />}
+            {activeTab === "episodes" && <EpisodeList mediaId={item.id} episodes={episodes} loading={loadingEps} progress={fullItem.user_status?.progress} isManga={isManga} />}
             {activeTab === "characters" && (
               <div className="grid grid-cols-2 gap-3">
                 {characters.map(char => (

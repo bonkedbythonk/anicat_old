@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Play, Download, Loader2, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { Play, Download, Loader2, CheckCircle2, Clock, AlertCircle, BookOpen } from "lucide-react";
 import { mediaApi, type Episode } from "@/lib/api";
 
 interface EpisodeListProps {
@@ -9,9 +9,10 @@ interface EpisodeListProps {
   episodes: Episode[];
   loading: boolean;
   progress?: number;
+  isManga?: boolean;
 }
 
-export default function EpisodeList({ mediaId, episodes, loading, progress = 0 }: EpisodeListProps) {
+export default function EpisodeList({ mediaId, episodes, loading, progress = 0, isManga = false }: EpisodeListProps) {
   const [playingEp, setPlayingEp] = useState<string | null>(null);
   const [queueingEp, setQueueingEp] = useState<string | null>(null);
   const [batchStart, setBatchStart] = useState("");
@@ -75,19 +76,17 @@ export default function EpisodeList({ mediaId, episodes, loading, progress = 0 }
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="animate-spin text-accent" size={28} />
-        <span className="ml-3 text-gray-500 text-sm font-medium">Fetching episodes from provider...</span>
+        <span className="ml-3 text-gray-500 text-sm font-medium">Fetching {isManga ? "chapters" : "episodes"} from provider...</span>
       </div>
     );
   }
-
-
 
   return (
     <div className="space-y-4">
       {/* Episode list */}
       {episodes.length === 0 ? (
         <div className="text-center py-12 text-gray-600 text-sm">
-          No episodes found from this provider.
+          No {isManga ? "chapters" : "episodes"} found from this provider.
         </div>
       ) : (
         <div className="space-y-1 max-h-[50vh] overflow-y-auto scrollbar-hide pr-1">
@@ -121,9 +120,9 @@ export default function EpisodeList({ mediaId, episodes, loading, progress = 0 }
                     {playingEp === epNum ? (
                       <Loader2 size={12} className="animate-spin" />
                     ) : (
-                      <Play fill="currentColor" size={12} />
+                      isManga ? <BookOpen size={12} /> : <Play fill="currentColor" size={12} />
                     )}
-                    <span>Play</span>
+                    <span>{isManga ? "Read" : "Play"}</span>
                   </button>
                   <button
                     onClick={() => handleQueue(epNum)}

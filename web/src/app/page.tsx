@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Sidebar, { type ViewName } from "@/components/layout/Sidebar";
 import NowPlaying from "@/components/layout/NowPlaying";
 import MediaCard from "@/components/media/MediaCard";
@@ -104,6 +104,36 @@ function HomeView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
   );
 }
 
+// ─── Infinite Scroll Component ─────────────────────────
+function InfiniteScroll({ hasMore, loading, onLoadMore }: { hasMore: boolean, loading: boolean, onLoadMore: () => void }) {
+  const observerTarget = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          onLoadMore();
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, loading, onLoadMore]);
+
+  if (!hasMore) return null;
+
+  return (
+    <div ref={observerTarget} className="flex justify-center py-10">
+      <Loader2 className="animate-spin text-accent" size={24} />
+    </div>
+  );
+}
+
 // ─── Search View ──────────────────────────────────────
 function SearchView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
   const [query, setQuery] = useState("");
@@ -112,6 +142,10 @@ function SearchView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<SearchFilters>({});
+
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -134,16 +168,12 @@ function SearchView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
     return () => clearTimeout(timer);
   }, [query, type, filters]);
 
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-
   const loadMore = async () => {
-    if (loadingMore) return;
+    if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
-      const data = await mediaApi.search(query, type, nextPage);
+      const data = await mediaApi.search(query, type, nextPage, filters);
       setResults(prev => [...prev, ...(data.media || [])]);
       setHasMore(data.page_info?.has_next_page || false);
       setPage(nextPage);
@@ -158,9 +188,9 @@ function SearchView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
     <div className="space-y-8 animate-fade-in">
       {/* Search header */}
       <div className="space-y-6">
-        <div className="flex items-end justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white">Search</h1>
-          <div className="flex bg-white/[0.04] p-1 rounded-xl border border-white/[0.06]">
+          <div className="flex bg-white/[0.04] p-1 rounded-xl border border-white/[0.06] w-fit">
             <button
               onClick={() => setType("ANIME")}
               className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
@@ -283,25 +313,14 @@ function SearchView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
         </div>
       ) : null}
 
-      {hasMore && (
-        <div className="flex justify-center pt-8">
-          <button
-            onClick={loadMore}
-            disabled={loadingMore}
-            className="px-8 py-3 bg-white/[0.04] hover:bg-accent hover:text-white rounded-xl font-bold transition-all border border-white/[0.06] flex items-center space-x-3 group"
-          >
-            {loadingMore ? <Loader2 className="animate-spin" size={18} /> : <RotateCcw size={16} className="group-hover:rotate-180 transition-transform duration-500" />}
-            <span>{loadingMore ? "Loading..." : "Load More"}</span>
-          </button>
-        </div>
-      )}
+      <InfiniteScroll hasMore={hasMore} loading={loadingMore} onLoadMore={loadMore} />
     </div>
   );
 }
 
 // ─── Lists View ───────────────────────────────────────
 const LIST_TABS = [
-  { key: "watching", label: "Watching", icon: Monitor },
+  { key: "watching", label: "Reading/Watching", icon: Monitor },
   { key: "completed", label: "Completed", icon: CheckCircle2 },
   { key: "planning", label: "Planning", icon: Bookmark },
   { key: "paused", label: "Paused", icon: Pause },
@@ -310,6 +329,7 @@ const LIST_TABS = [
 
 function ListsView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
   const [activeTab, setActiveTab] = useState("watching");
+  const [type, setType] = useState<"ANIME" | "MANGA">("ANIME");
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -318,7 +338,7 @@ function ListsView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
 
   useEffect(() => {
     setLoading(true);
-    mediaApi.getUserList(activeTab, "ANIME", 1)
+    mediaApi.getUserList(activeTab, type, 1)
       .then(data => {
         setItems(data.media || []);
         setHasMore(data.page_info?.has_next_page || false);
@@ -329,14 +349,14 @@ function ListsView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
         setItems([]);
       })
       .finally(() => setLoading(false));
-  }, [activeTab]);
+  }, [activeTab, type]);
 
   const loadMore = async () => {
-    if (loadingMore) return;
+    if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
-      const data = await mediaApi.getUserList(activeTab, "ANIME", nextPage);
+      const data = await mediaApi.getUserList(activeTab, type, nextPage);
       setItems(prev => [...prev, ...(data.media || [])]);
       setHasMore(data.page_info?.has_next_page || false);
       setPage(nextPage);
@@ -349,8 +369,28 @@ function ListsView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-end justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white">My Lists</h1>
+        <div className="flex bg-white/[0.04] p-1 rounded-xl border border-white/[0.06] w-fit">
+            <button
+              onClick={() => setType("ANIME")}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                type === "ANIME" ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-gray-500 hover:text-white"
+              }`}
+            >
+              <Monitor size={16} />
+              <span>Anime</span>
+            </button>
+            <button
+              onClick={() => setType("MANGA")}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                type === "MANGA" ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-gray-500 hover:text-white"
+              }`}
+            >
+              <BookOpen size={16} />
+              <span>Manga</span>
+            </button>
+          </div>
       </div>
 
       {/* Tabs */}
@@ -366,7 +406,7 @@ function ListsView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
             }`}
           >
             <tab.icon size={15} />
-            <span>{tab.label}</span>
+            <span>{tab.key === "watching" ? (type === "MANGA" ? "Reading" : "Watching") : tab.label}</span>
           </button>
         ))}
       </div>
@@ -386,22 +426,11 @@ function ListsView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
         <div className="text-center py-24 border-2 border-dashed border-white/[0.04] rounded-2xl">
           <Heart size={40} className="mx-auto text-gray-800 mb-4" />
           <p className="text-gray-600 font-semibold">This list is empty</p>
-          <p className="text-gray-700 text-sm mt-1">Search for anime and add them to your list.</p>
+          <p className="text-gray-700 text-sm mt-1">Search for {type.toLowerCase()} and add them to your list.</p>
         </div>
       )}
 
-      {hasMore && (
-        <div className="flex justify-center pt-8">
-          <button
-            onClick={loadMore}
-            disabled={loadingMore}
-            className="px-8 py-3 bg-white/[0.04] hover:bg-accent hover:text-white rounded-xl font-bold transition-all border border-white/[0.06] flex items-center space-x-3 group"
-          >
-            {loadingMore ? <Loader2 className="animate-spin" size={18} /> : <RotateCcw size={16} className="group-hover:rotate-180 transition-transform duration-500" />}
-            <span>{loadingMore ? "Loading..." : "Load More"}</span>
-          </button>
-        </div>
-      )}
+      <InfiniteScroll hasMore={hasMore} loading={loadingMore} onLoadMore={loadMore} />
     </div>
   );
 }
@@ -522,6 +551,7 @@ function DownloadsView() {
 
 // ─── Library View ─────────────────────────────────────
 function LibraryView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
+  const [type, setType] = useState<"ANIME" | "MANGA">("ANIME");
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -529,21 +559,23 @@ function LibraryView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
   const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
-    mediaApi.getUserList("completed", "ANIME", 1)
+    setLoading(true);
+    mediaApi.getUserList("completed", type, 1)
       .then(data => {
         setItems(data.media || []);
         setHasMore(data.page_info?.has_next_page || false);
+        setPage(1);
       })
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [type]);
 
   const loadMore = async () => {
-    if (loadingMore) return;
+    if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
-      const data = await mediaApi.getUserList("completed", "ANIME", nextPage);
+      const data = await mediaApi.getUserList("completed", type, nextPage);
       setItems(prev => [...prev, ...(data.media || [])]);
       setHasMore(data.page_info?.has_next_page || false);
       setPage(nextPage);
@@ -556,7 +588,29 @@ function LibraryView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white">Library</h1>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white">Library</h1>
+        <div className="flex bg-white/[0.04] p-1 rounded-xl border border-white/[0.06] w-fit">
+            <button
+              onClick={() => setType("ANIME")}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                type === "ANIME" ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-gray-500 hover:text-white"
+              }`}
+            >
+              <Monitor size={16} />
+              <span>Anime</span>
+            </button>
+            <button
+              onClick={() => setType("MANGA")}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                type === "MANGA" ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-gray-500 hover:text-white"
+              }`}
+            >
+              <BookOpen size={16} />
+              <span>Manga</span>
+            </button>
+          </div>
+      </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-24">
@@ -569,24 +623,13 @@ function LibraryView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
               <MediaCard key={item.id} item={item} onSelect={onSelect} />
             ))}
           </div>
-          {hasMore && (
-            <div className="flex justify-center pt-8">
-              <button
-                onClick={loadMore}
-                disabled={loadingMore}
-                className="px-8 py-3 bg-white/[0.04] hover:bg-accent hover:text-white rounded-xl font-bold transition-all border border-white/[0.06] flex items-center space-x-3 group"
-              >
-                {loadingMore ? <Loader2 className="animate-spin" size={18} /> : <RotateCcw size={16} className="group-hover:rotate-180 transition-transform duration-500" />}
-                <span>{loadingMore ? "Loading..." : "Load More"}</span>
-              </button>
-            </div>
-          )}
+          <InfiniteScroll hasMore={hasMore} loading={loadingMore} onLoadMore={loadMore} />
         </>
       ) : (
         <div className="text-center py-24 border-2 border-dashed border-white/[0.04] rounded-2xl">
           <Library size={40} className="mx-auto text-gray-800 mb-4" />
           <p className="text-gray-600 font-semibold">Library is empty</p>
-          <p className="text-gray-700 text-sm mt-1">Your completed anime will appear here.</p>
+          <p className="text-gray-700 text-sm mt-1">Your completed {type.toLowerCase()} will appear here.</p>
         </div>
       )}
     </div>
@@ -603,6 +646,8 @@ function SettingsView() {
   const [registryStats, setRegistryStats] = useState<any>(null);
   const [backingUp, setBackingUp] = useState(false);
   const [backupUrl, setBackupUrl] = useState<string | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState<{ text: string; type: "success" | "error" | null }>({ text: "", type: null });
 
   useEffect(() => {
     mediaApi.getConfig()
@@ -610,6 +655,22 @@ function SettingsView() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  const handleUpdate = async () => {
+    setCheckingUpdate(true);
+    setUpdateMessage({ text: "", type: null });
+    try {
+      const res = await mediaApi.triggerUpdate();
+      setUpdateMessage({ text: res.message, type: res.status === "success" ? "success" : "error" });
+      if (res.status === "success" && res.message.includes("Updated")) {
+        setTimeout(() => window.location.reload(), 2000);
+      }
+    } catch (err) {
+      setUpdateMessage({ text: "Failed to connect to update server.", type: "error" });
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!config) return;
@@ -828,16 +889,23 @@ function SettingsView() {
 
                 <div className="flex flex-col space-y-3 pt-2">
                   <button
-                    onClick={async () => {
-                      const res = await mediaApi.triggerUpdate();
-                      alert(res.message);
-                      if (res.status === "success") window.location.reload();
-                    }}
-                    className="flex items-center justify-center space-x-2 py-3 bg-accent text-white rounded-xl font-bold hover:bg-accent-light transition-all shadow-lg shadow-accent/20"
+                    onClick={handleUpdate}
+                    disabled={checkingUpdate}
+                    className="flex items-center justify-center space-x-2 py-3 bg-accent text-white rounded-xl font-bold hover:bg-accent-light transition-all shadow-lg shadow-accent/20 disabled:opacity-50"
                   >
-                    <RotateCcw size={16} />
-                    <span>Check for Updates</span>
+                    {checkingUpdate ? <Loader2 size={16} className="animate-spin" /> : <RotateCcw size={16} />}
+                    <span>{checkingUpdate ? "Checking..." : "Check for Updates"}</span>
                   </button>
+                  
+                  {updateMessage.text && (
+                    <div className={`p-3 rounded-xl text-xs font-semibold flex items-center space-x-2 animate-fade-in ${
+                      updateMessage.type === "success" ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"
+                    }`}>
+                      {updateMessage.type === "success" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                      <span>{updateMessage.text}</span>
+                    </div>
+                  )}
+
                   <p className="text-[10px] text-center text-gray-600">Current build: 2026.05.13.production</p>
                 </div>
               </div>

@@ -87,6 +87,7 @@ class Context:
     config: "AppConfig"
     switch: Switch = field(default_factory=Switch)
     _provider: Optional["BaseAnimeProvider"] = None
+    _manga_provider: Optional[Any] = None
     _selector: Optional["BaseSelector"] = None
     _media_api: Optional["BaseApiClient"] = None
 
@@ -99,6 +100,13 @@ class Context:
     _player: Optional["PlayerService"] = None
     _updater: Optional["UpdaterService"] = None
     is_offline: bool = False
+
+    @property
+    def manga_provider(self) -> Any:
+        if not self._manga_provider:
+            from ...libs.provider.manga.MangaProvider import create_manga_provider
+            self._manga_provider = create_manga_provider(self.config.general.manga_provider)
+        return self._manga_provider
 
     @property
     def provider(self) -> "BaseAnimeProvider":
