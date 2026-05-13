@@ -10,13 +10,15 @@ import {
   Monitor,
   Bell,
   User,
+  BookOpen,
 } from "lucide-react";
 import { mediaApi, type HealthStatus } from "@/lib/api";
 
-export type ViewName = "home" | "search" | "lists" | "downloads" | "library" | "settings" | "notifications" | "profile";
+export type ViewName = "home" | "manga" | "search" | "lists" | "downloads" | "library" | "settings" | "notifications" | "profile";
 
 const navItems: { icon: typeof Home; label: string; view: ViewName }[] = [
   { icon: Home, label: "Home", view: "home" },
+  { icon: BookOpen, label: "Manga", view: "manga" },
   { icon: Search, label: "Search", view: "search" },
   { icon: Monitor, label: "My Lists", view: "lists" },
   { icon: Download, label: "Downloads", view: "downloads" },

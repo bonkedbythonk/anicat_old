@@ -119,12 +119,27 @@ async def get_health():
 async def trigger_update():
     """Trigger a git pull to update the application."""
     import subprocess
+    import os
     try:
-        # Run git pull
-        result = subprocess.run(["git", "pull"], capture_output=True, text=True, timeout=30)
-        if result.returncode == 0:
-            return {"status": "success", "message": "Update pulled successfully. Please restart Anicat."}
-        else:
-            return {"status": "error", "message": result.stderr}
+        # 1. Run git pull
+        # Use full path to git if possible, or just trust environment
+        result = subprocess.run(["git", "pull"], capture_output=True, text=True, timeout=60)
+        
+        if result.returncode != 0:
+            return {"status": "error", "message": f"Git pull failed: {result.stderr or result.stdout}"}
+            
+        if "Already up to date." in result.stdout:
+            return {"status": "success", "message": "✨ Already on the latest version."}
+        
+        # 2. Try to run uv sync if uv is available
+        try:
+            subprocess.run(["uv", "sync"], capture_output=True, timeout=120)
+        except Exception:
+            pass # Non-critical if uv is missing
+            
+        return {"status": "success", "message": "🚀 Updated successfully! Please restart the Anicat server to apply changes."}
+        
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "message": "Update timed out. Please try running 'git pull' manually in the terminal."}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": f"Unexpected error: {str(e)}"}

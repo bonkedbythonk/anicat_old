@@ -104,6 +104,63 @@ function HomeView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
   );
 }
 
+// ─── Manga View ──────────────────────────────────────
+function MangaView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
+  const [trendingList, setTrendingList] = useState<MediaItem[]>([]);
+  const [popularList, setPopularList] = useState<MediaItem[]>([]);
+  const [readingList, setReadingList] = useState<MediaItem[]>([]);
+  const [heroManga, setHeroManga] = useState<MediaItem | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadManga = async () => {
+      try {
+        const [trending, popular, reading] = await Promise.all([
+          mediaApi.getTrending("MANGA"),
+          mediaApi.getSeasonal("MANGA"),
+          mediaApi.getUserList("watching", "MANGA")
+        ]);
+        setTrendingList(trending.media || []);
+        setPopularList(popular.media || []);
+        setReadingList(reading.media || []);
+        
+        // Randomize hero from reading list or trending
+        const pool = reading.media?.length ? reading.media.slice(0, 5) : trending.media?.slice(0, 5);
+        if (pool?.length) {
+          setHeroManga(pool[Math.floor(Math.random() * pool.length)]);
+        }
+      } catch (err) {
+        console.error("Failed to load manga view:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadManga();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <Loader2 className="animate-spin text-accent" size={40} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-12 animate-fade-in pb-20">
+      {heroManga && <Hero item={heroManga} onSelect={onSelect} />}
+      
+      <MediaRow title="Trending Manga" items={trendingList} onSelect={onSelect} />
+      
+      <MediaRow title="Popular Manga" items={popularList} onSelect={onSelect} />
+
+      {readingList.length > 0 && (
+        <MediaRow title="Continue Reading" items={readingList} onSelect={onSelect} />
+      )}
+    </div>
+  );
+}
+
 // ─── Infinite Scroll Component ─────────────────────────
 function InfiniteScroll({ hasMore, loading, onLoadMore }: { hasMore: boolean, loading: boolean, onLoadMore: () => void }) {
   const observerTarget = useRef(null);
@@ -1217,6 +1274,8 @@ export default function App() {
     switch (activeView) {
       case "home":
         return <HomeView onSelect={handleSelect} />;
+      case "manga":
+        return <MangaView onSelect={handleSelect} />;
       case "search":
         return <SearchView onSelect={handleSelect} />;
       case "lists":
