@@ -32,8 +32,10 @@ if ! uv pip install -e . --quiet; then
     exit 1
 fi
 
-# 4. Save current project path
-echo "$PROJECT_DIR" > "$HOME/.anicat_path"
+# 4. Save current project path (resolved)
+# Resolve to an absolute canonical path to avoid stale/cached locations
+RESOLVED_PROJECT_DIR=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$PROJECT_DIR")
+echo "$RESOLVED_PROJECT_DIR" > "$HOME/.anicat_path"
 echo "✅ Environment ready."
 
 # 5. Create global wrapper script for 'anicat' command
@@ -42,11 +44,16 @@ cat > "$HOME/.local/bin/anicat" << 'EOF'
 #!/bin/bash
 # Global anicat command wrapper
 
-# Read project directory from saved path
-PROJECT_DIR="$(cat "$HOME/.anicat_path" 2>/dev/null)"
-
-if [ -z "$PROJECT_DIR" ] || [ ! -d "$PROJECT_DIR" ]; then
+# Read project directory from saved path and resolve it to an absolute path
+RAW_PROJECT_DIR="$(cat "$HOME/.anicat_path" 2>/dev/null)"
+if [ -z "$RAW_PROJECT_DIR" ]; then
     echo "❌ Error: Anicat project directory not found. Please reinstall anicat."
+    exit 1
+fi
+PROJECT_DIR=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$RAW_PROJECT_DIR")
+
+if [ ! -d "$PROJECT_DIR" ]; then
+    echo "❌ Error: Anicat project directory not found at $PROJECT_DIR. Please reinstall anicat."
     exit 1
 fi
 
@@ -114,3 +121,15 @@ echo ""
 echo "✨ Installation Complete! ✨"
 echo "You can now find 'Anicat' in your Launchpad or Applications folder."
 echo "Go ahead and drag it to your Dock for easy access!"
+
+# Diagnostics: show which `anicat` will be invoked and warn if our wrapper isn't first
+echo ""
+echo "🔎 Diagnostic: which anicat will run by default:" 
+which -a anicat 2>/dev/null || true
+FIRST_ANICAT=$(command -v anicat 2>/dev/null || true)
+if [ -n "$FIRST_ANICAT" ] && [ "$FIRST_ANICAT" != "$HOME/.local/bin/anicat" ]; then
+    echo "\n⚠️  Note: the anicat executable at $FIRST_ANICAT will be used before $HOME/.local/bin/anicat."
+    echo "If you want the newly installed wrapper to take precedence, add ~/.local/bin to the front of your PATH in your shell config, e.g."
+    echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+    echo "Then open a new terminal or run 'hash -r' to refresh shell command cache."
+fi
