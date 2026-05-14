@@ -77,6 +77,8 @@ applet.icns
 .anicat_path
 DEV_VS_PUBLIC.md
 scripts/start-dev.sh
+dev_backend.sh
+dev_frontend.sh
 
 # Testing
 .coverage
