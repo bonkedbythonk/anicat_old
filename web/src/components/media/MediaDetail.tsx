@@ -135,6 +135,20 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
       setReadingChapter(String(nextEp));
       return;
     }
+
+    // Optimistic Update
+    setFullItem(prev => ({
+      ...prev,
+      user_status: prev.user_status ? {
+        ...prev.user_status,
+        progress: nextEp
+      } : {
+        status: "watching",
+        progress: nextEp,
+        score: 0
+      }
+    }));
+
     setIsPlayingNext(true);
     try {
       await mediaApi.play(item.id, String(nextEp));
@@ -152,12 +166,27 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
     
     // Set progress to num - 1
     const newProgress = Math.max(0, num - 1);
+    
+    // Optimistic Update: Update the local state immediately
+    setFullItem(prev => ({
+      ...prev,
+      user_status: prev.user_status ? {
+        ...prev.user_status,
+        progress: newProgress
+      } : {
+        status: "watching",
+        progress: newProgress,
+        score: 0
+      }
+    }));
+
     setIsUpdatingStatus(true);
     try {
       await mediaApi.updateStatus(item.id, undefined, undefined, newProgress);
       dispatchRefresh();
     } catch (error) {
       console.error("Failed to unwatch:", error);
+      // Revert if it fails? (optional, usually not needed for simple progress)
     } finally {
       setIsUpdatingStatus(false);
     }
