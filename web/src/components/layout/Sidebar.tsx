@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { 
-  Home, 
-  Search, 
-  Download, 
-  Library, 
-  Settings, 
+import {
+  Home,
+  Search,
+  Download,
+  Library,
+  Settings,
   Monitor,
   Bell,
   User,
@@ -77,9 +77,9 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0 
       {/* Logo */}
       <div className="flex justify-center px-4 mb-10 pt-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img 
-          src="/anicat_logo.webp" 
-          alt="Anicat Logo" 
+        <img
+          src="/anicat_logo.webp"
+          alt="Anicat Logo"
           className="w-24 h-auto lg:w-32 opacity-90 hover:opacity-100 transition-opacity mix-blend-screen"
         />
       </div>
@@ -89,18 +89,16 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0 
         {navItems.map((item) => {
           const isActive = activeView === item.view;
           return (
-            <button 
+            <button
               key={item.view}
               onClick={() => onNavigate(item.view)}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${
-                isActive 
-                  ? "bg-accent/10 text-white" 
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${isActive
+                  ? "bg-accent/10 text-white"
                   : "text-gray-500 hover:text-white hover:bg-white/[0.04]"
-              }`}
+                }`}
             >
-              <div className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${
-                isActive ? "bg-accent text-white shadow-lg shadow-accent/25" : "group-hover:text-accent"
-              }`}>
+              <div className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${isActive ? "bg-accent text-white shadow-lg shadow-accent/25" : "group-hover:text-accent"
+                }`}>
                 <item.icon size={18} />
               </div>
               <span className="hidden lg:block text-[13px] font-semibold tracking-wide">{item.label}</span>
@@ -115,18 +113,16 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0 
         {secondaryItems.map((item) => {
           const isActive = activeView === item.view;
           return (
-            <button 
+            <button
               key={item.view}
               onClick={() => onNavigate(item.view)}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
-                isActive 
-                  ? "bg-accent/10 text-white" 
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${isActive
+                  ? "bg-accent/10 text-white"
                   : "text-gray-500 hover:text-white hover:bg-white/[0.04]"
-              }`}
+                }`}
             >
-              <div className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors relative ${
-                isActive ? "bg-accent text-white shadow-lg shadow-accent/25" : "group-hover:text-accent"
-              }`}>
+              <div className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors relative ${isActive ? "bg-accent text-white shadow-lg shadow-accent/25" : "group-hover:text-accent"
+                }`}>
                 <item.icon size={18} />
                 {/* Notification badge */}
                 {item.view === "notifications" && notificationCount > 0 && (
@@ -140,11 +136,11 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0 
           );
         })}
       </nav>
-      
+
       {/* Footer — Sync Status & Updates */}
       <div className="px-5 py-3 mt-auto space-y-3">
         {health?.update_available && (
-          <button 
+          <button
             onClick={async () => {
               if (confirm("Update Anicat to the latest version?")) {
                 const res = await mediaApi.triggerUpdate();
@@ -158,7 +154,7 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0 
             <span className="text-[10px] font-bold uppercase tracking-wider">Update</span>
           </button>
         )}
-        
+
         <div className="hidden lg:flex items-center space-x-3">
           <div className={`w-2 h-2 rounded-full shrink-0 ${syncColor}`} />
           <p className="text-[10px] uppercase font-bold tracking-[0.12em] text-gray-600">{syncLabel}</p>
