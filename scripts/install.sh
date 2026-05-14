@@ -25,11 +25,18 @@ if ! uv sync --quiet; then
     exit 1
 fi
 
-# 3. Save current project path
+# 3. Install the anicat CLI command
+echo "📦 Installing anicat CLI command..."
+if ! uv pip install -e . --quiet; then
+    echo "❌ Error: Failed to install anicat package. Check your setup."
+    exit 1
+fi
+
+# 4. Save current project path
 echo "$PROJECT_DIR" > "$HOME/.anicat_path"
 echo "✅ Environment ready."
 
-# 2. Generate app icon from logo
+# 4. Generate app icon from logo
 cd "$PROJECT_DIR"
 ICON_SOURCE="assets/logo-dark.png"
 ICONSET_DIR=".anicat.iconset"
@@ -54,7 +61,7 @@ cp "$ICON_SOURCE" "$ICONSET_DIR/icon_512x512@2x.png"
 iconutil -c icns "$ICONSET_DIR" -o "$ICNS_FILE"
 rm -rf "$ICONSET_DIR"
 
-# 3. Create the App bundle with pre-generated icon
+# 5. Create the App bundle with pre-generated icon
 rm -rf "$APP_NAME"
 osacompile -o "$APP_NAME" -e "do shell script \"$PROJECT_DIR/scripts/launch_anicat.sh > /dev/null 2>&1 &\""
 
@@ -64,12 +71,12 @@ rm -f "$ICNS_FILE"
 
 echo "✅ App bundle created with custom icon."
 
-# 4. Copy to Applications
+# 6. Copy to Applications
 mkdir -p "$INSTALL_DIR"
 cp -R "$APP_NAME" "$INSTALL_DIR/"
 echo "✅ $APP_NAME copied to $INSTALL_DIR"
 
-# 5. Success message
+# 7. Success message
 echo ""
 echo "✨ Installation Complete! ✨"
 echo "You can now find 'Anicat' in your Launchpad or Applications folder."
