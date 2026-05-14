@@ -19,7 +19,11 @@ export async function fetchFromApi(endpoint: string, options: RequestInit = {}) 
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `API error: ${response.status} ${response.statusText}`);
+    const message = errorData.message || `API error: ${response.status} ${response.statusText}`;
+    if (isBrowser) {
+      console.error('API ERROR', { endpoint, status: response.status, statusText: response.statusText, errorData });
+    }
+    throw new Error(`${endpoint} - ${message}`);
   }
 
   return response.json();
