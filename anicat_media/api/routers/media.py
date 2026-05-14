@@ -223,7 +223,11 @@ async def get_media_episodes(media_id: int):
         else:
             # --- Anime Logic ---
             from ...libs.provider.anime.params import AnimeParams, SearchParams as AnimeSearchParams
-            
+            # Prepare title and helper imports
+            title = media.title.romaji or media.title.english
+            from ...core.utils.normalizer import normalize_title
+            from ...cli.utils.search import find_best_match_title
+
             search_results = ctx.provider.search(
                 AnimeSearchParams(
                     query=normalize_title(title, ctx.config.general.provider.value, True),
