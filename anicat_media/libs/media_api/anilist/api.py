@@ -234,6 +234,7 @@ class AniListApi(BaseApiClient):
             # or just rely on the 5-minute TTL.
             # For now, let's invalidate the specific list item if possible.
             invalidate_graphql_cache(ANILIST_ENDPOINT, gql.GET_MEDIA_LIST_ITEM, {"mediaId": params.media_id})
+            invalidate_graphql_cache(ANILIST_ENDPOINT, gql.SEARCH_MEDIA, {"id": params.media_id})
             
         return success
 
