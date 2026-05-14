@@ -6,8 +6,9 @@ from ...core.config import AppConfig
 @click.command()
 @click.option("--port", default=8000, help="Port to run the API on.")
 @click.option("--no-browser", is_flag=True, help="Don't open the browser automatically.")
+@click.option("--reload", is_flag=True, help="Enable hot reload on code changes (development mode).")
 @click.pass_obj
-def dashboard(config: AppConfig, port: int, no_browser: bool):
+def dashboard(config: AppConfig, port: int, no_browser: bool, reload: bool):
     """Launch the Anicat PWA Dashboard."""
     from ...api.main import create_app
 
@@ -28,4 +29,4 @@ def dashboard(config: AppConfig, port: int, no_browser: bool):
             
         Timer(1, open_browser).start()
 
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info", reload=reload)
