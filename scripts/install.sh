@@ -36,7 +36,40 @@ fi
 echo "$PROJECT_DIR" > "$HOME/.anicat_path"
 echo "✅ Environment ready."
 
-# 4. Generate app icon from logo
+# 5. Create global wrapper script for 'anicat' command
+mkdir -p "$HOME/.local/bin"
+cat > "$HOME/.local/bin/anicat" << 'EOF'
+#!/bin/bash
+# Global anicat command wrapper
+
+# Read project directory from saved path
+PROJECT_DIR="$(cat "$HOME/.anicat_path" 2>/dev/null)"
+
+if [ -z "$PROJECT_DIR" ] || [ ! -d "$PROJECT_DIR" ]; then
+    echo "❌ Error: Anicat project directory not found. Please reinstall anicat."
+    exit 1
+fi
+
+# Ensure uv is in PATH
+export PATH="$HOME/.local/bin:$PATH"
+
+# Run anicat from the project directory
+cd "$PROJECT_DIR"
+uv run anicat "$@"
+EOF
+chmod +x "$HOME/.local/bin/anicat"
+
+# Ensure ~/.local/bin is in PATH
+if ! echo "$PATH" | grep -q "$HOME/.local/bin"; then
+    echo ""
+    echo "⚠️  Please add ~/.local/bin to your PATH by adding this to your shell config:"
+    echo "   export PATH=\"\$HOME/.local/bin:\$PATH\""
+    echo ""
+fi
+
+echo "✅ Global 'anicat' command installed at $HOME/.local/bin/anicat"
+
+# 6. Generate app icon from logo
 cd "$PROJECT_DIR"
 ICON_SOURCE="assets/logo-dark.png"
 ICONSET_DIR=".anicat.iconset"
@@ -61,7 +94,7 @@ cp "$ICON_SOURCE" "$ICONSET_DIR/icon_512x512@2x.png"
 iconutil -c icns "$ICONSET_DIR" -o "$ICNS_FILE"
 rm -rf "$ICONSET_DIR"
 
-# 5. Create the App bundle with pre-generated icon
+# 7. Create the App bundle with pre-generated icon
 rm -rf "$APP_NAME"
 osacompile -o "$APP_NAME" -e "do shell script \"$PROJECT_DIR/scripts/launch_anicat.sh > /dev/null 2>&1 &\""
 
@@ -71,12 +104,12 @@ rm -f "$ICNS_FILE"
 
 echo "✅ App bundle created with custom icon."
 
-# 6. Copy to Applications
+# 8. Copy to Applications
 mkdir -p "$INSTALL_DIR"
 cp -R "$APP_NAME" "$INSTALL_DIR/"
 echo "✅ $APP_NAME copied to $INSTALL_DIR"
 
-# 7. Success message
+# 9. Success message
 echo ""
 echo "✨ Installation Complete! ✨"
 echo "You can now find 'Anicat' in your Launchpad or Applications folder."
