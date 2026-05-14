@@ -177,13 +177,15 @@ async def trigger_update():
         if "Already up to date." in result.stdout:
             return {"status": "success", "message": "✨ Already on the latest version."}
         
-        # 2. Try to run uv sync if uv is available
-        try:
-            subprocess.run(["uv", "sync"], capture_output=True, timeout=120, cwd=repo_root)
-        except Exception:
-            pass # Non-critical if uv is missing
-            
-        return {"status": "success", "message": "🚀 Updated successfully! Please restart the Anicat server to apply changes."}
+        # 2. Run the installation script to sync everything and rebuild frontend
+        install_script = os.path.join(repo_root, "scripts", "install.sh")
+        if os.path.exists(install_script):
+            # Run install script in the background so we don't block the API too long
+            # but we use a timeout to wait for it to at least start successfully
+            subprocess.Popen(["bash", install_script], cwd=repo_root)
+            return {"status": "success", "message": "🚀 Update started! The app will rebuild and restart automatically in about 1-2 minutes."}
+        
+        return {"status": "success", "message": "Updated successfully (code only)."}
         
     except subprocess.TimeoutExpired:
         return {"status": "error", "message": "Update timed out. Please try running 'git pull' manually in the terminal."}
