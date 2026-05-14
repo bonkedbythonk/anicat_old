@@ -29,18 +29,47 @@ fi
 echo "$PROJECT_DIR" > "$HOME/.anicat_path"
 echo "✅ Environment ready."
 
-# 2. Recreate the App bundle to ensure portability
+# 2. Generate app icon from logo
 cd "$PROJECT_DIR"
+ICON_SOURCE="assets/logo-dark.png"
+ICONSET_DIR=".anicat.iconset"
+ICNS_FILE="applet.icns"
+
+rm -rf "$ICONSET_DIR" "$ICNS_FILE"
+mkdir -p "$ICONSET_DIR"
+
+# Generate all required icon sizes
+sips -z 16 16 "$ICON_SOURCE" --out "$ICONSET_DIR/icon_16x16.png" >/dev/null
+sips -z 32 32 "$ICON_SOURCE" --out "$ICONSET_DIR/icon_16x16@2x.png" >/dev/null
+sips -z 32 32 "$ICON_SOURCE" --out "$ICONSET_DIR/icon_32x32.png" >/dev/null
+sips -z 64 64 "$ICON_SOURCE" --out "$ICONSET_DIR/icon_32x32@2x.png" >/dev/null
+sips -z 128 128 "$ICON_SOURCE" --out "$ICONSET_DIR/icon_128x128.png" >/dev/null
+sips -z 256 256 "$ICON_SOURCE" --out "$ICONSET_DIR/icon_128x128@2x.png" >/dev/null
+sips -z 256 256 "$ICON_SOURCE" --out "$ICONSET_DIR/icon_256x256.png" >/dev/null
+sips -z 512 512 "$ICON_SOURCE" --out "$ICONSET_DIR/icon_256x256@2x.png" >/dev/null
+sips -z 512 512 "$ICON_SOURCE" --out "$ICONSET_DIR/icon_512x512.png" >/dev/null
+cp "$ICON_SOURCE" "$ICONSET_DIR/icon_512x512@2x.png"
+
+# Package into .icns format
+iconutil -c icns "$ICONSET_DIR" -o "$ICNS_FILE"
+rm -rf "$ICONSET_DIR"
+
+# 3. Create the App bundle with pre-generated icon
 rm -rf "$APP_NAME"
 osacompile -o "$APP_NAME" -e "do shell script \"$PROJECT_DIR/scripts/launch_anicat.sh > /dev/null 2>&1 &\""
-echo "✅ App bundle created."
 
-# 3. Copy to Applications
+# Replace the default applet icon with our custom icon
+cp "$ICNS_FILE" "$APP_NAME/Contents/Resources/applet.icns"
+rm -f "$ICNS_FILE"
+
+echo "✅ App bundle created with custom icon."
+
+# 4. Copy to Applications
 mkdir -p "$INSTALL_DIR"
 cp -R "$APP_NAME" "$INSTALL_DIR/"
 echo "✅ $APP_NAME copied to $INSTALL_DIR"
 
-# 4. Success message
+# 5. Success message
 echo ""
 echo "✨ Installation Complete! ✨"
 echo "You can now find 'Anicat' in your Launchpad or Applications folder."
