@@ -8,7 +8,23 @@ INSTALL_DIR="$HOME/Applications"
 
 echo "🚀 Installing Anicat Desktop App..."
 
-# 1. Check for uv (Python manager)
+# 1. Check for System Dependencies (mpv, ffmpeg, chafa)
+echo "🔍 Checking for system dependencies (mpv, ffmpeg, chafa)..."
+if ! command -v brew &> /dev/null; then
+    echo "⚠️  Homebrew not found. System dependencies might be missing."
+    echo "   (For the best experience, we recommend installing Homebrew from https://brew.sh)"
+else
+    # Ensure brew is updated if it's been a while (optional, but keep it fast)
+    for cmd in mpv ffmpeg chafa; do
+        if ! command -v $cmd &> /dev/null; then
+            echo "📦 Installing $cmd via Homebrew..."
+            brew install $cmd
+        fi
+    done
+    echo "✅ System dependencies verified."
+fi
+
+# 2. Check for uv (Python manager)
 if ! command -v uv &> /dev/null; then
     echo "📦 Installing 'uv' (Python manager)..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -17,7 +33,7 @@ if ! command -v uv &> /dev/null; then
     export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# 2. Sync dependencies
+# 3. Sync dependencies
 echo "📦 Setting up the environment and dependencies..."
 echo "   (This may take a minute on the first install)"
 if ! uv sync --quiet; then
@@ -25,20 +41,20 @@ if ! uv sync --quiet; then
     exit 1
 fi
 
-# 3. Install the anicat CLI command
+# 4. Install the anicat CLI command
 echo "📦 Installing anicat CLI command..."
 if ! uv pip install -e . --quiet; then
     echo "❌ Error: Failed to install anicat package. Check your setup."
     exit 1
 fi
 
-# 4. Save current project path (resolved)
+# 5. Save current project path (resolved)
 # Resolve to an absolute canonical path to avoid stale/cached locations
 RESOLVED_PROJECT_DIR=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$PROJECT_DIR")
 echo "$RESOLVED_PROJECT_DIR" > "$HOME/.anicat_path"
 echo "✅ Environment ready."
 
-# 5. Build Frontend (for dashboard)
+# 6. Build Frontend (for dashboard)
 echo "📦 Building Anicat Dashboard frontend..."
 if ! command -v npm &> /dev/null; then
     echo "⚠️  Warning: 'npm' not found. Dashboard frontend will not be updated."
@@ -63,7 +79,7 @@ fi
 
 cd "$PROJECT_DIR"
 
-# 6. Create global wrapper script for 'anicat' command
+# 7. Create global wrapper script for 'anicat' command
 mkdir -p "$HOME/.local/bin"
 cat > "$HOME/.local/bin/anicat" << 'EOF'
 #!/bin/bash
@@ -91,7 +107,7 @@ uv run anicat "$@"
 EOF
 chmod +x "$HOME/.local/bin/anicat"
 
-# 7. Ensure ~/.local/bin is in PATH
+# 8. Ensure ~/.local/bin is in PATH
 SHELL_CONFIG=""
 if [[ "$SHELL" == */zsh ]]; then
     SHELL_CONFIG="$HOME/.zshrc"
@@ -113,7 +129,7 @@ fi
 
 echo "✅ Global 'anicat' command installed at $HOME/.local/bin/anicat"
 
-# 8. Success message
+# 9. Success message
 echo ""
 echo "✨ Installation Complete! ✨"
 echo "Anicat is now installed and ready to go."
