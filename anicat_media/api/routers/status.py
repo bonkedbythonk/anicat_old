@@ -110,8 +110,14 @@ async def get_health():
             pass
 
         from ..core.constants import VERSION
+        api_connected = ctx.media_api.is_authenticated()
+        
+        # Auto-recover is_offline status if we are clearly connected
+        if api_connected and ctx.is_offline:
+            ctx.is_offline = False
+
         return HealthInfo(
-            api_connected=ctx.media_api.is_authenticated(),
+            api_connected=api_connected,
             worker_running=ctx._download is not None,
             is_offline=ctx.is_offline,
             update_available=update_available,

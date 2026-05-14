@@ -1466,11 +1466,17 @@ export default function App() {
       try {
         const status = await mediaApi.getHealthStatus();
         setHealthStatus(status);
-        setIsOffline(status.is_offline);
-        if (!status.is_offline) setDismissedOffline(false);
+        
+        // Only show offline if explicitly told so by backend AND api is disconnected
+        const shouldBeOffline = status.is_offline || !status.api_connected;
+        setIsOffline(shouldBeOffline);
+        
+        if (!shouldBeOffline) setDismissedOffline(false);
         setNotificationCount(status.unread_notifications || 0);
       } catch {
-        setIsOffline(true);
+        // If the health check fails, the backend might be down. 
+        // We don't want to show the "Browsing local" banner immediately 
+        // as it might just be a server restart.
       }
     }
     checkSystem();
