@@ -112,19 +112,7 @@ async def get_health():
 
         from ..core.constants import VERSION
         api_authenticated = ctx.media_api.token is not None
-        
-        # If we have a token but no profile, try to fetch it now to verify connection
-        if api_authenticated and not getattr(ctx.media_api, "user_profile", None):
-            try:
-                ctx.media_api.user_profile = ctx.media_api.get_viewer_profile()
-            except Exception:
-                pass
-
-        api_connected = ctx.media_api.user_profile is not None
-        
-        # Auto-recover is_offline status if we are clearly connected
-        if api_connected and ctx.is_offline:
-            ctx.is_offline = False
+        api_connected = not ctx.is_offline
 
         return HealthInfo(
             api_connected=api_connected,
