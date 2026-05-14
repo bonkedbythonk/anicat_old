@@ -3,7 +3,7 @@ import importlib.util
 import logging
 import pkgutil
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Union
 
 import click
 
