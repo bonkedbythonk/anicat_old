@@ -9,7 +9,9 @@ from ...core.config import AppConfig
 @click.pass_obj
 def dashboard(config: AppConfig, port: int, no_browser: bool):
     """Launch the Anicat PWA Dashboard."""
-    from ...api.main import app
+    from ...api.main import create_app
+
+    app = create_app(config)
     
     click.echo(f"Starting Anicat API on http://localhost:{port}")
     
