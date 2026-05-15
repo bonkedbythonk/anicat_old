@@ -38,6 +38,13 @@ class MpvPlayer(BasePlayer):
         """
         self.config = config
         self.executable = shutil.which("mpv")
+        
+        # macOS specific fallback for background services
+        if not self.executable and sys.platform == "darwin":
+            for path in ["/opt/homebrew/bin/mpv", "/usr/local/bin/mpv"]:
+                if os.path.exists(path):
+                    self.executable = path
+                    break
 
     def play(self, params):
         """

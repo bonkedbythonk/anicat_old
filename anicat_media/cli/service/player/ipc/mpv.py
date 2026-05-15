@@ -525,16 +525,17 @@ class MpvIPCPlayer(BaseIPCPlayer):
                     logger.error(f"Error in message handler for '{handler_name}': {e}")
 
     def _cleanup(self):
-        if self.ipc_client:
+        if hasattr(self, 'ipc_client') and self.ipc_client:
             self.ipc_client.disconnect()
-        if self.mpv_process:
+        if hasattr(self, 'mpv_process') and self.mpv_process:
             try:
                 self.mpv_process.terminate()
                 self.mpv_process.wait(timeout=3)
             except subprocess.TimeoutExpired:
                 self.mpv_process.kill()
         if (
-            self.socket_path
+            hasattr(self, 'socket_path')
+            and self.socket_path
             and not self.socket_path.startswith("\\\\.\\pipe\\")
             and Path(self.socket_path).exists()
         ):
