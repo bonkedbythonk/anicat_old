@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
 import logging
 
-from ...libs.media_api.types import MediaType, MediaSearchResult, MediaItem, CharacterSearchResult, MediaReview, MediaSort, MediaSeason, MediaGenre, MediaStatus, MediaFormat
+from ...libs.media_api.types import MediaType, MediaSearchResult, MediaItem, CharacterSearchResult, MediaReview, MediaSort, MediaSeason, MediaGenre, MediaStatus, MediaFormat, PageInfo
 from ...libs.media_api.params import MediaSearchParams, MediaCharactersParams, MediaReviewsParams, MediaRecommendationParams
 
 logger = logging.getLogger(__name__)
@@ -85,7 +85,6 @@ async def get_trending(
             per_page=per_page,
             sort=MediaSort.TRENDING_DESC,
         )
-        from ...libs.media_api.types import PageInfo
         result = ctx.media_api.search_media(params)
         return result or MediaSearchResult(page_info=PageInfo(total=0, current_page=1, has_next_page=False, per_page=per_page), media=[])
     except HTTPException:
@@ -111,7 +110,6 @@ async def get_seasonal(
             season=season,
             seasonYear=year,
         )
-        from ...libs.media_api.types import PageInfo
         result = ctx.media_api.search_media(params)
         return result or MediaSearchResult(page_info=PageInfo(total=0, current_page=1, has_next_page=False, per_page=per_page), media=[])
     except HTTPException:

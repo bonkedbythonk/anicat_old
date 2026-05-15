@@ -4,6 +4,8 @@ import logging
 from fastapi import APIRouter
 from pydantic import BaseModel
 import subprocess
+from anicat_media.core.constants import VERSION
+from anicat_media.core.config import ConfigLoader
 
 logger = logging.getLogger(__name__)
 
@@ -128,10 +130,8 @@ async def get_health():
         except Exception:
             pass
 
-        from anicat_media.core.constants import VERSION
-        
+
         # Refresh token status from config to ensure we aren't using stale memory
-        from anicat_media.core.config import ConfigLoader
         loader = ConfigLoader()
         current_config = loader.load(allow_setup=False)
         api_authenticated = bool(current_config.anilist.token and len(current_config.anilist.token) > 10)

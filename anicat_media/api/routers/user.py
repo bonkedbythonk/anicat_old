@@ -43,7 +43,6 @@ async def get_user_list(
                 media=[]
             )
             
-        from ...libs.media_api.types import UserMediaListStatus
         params = UserMediaListSearchParams(status=status or UserMediaListStatus.CURRENT, type=type, page=page)
         result = ctx.media_api.search_media_list(params)
         if not result:

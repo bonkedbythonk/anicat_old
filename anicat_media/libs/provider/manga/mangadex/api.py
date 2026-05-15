@@ -94,7 +94,7 @@ class MangaDexApi(BaseMangaProvider):
                     f"{base_url}/data/{hash}/{chapter_thumbnail}"
                     for chapter_thumbnail in chapter_thumbnails_info["chapter"]["data"]
                 ],
-                "title": f"Chapter {chapter_id}", # We don't have the title here easily
+                "title": f"Chapter {chapter}", # We don't have the title here easily
             }
         except Exception as e:
             logger.error(f"[MANGADEX-ERROR]: {e}")
