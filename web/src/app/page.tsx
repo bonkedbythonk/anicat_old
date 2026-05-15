@@ -7,6 +7,7 @@ import MediaCard from "@/components/media/MediaCard";
 import MediaRow from "@/components/media/MediaRow";
 import MediaDetail from "@/components/media/MediaDetail";
 import Hero from "@/components/media/Hero";
+import MangaReader from "@/components/media/MangaReader";
 import useKeyboardShortcuts from "@/lib/useKeyboardShortcuts";
 import { mediaApi, type MediaItem, type QueueItem, type Notification, type UserProfile, type SearchFilters, type HealthStatus } from "@/lib/api";
 import { useRefreshTrigger, dispatchRefresh } from "@/lib/events";
