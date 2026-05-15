@@ -897,7 +897,7 @@ function SettingsView({ health }: { health: HealthStatus | null }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState<"general" | "streaming" | "downloads" | "anilist" | "registry" | "maintenance" | "system">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "stream" | "downloads" | "anilist" | "registry" | "maintenance" | "system">("general");
   const [refreshNeeded, setRefreshNeeded] = useState(false);
   const [registryStats, setRegistryStats] = useState<any>(null);
   const [backingUp, setBackingUp] = useState(false);
