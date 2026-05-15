@@ -7,6 +7,10 @@ APP_NAME="Anicat.app"
 INSTALL_DIR="$HOME/Applications"
 
 echo "Installing Anicat Desktop App..."
+echo ""
+echo "NOTE: If this is a fresh Mac, Apple may show a popup asking to install"
+echo "'Xcode Command Line Tools.' Please click 'Install' to continue."
+echo ""
 
 # 1. Check for System Dependencies (mpv, ffmpeg, chafa)
 echo "Checking for system dependencies (mpv, ffmpeg, chafa)..."
@@ -68,7 +72,22 @@ if ! command -v uv &> /dev/null; then
     export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# 3. Sync dependencies
+# 3. Check for Node.js (required for dashboard build)
+if ! command -v npm &> /dev/null; then
+    echo "Node.js not found. It is required to build the Anicat Dashboard."
+    if [ -n "$BREW_EXE" ]; then
+        echo "   - Installing Node.js via Homebrew..."
+        $BREW_EXE install node --quiet
+        # Refresh path to include newly installed node
+        eval "$($BREW_EXE shellenv)"
+    else
+        echo "Error: Node.js is required but Homebrew is not available to install it."
+        echo "Please install Node.js manually from https://nodejs.org"
+        exit 1
+    fi
+fi
+
+# 4. Sync dependencies
 echo "Setting up the environment and dependencies..."
 echo "   (This may take a minute on the first install)"
 if ! uv sync --quiet; then
@@ -76,40 +95,35 @@ if ! uv sync --quiet; then
     exit 1
 fi
 
-# 4. Install the anicat CLI command
+# 5. Install the anicat CLI command
     echo "Installing anicat CLI command..."
 if ! uv pip install -e . --quiet; then
     echo "Error: Failed to install anicat package. Check your setup."
     exit 1
 fi
 
-# 5. Save current project path (resolved)
+# 6. Save current project path (resolved)
 # Resolve to an absolute canonical path to avoid stale/cached locations
 RESOLVED_PROJECT_DIR=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$PROJECT_DIR")
 echo "$RESOLVED_PROJECT_DIR" > "$HOME/.anicat_path"
 echo "Environment ready."
 
-# 6. Build Frontend (for dashboard)
+# 7. Build Frontend (for dashboard)
 echo "Building Anicat Dashboard frontend..."
-if ! command -v npm &> /dev/null; then
-    echo "Warning: 'npm' not found. Dashboard frontend will not be updated."
-    echo "   Please install Node.js (https://nodejs.org) to build the dashboard."
+cd "$PROJECT_DIR/web"
+echo "   - Installing frontend dependencies..."
+npm install --quiet
+echo "   - Building static export..."
+if npm run build; then
+    echo "   - Syncing static files to backend..."
+    STATIC_DIR="$PROJECT_DIR/anicat_media/api/static"
+    rm -rf "$STATIC_DIR"/*
+    mkdir -p "$STATIC_DIR"
+    cp -R out/* "$STATIC_DIR/"
+    echo "Dashboard built and synced."
 else
-    cd "$PROJECT_DIR/web"
-    echo "   - Installing frontend dependencies..."
-    npm install --quiet
-    echo "   - Building static export..."
-    if npm run build; then
-        echo "   - Syncing static files to backend..."
-        STATIC_DIR="$PROJECT_DIR/anicat_media/api/static"
-        rm -rf "$STATIC_DIR"/*
-        mkdir -p "$STATIC_DIR"
-        cp -R out/* "$STATIC_DIR/"
-        echo "Dashboard built and synced."
-    else
-        echo "Error: Frontend build failed."
-        exit 1
-    fi
+    echo "Error: Frontend build failed."
+    exit 1
 fi
 
 cd "$PROJECT_DIR"
