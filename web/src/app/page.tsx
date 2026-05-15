@@ -1631,7 +1631,7 @@ export default function App() {
               <div className="flex items-center space-x-3 text-green-400">
                 <RotateCcw size={18} className="animate-spin-slow" />
                 <span className="text-sm font-bold">
-                  Update in progress. Please refresh in ~2 minutes to apply changes.
+                  Update in progress. Please refresh in about a minute to apply changes.
                 </span>
               </div>
               <div className="flex items-center space-x-4">
