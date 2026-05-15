@@ -1,16 +1,16 @@
 from datetime import datetime
 from typing import Optional
+import logging
 from fastapi import APIRouter
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 def get_ctx():
     from ..main import ctx
     return ctx
-
-import logging
-logger = logging.getLogger(__name__)
 
 class PlaybackInfo(BaseModel):
     media_id: int
