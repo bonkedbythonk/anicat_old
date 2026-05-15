@@ -62,7 +62,7 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0 
       <div className="flex justify-center px-4 mb-10 pt-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/logo.png?v=2"
+          src="/anicat_logo.webp?v=2"
           alt="Anicat Logo"
           className="w-24 h-auto lg:w-32 opacity-95 hover:opacity-100 transition-opacity object-contain"
         />
