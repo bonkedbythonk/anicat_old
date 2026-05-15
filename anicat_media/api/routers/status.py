@@ -125,17 +125,22 @@ async def get_health():
 
         from ..core.constants import VERSION
         
+        # Refresh token status from config to ensure we aren't using stale memory
+        loader = ConfigLoader()
+        current_config = loader.load()
+        api_authenticated = bool(current_config.anilist.token)
+        
         # Perform a quick, non-blocking check if we are truly offline
-        # If we have a token, we try to reach the API.
-        api_authenticated = ctx.media_api.token is not None
+        api_connected = not ctx.is_offline
         
         # If the context is marked as offline, let's try to verify if it's still true
-        if ctx.is_offline and api_authenticated:
+        if not api_connected and api_authenticated:
             try:
-                # Just a tiny HEAD request or similar to a reliable endpoint
+                # Just a tiny HEAD request to a reliable endpoint
                 import httpx
-                httpx.get("https://anilist.co", timeout=2.0)
-                ctx.is_offline = False # Connection is back!
+                httpx.get("https://anilist.co", timeout=1.0)
+                ctx.is_offline = False 
+                api_connected = True
             except Exception:
                 pass
                 
