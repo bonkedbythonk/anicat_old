@@ -133,7 +133,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
             )}
 
             <a 
-              href="https://anilist.co/api/v2/oauth/authorize?client_id=14188&redirect_uri=https://anilist.co/api/v2/oauth/pin&response_type=token" 
+              href="https://anilist.co/api/v2/oauth/authorize?client_id=20148&redirect_uri=https://anilist.co/api/v2/oauth/pin&response_type=token" 
               target="_blank" 
               rel="noopener noreferrer"
               className="flex items-center justify-between p-4 rounded-2xl bg-accent/10 border border-accent/20 hover:bg-accent/20 transition-all group"
