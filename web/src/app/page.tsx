@@ -892,13 +892,12 @@ function LibraryView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
 }
 
 // ─── Settings View ────────────────────────────────────
-function SettingsView({ health }: { health: HealthStatus | null }) {
+function SettingsView({ health, onUpdateStarted }: { health: HealthStatus | null, onUpdateStarted?: () => void }) {
   const [config, setConfig] = useState<Record<string, Record<string, unknown>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<"general" | "stream" | "downloads" | "anilist" | "registry" | "maintenance" | "system">("general");
-  const [refreshNeeded, setRefreshNeeded] = useState(false);
   const [registryStats, setRegistryStats] = useState<any>(null);
   const [backingUp, setBackingUp] = useState(false);
   const [backupUrl, setBackupUrl] = useState<string | null>(null);
@@ -928,7 +927,7 @@ function SettingsView({ health }: { health: HealthStatus | null }) {
         const res = await mediaApi.triggerUpdate();
         setUpdateMessage({ text: res.message, type: res.status === "success" ? "success" : "error" });
         if (res.status === "success" && (res.message.includes("Update") || res.message.includes("Updated"))) {
-          setRefreshNeeded(true);
+          if (onUpdateStarted) onUpdateStarted();
         }
       } else {
         // Just check for updates
@@ -1500,6 +1499,7 @@ export default function App() {
   const [notificationCount, setNotificationCount] = useState(0);
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [refreshNeeded, setRefreshNeeded] = useState(false);
 
   // Poll health for offline banner and notifications
   useEffect(() => {
@@ -1573,7 +1573,7 @@ export default function App() {
       case "library":
         return <LibraryView onSelect={handleSelect} />;
       case "settings":
-        return <SettingsView health={healthStatus} />;
+        return <SettingsView health={healthStatus} onUpdateStarted={() => setRefreshNeeded(true)} />;
       case "notifications":
         return <NotificationsView onSelect={handleSelect} />;
       case "profile":
