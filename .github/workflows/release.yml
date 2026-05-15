@@ -25,14 +25,18 @@ jobs:
           python-version: '3.11'
       - name: install Rust
         uses: dtolnay/rust-toolchain@stable
+      - name: setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "latest"
       - name: install dependencies
         run: |
           npm install
-          pip install uv
-          uv sync
+          uv sync --dev
       - name: build sidecar
         run: |
-          pip install pyinstaller
+          uv run pyinstaller --version # Verify pyinstaller is there
           bash scripts/build_sidecar.sh
       - name: build tauri
         run: |
