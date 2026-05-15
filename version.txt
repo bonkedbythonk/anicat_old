@@ -1,2 +1,1 @@
- # Version 1.2.5 - Performance Polish
- # Update System: Verified
+3.4.0
