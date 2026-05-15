@@ -2,6 +2,7 @@ query ($id: Int, $type: MediaType) {
   Media(id: $id, type: $type) {
     characters {
       nodes {
+        id
         name {
           full
           native

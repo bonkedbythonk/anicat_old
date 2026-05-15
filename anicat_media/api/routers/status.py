@@ -22,6 +22,7 @@ class HealthInfo(BaseModel):
     is_offline: bool
     update_available: bool = False
     unread_notifications: int = 0
+    data_version: int = 0
     current_version: str = "unknown"
 
 # Module-level storage for last playback event
@@ -127,24 +128,22 @@ async def get_health():
         
         # Refresh token status from config to ensure we aren't using stale memory
         loader = ConfigLoader()
-        current_config = loader.load()
-        api_authenticated = bool(current_config.anilist.token)
+        current_config = loader.load(allow_setup=False)
+        api_authenticated = bool(current_config.anilist.token and len(current_config.anilist.token) > 10)
         
-        # Perform a quick, non-blocking check if we are truly offline
-        api_connected = not ctx.is_offline
+        # The most accurate connection status is whether the media_api was able to fetch data
+        api_connected = ctx.media_api.is_connected()
         
-        # If the context is marked as offline, let's try to verify if it's still true
+        # If not connected, but we have a token, let's try a quick verify to see if we can go online
         if not api_connected and api_authenticated:
             try:
-                # Just a tiny HEAD request to a reliable endpoint
-                import httpx
-                httpx.get("https://anilist.co", timeout=1.0)
-                ctx.is_offline = False 
-                api_connected = True
+                # This will trigger a lazy re-auth if _media_api is None
+                profile = ctx.media_api.get_viewer_profile()
+                if profile:
+                    api_connected = True
+                    ctx.is_offline = False
             except Exception:
                 pass
-                
-        api_connected = not ctx.is_offline
 
         return HealthInfo(
             api_connected=api_connected,
@@ -153,6 +152,7 @@ async def get_health():
             is_offline=ctx.is_offline,
             update_available=update_available,
             unread_notifications=unread_notifications,
+            data_version=ctx.data_version,
             current_version=VERSION
         )
     except Exception:
@@ -255,16 +255,21 @@ async def reconnect():
     ctx = get_ctx()
     try:
         ctx.is_offline = False
-        # Accessing media_api property triggers authentication if _media_api is None
-        # We force a reset of _media_api to re-trigger auth
+        # Force a reset of _media_api to re-trigger auth with current config
         ctx._media_api = None
+        
+        # Accessing media_api property triggers initialization and authentication
         api = ctx.media_api
-        connected = api.is_authenticated()
-        if connected:
-            return {"status": "success", "message": "Successfully reconnected to AniList!"}
+        
+        # Attempt to fetch profile to verify real connectivity
+        profile = api.get_viewer_profile()
+        
+        if profile:
+            ctx.is_offline = False
+            return {"status": "success", "message": f"Successfully reconnected! Welcome back, {profile.name}."}
         else:
             ctx.is_offline = True
-            return {"status": "error", "message": "Reconnection failed: Still unable to authenticate."}
+            return {"status": "error", "message": "Reconnection failed: Token invalid or AniList unreachable."}
     except Exception as e:
         ctx.is_offline = True
         return {"status": "error", "message": f"Reconnection error: {str(e)}"}

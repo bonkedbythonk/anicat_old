@@ -1,6 +1,6 @@
 const isBrowser = typeof window !== 'undefined';
 const API_BASE_ORIGIN = isBrowser 
-  ? (window.location.port === '3000' ? 'http://localhost:8000' : window.location.origin) 
+  ? (['3000', '3001', '3002'].includes(window.location.port) ? 'http://localhost:8000' : window.location.origin) 
   : 'http://localhost:8000';
 const API_BASE_URL = `${API_BASE_ORIGIN}/api`;
 
@@ -170,6 +170,16 @@ export const mediaApi = {
   getSeasonal: (type: 'ANIME' | 'MANGA' = 'ANIME', perPage = 15): Promise<MediaSearchResult> =>
     fetchFromApi(`/media/seasonal?type=${type}&per_page=${perPage}`),
 
+  getSchedule: (daysBefore = 1, daysAfter = 1, page = 1, perPage = 50, mediaIds?: number[]): Promise<MediaSearchResult> => {
+    let url = `/media/schedule?days_before=${daysBefore}&days_after=${daysAfter}&page=${page}&per_page=${perPage}`;
+    if (mediaIds && mediaIds.length > 0) {
+      mediaIds.forEach(id => {
+        url += `&media_ids=${id}`;
+      });
+    }
+    return fetchFromApi(url);
+  },
+
   // ─── Details ────────────────────────────────────────
   getDetails: (id: number): Promise<MediaItem> => 
     fetchFromApi(`/media/${id}`),
@@ -268,6 +278,9 @@ export const mediaApi = {
   triggerBackup: () =>
     fetchFromApi('/registry/backup', { method: 'POST' }),
 
+  wipeRegistry: () =>
+    fetchFromApi('/registry/wipe', { method: 'POST' }),
+
   checkUpdate: (): Promise<{ status: string; update_available: boolean; message: string }> =>
     fetchFromApi('/status/check-update', { method: 'POST' }),
 
@@ -279,4 +292,7 @@ export const mediaApi = {
     
   reconnect: (): Promise<{ status: string; message: string }> =>
     fetchFromApi('/status/reconnect', { method: 'POST' }),
+
+  openUrl: (url: string) =>
+    fetchFromApi(`/actions/open?url=${encodeURIComponent(url)}`),
 };

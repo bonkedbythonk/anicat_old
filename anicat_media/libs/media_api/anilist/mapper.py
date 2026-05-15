@@ -606,3 +606,42 @@ def to_generic_notifications(
         for notification in raw_notifications
         if notification
     ]
+
+
+def to_generic_global_schedule(data: dict) -> dict:
+    """Maps global airing schedule response to a simplified result."""
+    if not data or "data" not in data:
+        return {"media": [], "page_info": {"total": 0, "current_page": 1, "has_next_page": False, "per_page": 50}}
+
+    page_data = data["data"].get("Page", {})
+    if not page_data:
+        return {"media": [], "page_info": {"total": 0, "current_page": 1, "has_next_page": False, "per_page": 50}}
+
+    page_info = _to_generic_page_info(page_data.get("pageInfo", {}))
+    raw_schedules = page_data.get("airingSchedules", [])
+    
+    # We transform each schedule into a MediaItem but with extra airing info
+    media_list = []
+    for schedule in raw_schedules:
+        try:
+            media = _to_generic_media_item(schedule.get("media", {}))
+            if media:
+                # Attach airing info to the media item for convenience in this view
+                media.next_airing = {
+                    "episode": schedule.get("episode"),
+                    "airing_at": datetime.fromtimestamp(schedule.get("airingAt")).isoformat()
+                }
+                media_list.append(media)
+        except Exception as e:
+            logger.error(f"Failed to map schedule item: {e}")
+            continue
+            
+    return {
+        "media": media_list,
+        "page_info": {
+            "total": page_info.total,
+            "current_page": page_info.current_page,
+            "has_next_page": page_info.has_next_page,
+            "per_page": page_info.per_page
+        }
+    }

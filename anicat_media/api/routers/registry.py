@@ -83,3 +83,17 @@ async def download_latest_backup():
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/wipe")
+async def wipe_registry():
+    """Wipe the entire local registry and index."""
+    try:
+        import shutil
+        ctx = get_ctx()
+        registry_dir = ctx.media_registry.media_registry_dir
+        if registry_dir.exists():
+            shutil.rmtree(registry_dir)
+        registry_dir.mkdir(parents=True, exist_ok=True)
+        return {"status": "wiped"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

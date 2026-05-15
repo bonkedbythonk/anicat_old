@@ -68,8 +68,10 @@ class ConfigLoader:
         Raises:
             ConfigError: If the configuration file contains validation or parsing errors.
         """
-        if not self.config_path.exists() and allow_setup:
-            return self._handle_first_run()
+        if not self.config_path.exists():
+            if allow_setup:
+                return self._handle_first_run()
+            return AppConfig()
 
         try:
             with self.config_path.open("rb") as f:

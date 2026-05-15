@@ -87,18 +87,29 @@ class AniListApi(BaseApiClient):
         self.user_profile: Optional[UserProfile] = None
 
     def authenticate(self, token: str) -> Optional[UserProfile]:
+        # Temporary storage to test validity
+        original_token = self.token
         self.token = token
         self.http_client.headers["Authorization"] = f"Bearer {token}"
         
-        # We try to fetch the profile, but we DON'T clear the token if it fails.
-        # Failing to fetch profile usually means we are offline, not that the token is bad.
         try:
-            self.user_profile = self.get_viewer_profile()
+            profile = self.get_viewer_profile()
+            if profile:
+                self.user_profile = profile
+                return profile
+            else:
+                # If profile is None, the token is likely invalid
+                self.token = original_token
+                if original_token:
+                    self.http_client.headers["Authorization"] = f"Bearer {original_token}"
+                else:
+                    del self.http_client.headers["Authorization"]
+                return None
         except Exception as e:
-            logger.warning(f"Failed to fetch viewer profile during auth (likely offline): {e}")
-            self.user_profile = None
-            
-        return self.user_profile
+            logger.warning(f"Failed to fetch viewer profile during auth: {e}")
+            # If it's a connection error, we might still want to keep the token
+            # but for now, let's assume if we can't even fetch the profile, we can't verify the token
+            return None
 
     def is_authenticated(self) -> bool:
         """Returns True if we have a token, regardless of connection status."""
@@ -114,7 +125,17 @@ class AniListApi(BaseApiClient):
         response = execute_graphql(
             ANILIST_ENDPOINT, self.http_client, gql.GET_LOGGED_IN_USER, {}
         )
-        return mapper.to_generic_user_profile(response.json())
+        
+        if response.status_code != 200:
+            logger.warning(f"AniList profile fetch failed with status {response.status_code}: {response.text}")
+            return None
+            
+        data = response.json()
+        if "errors" in data:
+            logger.warning(f"AniList profile fetch returned errors: {data['errors']}")
+            return None
+            
+        return mapper.to_generic_user_profile(data)
 
     def search_media(self, params: MediaSearchParams) -> Optional[MediaSearchResult]:
         variables = {
@@ -318,6 +339,31 @@ class AniListApi(BaseApiClient):
         )
         if response and "errors" not in response.json():
             return mapper.to_generic_airing_schedule_result(response.json())
+        return None
+
+    def get_global_airing_schedule(
+        self, airingAt_greater: int, airingAt_lesser: int, page: int = 1, per_page: int = 50,
+        media_ids: Optional[List[int]] = None
+    ) -> Optional[Any]:
+        variables = {
+            "airingAt_greater": airingAt_greater,
+            "airingAt_lesser": airingAt_lesser,
+            "page": page,
+            "perPage": per_page,
+            "mediaId_in": media_ids
+        }
+        response = execute_graphql(
+            ANILIST_ENDPOINT, self.http_client, gql.AIRING_SCHEDULE, variables
+        )
+        if response is not None:
+            if not response.is_success:
+                logger.error(f"AniList API error (Status {response.status_code}): {response.text}")
+                return None
+            res_json = response.json()
+            if "errors" in res_json:
+                logger.error(f"GraphQL errors in schedule: {res_json['errors']}")
+                return None
+            return mapper.to_generic_global_schedule(res_json)
         return None
 
     def get_reviews_for(

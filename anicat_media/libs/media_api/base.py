@@ -91,6 +91,12 @@ class BaseApiClient(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def get_global_airing_schedule(
+        self, airingAt_greater: int, airingAt_lesser: int, page: int = 1, per_page: int = 50
+    ) -> Optional[Any]:
+        pass
+
+    @abc.abstractmethod
     def get_reviews_for(
         self, params: MediaReviewsParams
     ) -> Optional[List[MediaReview]]:

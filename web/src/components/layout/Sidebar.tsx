@@ -11,10 +11,11 @@ import {
   Bell,
   User,
   BookOpen,
+  Calendar,
 } from "lucide-react";
 import { mediaApi, type HealthStatus } from "@/lib/api";
 
-export type ViewName = "home" | "manga" | "search" | "lists" | "downloads" | "library" | "settings" | "notifications" | "profile";
+export type ViewName = "home" | "manga" | "search" | "lists" | "downloads" | "library" | "settings" | "notifications" | "profile" | "schedule";
 
 const navItems: { icon: typeof Home; label: string; view: ViewName }[] = [
   { icon: Home, label: "Home", view: "home" },
@@ -23,6 +24,7 @@ const navItems: { icon: typeof Home; label: string; view: ViewName }[] = [
   { icon: Monitor, label: "My Lists", view: "lists" },
   { icon: Download, label: "Downloads", view: "downloads" },
   { icon: Library, label: "Library", view: "library" },
+  { icon: Calendar, label: "Schedule", view: "schedule" },
 ];
 
 const secondaryItems: { icon: typeof Home; label: string; view: ViewName }[] = [

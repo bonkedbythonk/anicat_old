@@ -99,6 +99,8 @@ class Context:
     _auth: Optional["AuthService"] = None
     _player: Optional["PlayerService"] = None
     _updater: Optional["UpdaterService"] = None
+    
+    data_version: int = 0
     is_offline: bool = False
 
     @property

@@ -1,0 +1,105 @@
+query ($airingAt_greater: Int, $airingAt_lesser: Int, $mediaId_in: [Int], $page: Int, $perPage: Int) {
+  Page(page: $page, perPage: $perPage) {
+    pageInfo {
+      total
+      currentPage
+      hasNextPage
+      perPage
+    }
+    airingSchedules(airingAt_greater: $airingAt_greater, airingAt_lesser: $airingAt_lesser, mediaId_in: $mediaId_in, sort: TIME_DESC) {
+      airingAt
+      episode
+      media {
+        id
+        idMal
+        title {
+          romaji
+          english
+          native
+          userPreferred
+        }
+        type
+        format
+        status
+        description
+        startDate {
+          year
+          month
+          day
+        }
+        endDate {
+          year
+          month
+          day
+        }
+        season
+        seasonYear
+        episodes
+        duration
+        chapters
+        volumes
+        countryOfOrigin
+        isAdult
+        genres
+        synonyms
+        averageScore
+        meanScore
+        popularity
+        trending
+        favourites
+        tags {
+          id
+          name
+          description
+          category
+          rank
+          isGeneralSpoiler
+          isMediaSpoiler
+          isAdult
+        }
+        coverImage {
+          extraLarge
+          large
+          medium
+          color
+        }
+        bannerImage
+        trailer {
+          id
+          site
+          thumbnail
+        }
+        studios {
+          nodes {
+            id
+            name
+            favourites
+            isAnimationStudio
+          }
+        }
+        nextAiringEpisode {
+          airingAt
+          timeUntilAiring
+          episode
+        }
+        externalLinks {
+          id
+          url
+          site
+        }
+        streamingEpisodes {
+          title
+          thumbnail
+          url
+          site
+        }
+        mediaListEntry {
+          id
+          status
+          progress
+          score(format: POINT_10)
+        }
+      }
+    }
+  }
+}

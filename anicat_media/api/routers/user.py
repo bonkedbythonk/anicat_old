@@ -21,9 +21,11 @@ async def get_profile():
     """Get the authenticated user's profile."""
     try:
         ctx = get_ctx()
+        if not ctx.media_api.is_authenticated():
+            return None
         return ctx.media_api.get_viewer_profile()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        return None
 
 @router.get("/list", response_model=MediaSearchResult)
 async def get_user_list(
@@ -35,13 +37,23 @@ async def get_user_list(
     try:
         ctx = get_ctx()
         if not ctx.media_api.is_authenticated():
-            raise HTTPException(status_code=401, detail="Not authenticated")
+            from ...libs.media_api.types import PageInfo
+            return MediaSearchResult(
+                page_info=PageInfo(total=0, current_page=1, has_next_page=False, per_page=15),
+                media=[]
+            )
             
         params = UserMediaListSearchParams(status=status, type=type, page=page)
         result = ctx.media_api.search_media_list(params)
         if not result:
-             raise HTTPException(status_code=404, detail="List not found or empty")
+            from ...libs.media_api.types import PageInfo
+            return MediaSearchResult(
+                page_info=PageInfo(total=0, current_page=1, has_next_page=False, per_page=15),
+                media=[]
+            )
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -71,7 +83,7 @@ async def update_list_entry(req: ListUpdateRequest):
         # 3. Handle playback clear
         from .status import clear_playback
         await clear_playback()
-            
+        ctx.data_version += 1
         return {"status": "success", "synced": success}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

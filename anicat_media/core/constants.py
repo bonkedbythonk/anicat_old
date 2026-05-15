@@ -12,7 +12,27 @@ APP_NAME = os.environ.get(f"{CLI_NAME}_APP_NAME", CLI_NAME_LOWER)
 USER_NAME = os.environ.get("USERNAME", os.environ.get("USER", "User"))
 
 
-__version__ = metadata.version("anicat")
+try:
+    __version__ = metadata.version("anicat")
+except Exception:
+    try:
+        # Fallback for standalone/dev builds
+        project_root = Path(__file__).resolve().parent.parent.parent
+        version_file = project_root / "version.txt"
+        if version_file.exists():
+            content = version_file.read_text().split('\n')[0]
+            # Extract "1.2.5" from "# Version 1.2.5 - ..."
+            import re
+            match = re.search(r"(\d+\.\d+\.\d+)", content)
+            if match:
+                __version__ = match.group(1)
+            else:
+                __version__ = "4.0.0" # Default for V4
+        else:
+            __version__ = "4.0.0"
+    except Exception:
+        __version__ = "4.0.0"
+
 VERSION = __version__
 
 AUTHOR = "bonkedbythonk"
@@ -57,11 +77,11 @@ except ModuleNotFoundError:
             folder = Path.home()
         APP_DATA_DIR = Path(folder) / APP_NAME
     if PLATFORM == "darwin":
-        APP_DATA_DIR = Path(Path.home() / "Library" / "Application Support" / APP_NAME)
-
-    APP_DATA_DIR = (
-        Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / APP_NAME
-    )
+        APP_DATA_DIR = Path.home() / "Library" / "Application Support" / APP_NAME
+    else:
+        APP_DATA_DIR = (
+            Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / APP_NAME
+        )
 
 if PLATFORM == "win32":
     APP_CACHE_DIR = APP_DATA_DIR / "cache"

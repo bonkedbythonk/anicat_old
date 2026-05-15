@@ -75,10 +75,12 @@ Thumbs.db
 .anicat.iconset/
 applet.icns
 .anicat_path
-DEV_VS_PUBLIC.md
+docs/DEV_VS_PUBLIC.md
 scripts/start-dev.sh
-dev_backend.sh
-dev_frontend.sh
+scripts/dev_backend.sh
+scripts/dev_frontend.sh
+dev/scratch/
+dev/build/
 
 # Testing
 .coverage

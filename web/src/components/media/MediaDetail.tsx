@@ -11,10 +11,31 @@ import MangaReader from "./MangaReader";
 interface MediaDetailProps {
   item: MediaItem;
   onClose: () => void;
+  initialAction?: "play";
+  onRead?: (chapter: string) => void;
 }
 
-export default function MediaDetail({ item, onClose }: MediaDetailProps) {
+export default function MediaDetail({ item, onClose, initialAction, onRead }: MediaDetailProps) {
   const refreshKey = useRefreshTrigger();
+  
+  // Handle initial action (e.g. from Hero "Play Now" button)
+  useEffect(() => {
+    if (initialAction === "play") {
+      const currentProgress = item.user_status?.progress || 0;
+      const total = item.episodes || item.chapters || 0;
+      let nextEp = currentProgress + 1;
+      if (total > 0 && currentProgress >= total) {
+        nextEp = 1;
+      }
+      
+      if (item.type === "MANGA") {
+        onRead?.(String(nextEp));
+      } else {
+        mediaApi.play(item.id, String(nextEp)).catch(console.error);
+      }
+    }
+  }, [item.id, initialAction]);
+
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -36,7 +57,6 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
   const [config, setConfig] = useState<any>(null);
   const [isPlayingNext, setIsPlayingNext] = useState(false);
   const [isDownloadingRemaining, setIsDownloadingRemaining] = useState(false);
-  const [readingChapter, setReadingChapter] = useState<string | null>(null);
 
   const title = fullItem.title.english || fullItem.title.romaji || "Unknown";
 
@@ -130,9 +150,19 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
   };
 
   const handlePlayNext = async () => {
-    const nextEp = (fullItem.user_status?.progress || 0) + 1;
+    const currentProgress = fullItem.user_status?.progress || 0;
+    const total = fullItem.episodes || fullItem.chapters || 0;
+    
+    // If we finished the series, clicking the button starts over from Ep 1
+    let nextEp = currentProgress + 1;
+    if (total > 0 && currentProgress >= total) {
+      nextEp = 1;
+    }
+
+    console.log(`[MediaDetail] handlePlayNext: progress=${currentProgress}, nextEp=${nextEp}, isManga=${isManga}`);
+
     if (isManga) {
-      setReadingChapter(String(nextEp));
+      onRead?.(String(nextEp));
       return;
     }
 
@@ -272,14 +302,45 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
 
             <div className="flex flex-col space-y-3">
               <div className="flex items-center space-x-2">
-                <button
-                  onClick={handlePlayNext}
-                  disabled={isPlayingNext}
-                  className="flex-1 flex items-center justify-center space-x-2 py-2.5 bg-accent hover:bg-accent-light text-white font-extrabold text-sm rounded-xl transition-all shadow-lg shadow-accent/20 active:scale-95 disabled:opacity-50"
-                >
-                  {isPlayingNext ? <Loader2 size={16} className="animate-spin" /> : (isManga ? <BookOpen size={16} /> : <Play size={16} fill="currentColor" />)}
-                  <span>{isPlayingNext ? "Starting..." : fullItem.user_status?.progress ? `Continue ${isManga ? 'Chapter' : 'Episode'} ${fullItem.user_status.progress + 1}` : (isManga ? "Read Now" : "Play Now")}</span>
-                </button>
+                {(() => {
+                  const currentProgress = fullItem.user_status?.progress || 0;
+                  const total = fullItem.episodes || fullItem.chapters || 0;
+                  // If airing, we might not have all episodes yet. 
+                  // Use the fetched episodes list as the source for 'available' episodes.
+                  const latestAvailable = episodes.length > 0 ? Math.max(...episodes.map(e => e.number)) : total;
+                  const isFinished = total > 0 && currentProgress >= total;
+                  const isCaughtUp = !isFinished && latestAvailable > 0 && currentProgress >= latestAvailable;
+
+                  console.log(`[MediaDetail] ${title}: progress=${currentProgress}, total=${total}, latest=${latestAvailable}, finished=${isFinished}, caughtUp=${isCaughtUp}`);
+
+                  return (
+                    <button
+                      onClick={handlePlayNext}
+                      disabled={isPlayingNext || isCaughtUp}
+                      className="flex-1 flex items-center justify-center space-x-2 py-2.5 bg-accent hover:bg-accent-light text-white font-extrabold text-sm rounded-xl transition-all shadow-lg shadow-accent/20 active:scale-95 disabled:opacity-50 disabled:bg-white/[0.05] disabled:text-gray-500 disabled:shadow-none"
+                    >
+                      {isPlayingNext ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : isManga ? (
+                        <BookOpen size={18} />
+                      ) : (
+                        <Play size={18} fill="currentColor" />
+                      )}
+                      <span>
+                        {isPlayingNext 
+                          ? "Starting..." 
+                          : isFinished
+                            ? (isManga ? "Read Again" : "Re-watch")
+                            : isCaughtUp
+                              ? "Caught Up"
+                              : fullItem.user_status?.progress 
+                                ? `Continue ${isManga ? 'Ch.' : 'Ep.'} ${fullItem.user_status.progress + 1}` 
+                                : (isManga ? "Read Now" : "Play Now")
+                        }
+                      </span>
+                    </button>
+                  );
+                })()}
                 {canDownload && remainingEpsCount > 0 && (
                   <button
                     onClick={handleDownloadRemaining}
@@ -358,9 +419,23 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
                       <RotateCcw size={10} />
                     </button>
                     <button 
+                      id={`reset-progress-${item.id}`}
+                      data-confirmed="false"
                       onClick={() => {
-                        if (confirm(`Are you sure you want to reset all progress for ${title}?`)) {
-                          handleUnwatch("1"); // Sets to 0
+                        const btn = document.getElementById(`reset-progress-${item.id}`);
+                        if (btn?.getAttribute('data-confirmed') === 'true') {
+                          handleUnwatch("1");
+                        } else {
+                          if (btn) {
+                            btn.setAttribute('data-confirmed', 'true');
+                            btn.className = "p-0.5 bg-red-500 text-white rounded transition-all scale-125";
+                            setTimeout(() => {
+                               if (btn) {
+                                 btn.setAttribute('data-confirmed', 'false');
+                                 btn.className = "p-0.5 hover:bg-white/10 rounded text-gray-500 hover:text-red-500 transition-colors";
+                               }
+                            }, 3000);
+                          }
                         }
                       }}
                       className="p-0.5 hover:bg-white/10 rounded text-gray-500 hover:text-red-500 transition-colors"
@@ -410,17 +485,25 @@ export default function MediaDetail({ item, onClose }: MediaDetailProps) {
           </div>
 
           <div className="animate-fade-in">
-            {activeTab === "episodes" && <EpisodeList mediaId={item.id} episodes={episodes} loading={loadingEps} progress={fullItem.user_status?.progress} isManga={isManga} onRead={setReadingChapter} onUnwatch={handleUnwatch} />}
+            {activeTab === "episodes" && <EpisodeList mediaId={item.id} episodes={episodes} loading={loadingEps} progress={fullItem.user_status?.progress} isManga={isManga} onRead={onRead} onUnwatch={handleUnwatch} />}
             {activeTab === "characters" && (
               <div className="grid grid-cols-2 gap-3">
-                {characters.map(char => (
-                  <div key={char.id} className="flex items-center space-x-3 p-2 bg-white/[0.02] border border-white/[0.04] rounded-xl">
-                    {char.image?.large && <img src={char.image.large} alt={char.name.full} className="w-12 h-12 rounded-lg object-cover" />}
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold text-white truncate">{char.name.full}</div>
-                    </div>
+                {loadingChars ? (
+                  <div className="col-span-2 py-20 flex justify-center">
+                    <Loader2 className="animate-spin text-accent" size={24} />
                   </div>
-                ))}
+                ) : characters.length > 0 ? (
+                  characters.map(char => (
+                    <div key={char.id || char.name.full} className="flex items-center space-x-3 p-2 bg-white/[0.02] border border-white/[0.04] rounded-xl">
+                      {char.image?.large && <img src={char.image.large} alt={char.name.full} className="w-12 h-12 rounded-lg object-cover" />}
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-white truncate">{char.name.full}</div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-2 py-20 text-center text-xs text-gray-500 font-medium">No character info available</div>
+                )}
               </div>
             )}
             {activeTab === "reviews" && (

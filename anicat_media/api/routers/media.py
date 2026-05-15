@@ -6,7 +6,36 @@ logger = logging.getLogger(__name__)
 from ...libs.media_api.types import MediaType, MediaSearchResult, MediaItem, CharacterSearchResult, MediaReview, MediaSort, MediaSeason, MediaGenre, MediaStatus, MediaFormat
 from ...libs.media_api.params import MediaSearchParams, MediaCharactersParams, MediaReviewsParams, MediaRecommendationParams
 
+from fastapi import APIRouter, HTTPException, Query
+
 router = APIRouter()
+
+@router.get("/schedule", response_model=MediaSearchResult)
+async def get_schedule(
+    days_before: int = 1,
+    days_after: int = 1,
+    page: int = 1,
+    per_page: int = 50,
+    media_ids: Optional[List[int]] = Query(None)
+):
+    """Get the global airing schedule for a time range around now."""
+    try:
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        start = int((now - timedelta(days=days_before)).timestamp())
+        end = int((now + timedelta(days=days_after)).timestamp())
+        
+        ctx = get_ctx()
+        return ctx.media_api.get_global_airing_schedule(
+            airingAt_greater=start,
+            airingAt_lesser=end,
+            page=page,
+            per_page=per_page,
+            media_ids=media_ids
+        )
+    except Exception as e:
+        logger.error(f"Failed to fetch schedule: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Use lazy import for ctx to avoid circular dependency
 def get_ctx():
@@ -89,6 +118,7 @@ async def get_seasonal(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/search", response_model=MediaSearchResult)
 async def search_media(
     query: str,
@@ -128,7 +158,7 @@ async def search_media(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{media_id}", response_model=MediaItem)
+@router.get("/{media_id:int}", response_model=MediaItem)
 async def get_media_details(media_id: int):
     """Get detailed information for a specific media, merged with local registry status."""
     try:
@@ -210,7 +240,7 @@ async def get_manga_ref(ctx, media, media_id: int):
     
     return manga_ref.id, record
 
-@router.get("/{media_id}/episodes")
+@router.get("/{media_id:int}/episodes")
 async def get_media_episodes(media_id: int):
     """Get episodes/chapters for a given media from the configured provider."""
     try:
@@ -303,7 +333,7 @@ async def get_media_episodes(media_id: int):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{media_id}/characters", response_model=CharacterSearchResult)
+@router.get("/{media_id:int}/characters", response_model=CharacterSearchResult)
 async def get_media_characters(media_id: int):
     """Get characters for a specific media."""
     try:
@@ -315,7 +345,7 @@ async def get_media_characters(media_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{media_id}/reviews", response_model=List[MediaReview])
+@router.get("/{media_id:int}/reviews", response_model=List[MediaReview])
 async def get_media_reviews(media_id: int, page: int = 1):
     """Get reviews for a specific media."""
     try:
@@ -327,7 +357,7 @@ async def get_media_reviews(media_id: int, page: int = 1):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{media_id}/recommendations", response_model=List[MediaItem])
+@router.get("/{media_id:int}/recommendations", response_model=List[MediaItem])
 async def get_media_recommendations(media_id: int, page: int = 1):
     """Get recommendations for a specific media."""
     try:
@@ -339,7 +369,7 @@ async def get_media_recommendations(media_id: int, page: int = 1):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{media_id}/chapter/{chapter_number}/pages")
+@router.get("/{media_id:int}/chapter/{chapter_number}/pages")
 async def get_chapter_pages(media_id: int, chapter_number: str):
     """Get pages for a specific manga chapter."""
     try:

@@ -7,18 +7,19 @@ import { mediaApi } from "@/lib/api";
 interface MangaReaderProps {
   mediaId: number;
   chapterNumber: string;
+  initialPage?: number;
   onClose: () => void;
   onProgressUpdate?: (chapterNum: string) => void;
 }
 
 type ReadingMode = "single" | "double" | "vertical";
 
-export default function MangaReader({ mediaId, chapterNumber, onClose, onProgressUpdate }: MangaReaderProps) {
+export default function MangaReader({ mediaId, chapterNumber, initialPage = 0, onClose, onProgressUpdate }: MangaReaderProps) {
   const [pages, setPages] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const [readingMode, setReadingMode] = useState<ReadingMode>("single");
   const [showControls, setShowControls] = useState(true);
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
@@ -27,12 +28,53 @@ export default function MangaReader({ mediaId, chapterNumber, onClose, onProgres
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActionRef = useRef<number>(0);
 
+  // Sync fullscreen state with browser
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isFull = !!(
+        document.fullscreenElement || 
+        (document as any).webkitFullscreenElement || 
+        (document as any).mozFullScreenElement || 
+        (document as any).msFullscreenElement
+      );
+      setIsFullscreen(isFull);
+    };
+    
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullscreenChange);
+    
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("mozfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("MSFullscreenChange", handleFullscreenChange);
+    };
+  }, []);
+
+  // Persist current page
+  useEffect(() => {
+    if (!loading && pages.length > 0) {
+      localStorage.setItem(`anicat_manga_${mediaId}_${chapterNumber}_page`, currentPage.toString());
+    }
+  }, [currentPage, mediaId, chapterNumber, loading, pages.length]);
+
   useEffect(() => {
     setLoading(true);
     mediaApi.getChapterPages(mediaId, chapterNumber)
       .then(data => {
         setPages(data.thumbnails || []);
         setLoading(false);
+        
+        // Restore saved page if not provided in props
+        if (initialPage === 0) {
+          const savedPage = localStorage.getItem(`anicat_manga_${mediaId}_${chapterNumber}_page`);
+          if (savedPage) {
+            setCurrentPage(parseInt(savedPage));
+          }
+        }
+
         if (window.innerWidth > 1024) {
           setReadingMode("double");
         }
@@ -42,7 +84,7 @@ export default function MangaReader({ mediaId, chapterNumber, onClose, onProgres
         setError("Failed to load chapter pages. Please try again.");
         setLoading(false);
       });
-  }, [mediaId, chapterNumber]);
+  }, [mediaId, chapterNumber, initialPage]);
 
   // Pre-load next pages logic
   useEffect(() => {
@@ -112,16 +154,63 @@ export default function MangaReader({ mediaId, chapterNumber, onClose, onProgres
   }, [handleNext, handlePrev, onClose]);
 
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
+    const element = containerRef.current as any;
+    if (!element) return;
+
+    const isFull = !!(
+      document.fullscreenElement || 
+      (document as any).webkitFullscreenElement || 
+      (document as any).webkitIsFullScreen ||
+      (document as any).mozFullScreenElement || 
+      (document as any).msFullscreenElement
+    );
+
+    try {
+      if (!isFull) {
+        if (element.requestFullscreen) {
+          element.requestFullscreen().catch((e: any) => alert("Fullscreen error: " + e.message));
+        } else if (element.webkitRequestFullscreen) {
+          element.webkitRequestFullscreen();
+        } else if (element.webkitRequestFullScreen) {
+          element.webkitRequestFullScreen();
+        } else if (element.mozRequestFullScreen) {
+          element.mozRequestFullScreen();
+        } else if (element.msRequestFullscreen) {
+          element.msRequestFullscreen();
+        } else {
+          alert("Your browser does not support fullscreen requests on this element.");
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch((e: any) => alert("Exit fullscreen error: " + e.message));
+        } else if ((document as any).webkitExitFullscreen) {
+          (document as any).webkitExitFullscreen();
+        } else if ((document as any).webkitCancelFullScreen) {
+          (document as any).webkitCancelFullScreen();
+        } else if ((document as any).mozCancelFullScreen) {
+          (document as any).mozCancelFullScreen();
+        } else if ((document as any).msExitFullscreen) {
+          (document as any).msExitFullscreen();
+        }
+      }
+    } catch (err: any) {
+      alert("Critical fullscreen error: " + err.message);
     }
   };
 
   const handleFinish = () => {
+    const isAtEnd = readingMode === "vertical" ? true : // Vertical mode button is at the bottom
+                   (readingMode === "single" ? currentPage === pages.length - 1 : 
+                    currentPage >= pages.length - 2);
+    
+    if (!isAtEnd) {
+      console.warn("[MangaReader] handleFinish called but not at end of chapter");
+      return;
+    }
+
+    // Clear saved page for this chapter since it's finished
+    localStorage.removeItem(`anicat_manga_${mediaId}_${chapterNumber}_page`);
+    
     if (onProgressUpdate) onProgressUpdate(chapterNumber);
     onClose();
   };
@@ -166,7 +255,7 @@ export default function MangaReader({ mediaId, chapterNumber, onClose, onProgres
       className="fixed inset-0 z-[200] bg-[#050505] flex flex-col items-center select-none overflow-hidden"
     >
       {/* Header Controls */}
-      <div className={`fixed top-0 inset-x-0 z-50 bg-gradient-to-b from-black/95 to-transparent p-6 transition-opacity duration-300 ${showControls ? "opacity-100" : "opacity-0"}`}>
+      <div className={`fixed top-0 inset-x-0 z-50 bg-gradient-to-b from-black/95 to-transparent p-6 transition-opacity duration-300 ${showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-6">
             <button onClick={onClose} className="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-all border border-white/5">
@@ -183,7 +272,15 @@ export default function MangaReader({ mediaId, chapterNumber, onClose, onProgres
             <button onClick={() => setReadingMode("double")} className={`p-2.5 rounded-xl transition-all ${readingMode === "double" ? "bg-accent text-white" : "text-gray-500 hover:text-white"}`}><Book size={18} /></button>
             <button onClick={() => setReadingMode("vertical")} className={`p-2.5 rounded-xl transition-all ${readingMode === "vertical" ? "bg-accent text-white" : "text-gray-500 hover:text-white"}`}><ScrollText size={18} /></button>
             <div className="w-px h-6 bg-white/10 mx-1" />
-            <button onClick={toggleFullscreen} className="p-2.5 rounded-xl text-gray-500 hover:text-white transition-all">{isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}</button>
+            <button 
+              onClick={() => {
+                console.log("Fullscreen button clicked");
+                toggleFullscreen();
+              }} 
+              className="p-2.5 rounded-xl text-gray-500 hover:text-white transition-all cursor-pointer z-[60]"
+            >
+              {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+            </button>
           </div>
         </div>
       </div>
@@ -218,14 +315,22 @@ export default function MangaReader({ mediaId, chapterNumber, onClose, onProgres
                   <div className="flex-1 h-full flex items-center justify-end">
                     <div className="relative max-h-full">
                       {!loadedImages.has(currentPage) && <div className="absolute inset-0 flex items-center justify-center bg-white/[0.02]"><Loader2 className="animate-spin text-white/10" size={32} /></div>}
-                      <img key={pages[currentPage]} src={getProxyUrl(pages[currentPage])} className="max-h-[90vh] max-w-full object-contain bg-black shadow-2xl" />
+                      <img 
+                        key={pages[currentPage]} 
+                        src={getProxyUrl(pages[currentPage])} 
+                        className={`transition-all duration-500 object-contain bg-black shadow-2xl ${showControls ? "max-h-[calc(100vh-220px)]" : "max-h-screen"}`} 
+                      />
                     </div>
                   </div>
                   {currentPage + 1 < pages.length && (
                     <div className="flex-1 h-full flex items-center justify-start border-l border-white/5">
                       <div className="relative max-h-full">
                         {!loadedImages.has(currentPage + 1) && <div className="absolute inset-0 flex items-center justify-center bg-white/[0.02]"><Loader2 className="animate-spin text-white/10" size={32} /></div>}
-                        <img key={pages[currentPage + 1]} src={getProxyUrl(pages[currentPage + 1])} className="max-h-[90vh] max-w-full object-contain bg-black shadow-2xl" />
+                        <img 
+                          key={pages[currentPage + 1]} 
+                          src={getProxyUrl(pages[currentPage + 1])} 
+                          className={`transition-all duration-500 object-contain bg-black shadow-2xl ${showControls ? "max-h-[calc(100vh-220px)]" : "max-h-screen"}`} 
+                        />
                       </div>
                     </div>
                   )}
@@ -233,7 +338,11 @@ export default function MangaReader({ mediaId, chapterNumber, onClose, onProgres
               ) : (
                 <div className="relative h-full flex items-center justify-center">
                   {!loadedImages.has(currentPage) && <div className="absolute inset-0 flex items-center justify-center bg-white/[0.02]"><Loader2 className="animate-spin text-white/10" size={32} /></div>}
-                  <img key={pages[currentPage]} src={getProxyUrl(pages[currentPage])} className="max-h-[90vh] max-w-full object-contain bg-black shadow-2xl" />
+                  <img 
+                    key={pages[currentPage]} 
+                    src={getProxyUrl(pages[currentPage])} 
+                    className={`transition-all duration-500 object-contain bg-black shadow-2xl ${showControls ? "max-h-[calc(100vh-220px)]" : "max-h-screen"}`} 
+                  />
                 </div>
               )}
             </div>
@@ -243,7 +352,7 @@ export default function MangaReader({ mediaId, chapterNumber, onClose, onProgres
 
       {/* Footer */}
       {readingMode !== "vertical" && (
-        <div className={`fixed bottom-0 inset-x-0 z-50 bg-gradient-to-t from-black/95 to-transparent p-8 transition-opacity duration-300 ${showControls ? "opacity-100" : "opacity-0"}`}>
+        <div className={`fixed bottom-0 inset-x-0 z-50 bg-gradient-to-t from-black/95 to-transparent p-8 transition-opacity duration-300 ${showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
           <div className="max-w-5xl mx-auto flex flex-col space-y-6">
             <input type="range" min="0" max={pages.length - 1} value={currentPage} onChange={(e) => setCurrentPage(parseInt(e.target.value))} className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-accent" />
             <div className="flex items-center justify-between">
@@ -254,7 +363,10 @@ export default function MangaReader({ mediaId, chapterNumber, onClose, onProgres
                   <span className="text-white">{currentPage + 1}{readingMode === "double" && currentPage + 1 < pages.length ? `-${currentPage + 2}` : ""}</span> / {pages.length}
                 </div>
               </div>
-              <button onClick={handleFinish} className="px-10 py-3.5 bg-accent text-white rounded-2xl font-black text-sm shadow-2xl">Finish Reading</button>
+              {((readingMode === "single" && currentPage === pages.length - 1) || 
+                (readingMode === "double" && currentPage >= pages.length - 2)) && (
+                <button onClick={handleFinish} className="px-10 py-3.5 bg-accent text-white rounded-2xl font-black text-sm shadow-2xl animate-fade-in">Finish Reading</button>
+              )}
             </div>
           </div>
         </div>

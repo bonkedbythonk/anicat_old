@@ -4,7 +4,7 @@ Anicat is a specialized media companion for macOS, designed to streamline anime 
 
 Anicat is built on the foundations of the [Viu](https://github.com/viu-media/viu) project, refined for a native macOS experience with a focus on background persistence and ease of use.
 
-![Anicat Dashboard](dashboard_preview.png)
+![Anicat Dashboard](assets/branding/dashboard_preview.png)
 
 ## Architecture
 

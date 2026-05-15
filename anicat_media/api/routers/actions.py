@@ -15,6 +15,7 @@ def _play_and_track(ctx, params, anime, media_item):
         player_result = ctx.player.play(params, anime=anime, media_item=media_item)
         if player_result:
             ctx.watch_history.track(media_item, player_result)
+            ctx.data_version += 1
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
@@ -100,6 +101,7 @@ async def play_media(media_id: int, background_tasks: BackgroundTasks, episode: 
             # Track progress
             from ...libs.player.types import PlayerResult
             ctx.watch_history.track(media_item, PlayerResult(episode=episode, stop_time=None, total_time=None))
+            ctx.data_version += 1
             
             # Track for Now Playing
             from .status import set_playback
@@ -186,4 +188,18 @@ async def play_media(media_id: int, background_tasks: BackgroundTasks, episode: 
     except Exception as e:
         import traceback
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/test")
+async def test_actions():
+    return {"status": "ok", "message": "Actions router is active"}
+
+@router.get("/open")
+async def open_link(url: str):
+    """Opens a URL in the user's default browser."""
+    try:
+        import webbrowser
+        webbrowser.open(url)
+        return {"status": "success", "url": url}
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

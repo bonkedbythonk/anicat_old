@@ -40,10 +40,12 @@ async def update_config(updates: dict):
         
         # Update current context
         ctx.config = new_config
+        ctx.data_version += 1
 
-        # If the token was updated, reset the media_api instance to force re-authentication
+        # If the token was updated, reset the media_api instance and force online status
         if "anilist" in updates and "token" in updates["anilist"]:
             ctx._media_api = None
+            ctx.is_offline = False
         
         return {"status": "updated"}
     except Exception as e:

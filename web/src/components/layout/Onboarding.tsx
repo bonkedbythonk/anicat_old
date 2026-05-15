@@ -14,7 +14,8 @@ import {
   ChevronRight,
   User,
   Layout,
-  PlayCircle
+  PlayCircle,
+  RotateCcw
 } from "lucide-react";
 import { mediaApi } from "@/lib/api";
 
@@ -38,24 +39,21 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
     setSaving(true);
     setError(null);
     try {
-      const config = await mediaApi.getConfig();
+      // Direct update for just the token
       await mediaApi.updateConfig({
-        ...config,
-        anilist: { ...config.anilist, token: token.trim() }
+        anilist: { token: token.trim() }
       });
       
-      // Force backend to reconnect with new token
-      await mediaApi.reconnect();
+      // The backend should automatically reconnect on token update now
+      // but we force it just in case
+      const res = await mediaApi.reconnect();
       
-      // Briefly wait to ensure backend registers the token
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Try to reconnect/validate
-      const health = await mediaApi.getHealthStatus();
-      if (health.api_connected) {
+      if (res.status === "success") {
         onComplete();
+        // Force a full reload to clear all caches
+        window.location.reload();
       } else {
-        setError("Token was saved but AniList is still unreachable. Is your token valid?");
+        setError(res.message || "Connection failed. Please check your token.");
       }
     } catch (err: any) {
       setError(err.message || "Failed to save token.");
@@ -132,11 +130,9 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
               <p className="text-red-400 text-xs font-semibold animate-shake">{error}</p>
             )}
 
-            <a 
-              href="https://anilist.co/api/v2/oauth/authorize?client_id=20148&redirect_uri=https://anilist.co/api/v2/oauth/pin&response_type=token" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center justify-between p-4 rounded-2xl bg-accent/10 border border-accent/20 hover:bg-accent/20 transition-all group"
+            <button 
+              onClick={() => mediaApi.openUrl("https://anilist.co/api/v2/oauth/authorize?client_id=20148&response_type=token")}
+              className="w-full flex items-center justify-between p-4 rounded-2xl bg-accent/10 border border-accent/20 hover:bg-accent/20 transition-all group"
             >
               <div className="flex items-center space-x-3">
                 <div className="p-2 rounded-lg bg-accent text-white shadow-lg shadow-accent/20">
@@ -144,22 +140,41 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-bold text-white">1. Get your Secure Token</p>
-                  <p className="text-[11px] text-accent font-medium">Click here to log in and copy the code</p>
+                  <p className="text-[11px] text-accent font-medium">Click Authorize, then copy the long token from the box on the page</p>
                 </div>
               </div>
               <ChevronRight size={18} className="text-accent group-hover:translate-x-1 transition-all" />
-            </a>
+            </button>
 
-            <div className="flex items-center justify-center space-x-2 text-[11px] text-gray-500 pt-1">
-              <span>Don't have an AniList account?</span>
-              <a 
-                href="https://anilist.co/signup" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-accent hover:underline font-bold"
+            <div className="flex flex-col items-center space-y-2 pt-1">
+              <div className="flex items-center justify-center space-x-2 text-[11px] text-gray-500">
+                <span>Don't have an AniList account?</span>
+                <button 
+                  onClick={() => mediaApi.openUrl("https://anilist.co/signup")}
+                  className="text-accent hover:underline font-bold"
+                >
+                  Sign up here
+                </button>
+              </div>
+              <button 
+                onClick={async () => {
+                   setSaving(true);
+                   try {
+                     const health = await mediaApi.getHealthStatus();
+                     if (health.api_authenticated) {
+                       onComplete();
+                     } else {
+                       setError("Still no token detected. Did you log in via CLI?");
+                     }
+                   } finally {
+                     setSaving(false);
+                   }
+                }}
+                className="text-[10px] text-gray-600 hover:text-accent transition-colors flex items-center space-x-1"
               >
-                Sign up here
-              </a>
+                <RotateCcw size={10} />
+                <span>Refresh Status</span>
+              </button>
             </div>
           </div>
 
@@ -189,14 +204,11 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-background/80 backdrop-blur-md animate-fade-in">
-      <div className="max-w-xl w-full bg-surface border border-white/[0.08] rounded-[32px] overflow-hidden shadow-2xl relative">
+      <div className="max-w-xl w-full max-h-[90vh] bg-surface border border-white/[0.08] rounded-[32px] overflow-y-auto scrollbar-hide shadow-2xl relative">
         {/* Background glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-accent/10 blur-[100px] -z-10" />
         
-        <div className="p-10 lg:p-12 text-center">
-          <div className="w-20 h-20 bg-accent/10 rounded-3xl flex items-center justify-center mx-auto mb-8 animate-pulse-glow">
-            <img src="/pwa-logo.png?v=2" alt="Logo" className="w-12 h-12 object-contain" />
-          </div>
+        <div className="p-6 sm:p-10 lg:p-12 text-center">
 
           <h1 className="text-3xl lg:text-4xl font-black text-white tracking-tight mb-2">
             {currentStep.title}

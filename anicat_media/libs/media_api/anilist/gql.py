@@ -9,6 +9,7 @@ SEARCH_MEDIA = _QUERIES_PATH / "search.gql"
 SEARCH_USER_MEDIA_LIST = _QUERIES_PATH / "media-list.gql"
 
 GET_AIRING_SCHEDULE = _QUERIES_PATH / "media-airing-schedule.gql"
+AIRING_SCHEDULE = _QUERIES_PATH / "airing-schedule.gql"
 GET_MEDIA_CHARACTERS = _QUERIES_PATH / "media-characters.gql"
 GET_MEDIA_RECOMMENDATIONS = _QUERIES_PATH / "media-recommendations.gql"
 GET_MEDIA_RELATIONS = _QUERIES_PATH / "media-relations.gql"

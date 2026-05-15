@@ -9,7 +9,7 @@ import MediaDetail from "@/components/media/MediaDetail";
 import Hero from "@/components/media/Hero";
 import useKeyboardShortcuts from "@/lib/useKeyboardShortcuts";
 import { mediaApi, type MediaItem, type QueueItem, type Notification, type UserProfile, type SearchFilters, type HealthStatus } from "@/lib/api";
-import { useRefreshTrigger } from "@/lib/events";
+import { useRefreshTrigger, dispatchRefresh } from "@/lib/events";
 import Onboarding from "@/components/layout/Onboarding";
 import {
   Search,
@@ -41,7 +41,8 @@ import {
   Key,
   MessageSquare,
   Activity,
-  WifiOff
+  WifiOff,
+  Calendar
 } from "lucide-react";
 
 // ─── Home View ────────────────────────────────────────
@@ -50,6 +51,7 @@ function HomeView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
   const [watchingList, setWatchingList] = useState<MediaItem[]>([]);
   const [trendingList, setTrendingList] = useState<MediaItem[]>([]);
   const [seasonalList, setSeasonalList] = useState<MediaItem[]>([]);
+  const [recentReleases, setRecentReleases] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -58,11 +60,22 @@ function HomeView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
         const [watching, trending, seasonal] = await Promise.all([
           mediaApi.getUserList("watching", "ANIME"),
           mediaApi.getTrending("ANIME"),
-          mediaApi.getSeasonal("ANIME")
+          mediaApi.getSeasonal("ANIME"),
         ]);
-        setWatchingList(watching.media || []);
+        
+        const watchingMedia = watching.media || [];
+        setWatchingList(watchingMedia);
         setTrendingList(trending.media || []);
         setSeasonalList(seasonal.media || []);
+        
+        // Now fetch schedule for these specific IDs
+        if (watchingMedia.length > 0) {
+          const watchingIds = watchingMedia.map(m => m.id);
+          const schedule = await mediaApi.getSchedule(2, 0, 1, 10, watchingIds);
+          setRecentReleases(schedule.media || []);
+        } else {
+          setRecentReleases([]);
+        }
       } catch (err) {
         console.error("Failed to load home data:", err);
       } finally {
@@ -76,9 +89,20 @@ function HomeView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
 
   useEffect(() => {
     if (watchingList.length > 0) {
-      // Pick a random item from the top 10 watching items for variety
-      const randomIndex = Math.floor(Math.random() * Math.min(watchingList.length, 10));
-      setHeroItem(watchingList[randomIndex]);
+      // Prioritize items the user hasn't caught up with yet
+      const availableToWatch = watchingList.filter(item => {
+        const progress = item.user_status?.progress || 0;
+        const total = item.episodes || 0;
+        // If airing, we might be caught up even if progress < total
+        if (item.next_airing) {
+          return progress < (item.next_airing.episode - 1);
+        }
+        return total > 0 ? progress < total : true;
+      });
+
+      const pool = availableToWatch.length > 0 ? availableToWatch : watchingList;
+      const randomIndex = Math.floor(Math.random() * Math.min(pool.length, 10));
+      setHeroItem(pool[randomIndex]);
     } else if (trendingList.length > 0) {
       setHeroItem(trendingList[0]);
     }
@@ -98,6 +122,10 @@ function HomeView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
       
       {watchingList.length > 0 && (
         <MediaRow title="Continue Watching" items={watchingList} onSelect={onSelect} />
+      )}
+      
+      {recentReleases.length > 0 && (
+        <MediaRow title="New for You" items={recentReleases} onSelect={onSelect} />
       )}
       
       <MediaRow title="Trending Now" items={trendingList} onSelect={onSelect} />
@@ -128,8 +156,17 @@ function MangaView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
         setPopularList(popular.media || []);
         setReadingList(reading.media || []);
         
-        // Randomize hero from reading list or trending
-        const pool = reading.media?.length ? reading.media.slice(0, 5) : trending.media?.slice(0, 5);
+        // Prioritize manga the user hasn't finished reading
+        const availableToRead = reading.media?.filter(item => {
+          const progress = item.user_status?.progress || 0;
+          const total = item.chapters || 0;
+          return total > 0 ? progress < total : true;
+        }) || [];
+
+        const pool = availableToRead.length > 0 
+          ? availableToRead.slice(0, 5) 
+          : (reading.media?.length ? reading.media.slice(0, 5) : trending.media?.slice(0, 5));
+
         if (pool?.length) {
           setHeroManga(pool[Math.floor(Math.random() * pool.length)]);
         }
@@ -476,95 +513,120 @@ function SearchView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
       </div>
 
       {/* Results */}
-      {query.trim().length === 0 ? (
-        <div className="space-y-12">
-          {loadingDiscovery ? (
-             <div className="flex flex-col items-center justify-center py-24 space-y-4">
-               <Loader2 className="animate-spin text-accent" size={40} />
-               <p className="text-gray-500 font-medium">Curating your discovery feed...</p>
-             </div>
-          ) : (
-            <>
-              {discovery.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-2xl font-extrabold tracking-tight text-white">Discover {type === "ANIME" ? "Anime" : "Manga"}</h2>
-                      <p className="text-sm text-gray-500">A rotating mix of trending, seasonal, and recent picks.</p>
+      {(() => {
+        const hasFilters = Object.values(filters).some(Boolean);
+        
+        if (query.trim().length === 0 && !hasFilters) {
+          return (
+            <div className="space-y-12">
+              {loadingDiscovery ? (
+                 <div className="flex flex-col items-center justify-center py-24 space-y-4">
+                   <Loader2 className="animate-spin text-accent" size={40} />
+                   <p className="text-gray-500 font-medium">Curating your discovery feed...</p>
+                 </div>
+              ) : (
+                <>
+                  {discovery.length > 0 && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h2 className="text-2xl font-extrabold tracking-tight text-white">Discover {type === "ANIME" ? "Anime" : "Manga"}</h2>
+                          <p className="text-sm text-gray-500">A rotating mix of trending, seasonal, and recent picks.</p>
+                        </div>
+                        <button
+                          onClick={() => setDiscovery([...discovery].sort(() => Math.random() - 0.5))}
+                          className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-sm font-semibold text-gray-300 transition-colors hover:border-accent/30 hover:text-white"
+                        >
+                          Shuffle
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                        {discovery.map((item) => (
+                          <MediaCard key={item.id} item={item} onSelect={onSelect} />
+                        ))}
+                      </div>
                     </div>
-                    <button
-                      onClick={() => setDiscovery([...discovery].sort(() => Math.random() - 0.5))}
-                      className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-sm font-semibold text-gray-300 transition-colors hover:border-accent/30 hover:text-white"
-                    >
-                      Shuffle
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                    {discovery.map((item) => (
-                      <MediaCard key={item.id} item={item} onSelect={onSelect} />
-                    ))}
-                  </div>
-                </div>
-              )}
+                  )}
 
-              {randomList.length > 0 && (
-                <div className="space-y-4 pt-12 border-t border-white/[0.04]">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-2xl font-extrabold tracking-tight text-white">Random Picks</h2>
-                      <p className="text-sm text-gray-500">Completely random picks from across the database.</p>
+                  {randomList.length > 0 && (
+                    <div className="space-y-4 pt-12 border-t border-white/[0.04]">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h2 className="text-2xl font-extrabold tracking-tight text-white">Random Picks</h2>
+                          <p className="text-sm text-gray-500">Completely random picks from across the database.</p>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            setLoadingDiscovery(true);
+                            const randomPage = Math.floor(Math.random() * 100) + 1;
+                            try {
+                              const data = await mediaApi.search("", type, randomPage);
+                              setRandomList(data.media || []);
+                            } finally {
+                              setLoadingDiscovery(false);
+                            }
+                          }}
+                          className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-sm font-semibold text-gray-300 transition-colors hover:border-accent/30 hover:text-white"
+                        >
+                          New Random
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                        {randomList.map((item) => (
+                          <MediaCard key={item.id} item={item} onSelect={onSelect} />
+                        ))}
+                      </div>
                     </div>
-                    <button
-                      onClick={async () => {
-                        setLoadingDiscovery(true);
-                        const randomPage = Math.floor(Math.random() * 100) + 1;
-                        try {
-                          const data = await mediaApi.search("", type, randomPage);
-                          setRandomList(data.media || []);
-                        } finally {
-                          setLoadingDiscovery(false);
-                        }
-                      }}
-                      className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-sm font-semibold text-gray-300 transition-colors hover:border-accent/30 hover:text-white"
-                    >
-                      New Random
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                    {randomList.map((item) => (
-                      <MediaCard key={item.id} item={item} onSelect={onSelect} />
-                    ))}
-                  </div>
-                </div>
-              )}
+                  )}
 
-              {!loadingDiscovery && discovery.length === 0 && randomList.length === 0 && (
-                <div className="text-center py-24 bg-white/[0.02] rounded-3xl border border-dashed border-white/[0.06]">
-                  <Activity size={40} className="mx-auto text-gray-800 mb-4" />
-                  <p className="text-gray-500 font-semibold">Unable to load discovery feed.</p>
-                  <button 
-                    onClick={() => window.location.reload()}
-                    className="mt-4 text-accent text-sm font-bold hover:underline"
-                  >
-                    Try Refreshing
-                  </button>
-                </div>
+                  {!loadingDiscovery && discovery.length === 0 && randomList.length === 0 && (
+                    <div className="text-center py-24 bg-white/[0.02] rounded-3xl border border-dashed border-white/[0.06]">
+                      <Activity size={40} className="mx-auto text-gray-800 mb-4" />
+                      <p className="text-gray-500 font-semibold">Unable to load discovery feed.</p>
+                      <button 
+                        onClick={() => window.location.reload()}
+                        className="mt-4 text-accent text-sm font-bold hover:underline"
+                      >
+                        Try Refreshing
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
-            </>
-          )}
-        </div>
-      ) : results.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
-          {results.map((item) => (
-            <MediaCard key={item.id} item={item} onSelect={onSelect} />
-          ))}
-        </div>
-      ) : query && !loading ? (
-        <div className="text-center py-24">
-          <Search size={40} className="mx-auto text-gray-800 mb-4" />
-          <p className="text-gray-600 font-semibold">No {type.toLowerCase()} found for &quot;{query}&quot;</p>
-        </div>
-      ) : null}
+            </div>
+          );
+        }
+
+        if (results.length > 0) {
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
+              {results.map((item) => (
+                <MediaCard key={item.id} item={item} onSelect={onSelect} />
+              ))}
+            </div>
+          );
+        }
+
+        if (query.trim().length > 0 && !loading) {
+          return (
+            <div className="text-center py-24">
+              <Search size={40} className="mx-auto text-gray-800 mb-4" />
+              <p className="text-gray-600 font-semibold">No {type.toLowerCase()} found for &quot;{query}&quot;</p>
+            </div>
+          );
+        }
+
+        if (hasFilters && !loading) {
+          return (
+            <div className="text-center py-24">
+              <SlidersHorizontal size={40} className="mx-auto text-gray-800 mb-4" />
+              <p className="text-gray-600 font-semibold">No {type.toLowerCase()} found matching these filters.</p>
+            </div>
+          );
+        }
+
+        return null;
+      })()}
 
       <InfiniteScroll hasMore={hasMore} loading={loadingMore} onLoadMore={loadMore} />
     </div>
@@ -797,6 +859,129 @@ function DownloadsView() {
           <Download size={40} className="mx-auto text-gray-800 mb-4" />
           <p className="text-gray-600 font-semibold">Queue is empty</p>
           <p className="text-gray-700 text-sm mt-1">Find anime and queue episodes for download.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Schedule View ────────────────────────────────────
+function ScheduleView({ onSelect }: { onSelect: (item: MediaItem) => void }) {
+  const [items, setItems] = useState<MediaItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [watchingOnly, setWatchingOnly] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        let mediaIds: number[] | undefined = undefined;
+        if (watchingOnly) {
+          const watching = await mediaApi.getUserList("watching", "ANIME");
+          mediaIds = (watching.media || []).map(m => m.id);
+          if (mediaIds.length === 0) {
+            setItems([]);
+            setLoading(false);
+            return;
+          }
+        }
+        
+        const data = await mediaApi.getSchedule(1, 3, 1, 50, mediaIds);
+        setItems(data.media || []);
+      } catch (err) {
+        console.error("Failed to load schedule:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [watchingOnly]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="animate-spin text-accent" size={36} />
+      </div>
+    );
+  }
+
+  // Group by day
+  const groups: { [key: string]: MediaItem[] } = {};
+  items.forEach(item => {
+    if (!item.next_airing?.airing_at) return;
+    const date = new Date(item.next_airing.airing_at);
+    const dateStr = date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    if (!groups[dateStr]) groups[dateStr] = [];
+    groups[dateStr].push(item);
+  });
+
+  return (
+    <div className="space-y-12 animate-fade-in pb-12">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+        <div className="flex flex-col space-y-2">
+          <h1 className="text-4xl font-black text-white tracking-tight">Airing Schedule</h1>
+          <p className="text-gray-500 font-medium text-lg">Keep track of the latest releases and upcoming episodes</p>
+        </div>
+        
+        <div className="flex bg-white/[0.04] p-1 rounded-xl border border-white/[0.06] w-fit h-fit self-start sm:self-auto">
+          <button
+            onClick={() => setWatchingOnly(false)}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+              !watchingOnly ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-gray-500 hover:text-white"
+            }`}
+          >
+            <Globe size={16} />
+            <span>Global</span>
+          </button>
+          <button
+            onClick={() => setWatchingOnly(true)}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+              watchingOnly ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-gray-500 hover:text-white"
+            }`}
+          >
+            <Monitor size={16} />
+            <span>Watching Only</span>
+          </button>
+        </div>
+      </div>
+
+      {Object.entries(groups).map(([date, dayItems]) => (
+        <div key={date} className="space-y-6">
+          <div className="flex items-center space-x-4">
+            <h2 className="text-xl font-bold text-white px-4 py-2 bg-white/[0.03] border border-white/[0.06] rounded-xl inline-block">{date}</h2>
+            <div className="h-px flex-1 bg-gradient-to-r from-white/[0.06] to-transparent" />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+            {dayItems.sort((a, b) => new Date(a.next_airing!.airing_at!).getTime() - new Date(b.next_airing!.airing_at!).getTime()).map(item => (
+              <div key={item.id} className="space-y-2">
+                <MediaCard item={item} onSelect={onSelect} />
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center space-x-1.5 text-accent">
+                    <Activity size={12} className="animate-pulse" />
+                    <span className="text-[11px] font-black uppercase tracking-wider">Ep {item.next_airing?.episode}</span>
+                  </div>
+                  <div className="flex items-center space-x-1.5 text-gray-500">
+                    <Clock size={12} />
+                    <span className="text-[11px] font-bold">
+                      {new Date(item.next_airing!.airing_at!).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {items.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+          <div className="p-6 rounded-full bg-white/[0.02] border border-white/[0.04]">
+            <Calendar size={48} className="text-gray-700" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold text-white">No episodes scheduled</h3>
+            <p className="text-gray-500 max-w-xs">Check back later for updated airing times.</p>
+          </div>
         </div>
       )}
     </div>
@@ -1140,6 +1325,32 @@ function SettingsView({ health, onUpdateStarted }: { health: HealthStatus | null
                   placeholder="Paste your token here..."
                   className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all placeholder:text-gray-700"
                 />
+                <button
+                  id="logout-btn"
+                  data-confirmed="false"
+                  onClick={async () => {
+                    const btn = document.getElementById('logout-btn');
+                    if (btn?.getAttribute('data-confirmed') === 'true') {
+                      // Direct logout to avoid state racing
+                      mediaApi.updateConfig({ anilist: { token: "" } })
+                        .then(() => window.location.reload())
+                        .catch(err => {
+                          console.error("Logout failed:", err);
+                          alert("Logout failed. Please try again.");
+                        });
+                    } else {
+                      if (btn) {
+                        btn.setAttribute('data-confirmed', 'true');
+                        btn.innerHTML = '<span>Are you sure? Click again to Logout</span>';
+                        btn.className = "mt-2 text-xs font-bold text-red-400 transition-colors flex items-center space-x-1";
+                      }
+                    }
+                  }}
+                  className="mt-2 text-xs font-bold text-red-400/60 hover:text-red-400 transition-colors flex items-center space-x-1"
+                >
+                  <XCircle size={12} />
+                  <span>Logout from AniList</span>
+                </button>
               </SettingField>
             </div>
           )}
@@ -1184,9 +1395,24 @@ function SettingsView({ health, onUpdateStarted }: { health: HealthStatus | null
               <div className="p-6 rounded-2xl bg-red-500/5 border border-red-500/10 space-y-4">
                 <h3 className="text-lg font-bold text-red-400/80">Danger Zone</h3>
                 <button
+                  id="clear-registry-btn"
+                  data-confirmed="false"
                   onClick={() => {
-                    if (confirm("Are you sure you want to clear your local cache? This cannot be undone.")) {
-                      // Registry clear logic
+                    const btn = document.getElementById('clear-registry-btn');
+                    if (btn?.getAttribute('data-confirmed') === 'true') {
+                      mediaApi.wipeRegistry().then(() => {
+                        if (btn) {
+                          btn.innerHTML = 'Registry Wiped! Restarting...';
+                          btn.className = "w-full py-3 bg-green-500/20 text-green-400 rounded-xl text-sm font-bold transition-all border border-green-500/30";
+                          setTimeout(() => window.location.reload(), 1500);
+                        }
+                      });
+                    } else {
+                      if (btn) {
+                        btn.setAttribute('data-confirmed', 'true');
+                        btn.innerHTML = 'Are you sure? This will wipe your history!';
+                        btn.className = "w-full py-3 bg-red-500/20 text-red-400 rounded-xl text-sm font-bold transition-all border border-red-500/30";
+                      }
                     }
                   }}
                   className="w-full py-3 border border-red-500/20 text-red-400/60 rounded-xl text-sm font-bold hover:bg-red-500/10 transition-all"
@@ -1196,15 +1422,24 @@ function SettingsView({ health, onUpdateStarted }: { health: HealthStatus | null
               </div>
 
               {/* Reset Setup */}
-              <div className="pt-2">
+              <div className="pt-4 border-t border-white/[0.06]">
                 <button 
                   onClick={() => {
-                    if (confirm("Reset onboarding and restart setup?")) {
+                    const btn = document.getElementById('reset-onboarding-btn');
+                    if (btn?.getAttribute('data-confirmed') === 'true') {
                       localStorage.removeItem("anicat_onboarding_seen");
                       window.location.reload();
+                    } else {
+                      if (btn) {
+                        btn.setAttribute('data-confirmed', 'true');
+                        btn.innerHTML = '<span>Are you sure? Click again to Reset</span>';
+                        btn.className = "w-full py-3 px-4 rounded-xl bg-red-500/20 text-red-400 text-[10px] font-bold transition-all border border-red-500/30 flex items-center justify-center space-x-2";
+                      }
                     }
                   }}
-                  className="w-full py-3 px-4 rounded-xl bg-white/[0.01] hover:bg-white/[0.03] text-gray-600 text-[10px] font-bold transition-all border border-white/[0.04] flex items-center justify-center space-x-2"
+                  id="reset-onboarding-btn"
+                  data-confirmed="false"
+                  className="w-full py-3 px-4 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] text-gray-400 text-[10px] font-bold transition-all border border-white/[0.08] flex items-center justify-center space-x-2"
                 >
                   <RotateCcw size={12} />
                   <span>Reset Onboarding Setup</span>
@@ -1471,6 +1706,8 @@ function HelpModal({ onClose }: { onClose: () => void }) {
 export default function App() {
   const [activeView, setActiveView] = useState<ViewName>("home");
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
+  const [initialAction, setInitialAction] = useState<"play" | null>(null);
+  const [readingChapter, setReadingChapter] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [dismissedOffline, setDismissedOffline] = useState(() => {
@@ -1489,13 +1726,25 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [refreshNeeded, setRefreshNeeded] = useState(false);
 
-  // Poll health for offline banner and notifications
+  const lastDataVersion = useRef<number | null>(null);
+  
+  // Poll health for offline banner, notifications, and live sync
   useEffect(() => {
     async function checkSystem() {
       try {
         const status = await mediaApi.getHealthStatus();
         setHealthStatus(status);
         
+        // 1. Live Sync Detection
+        if (status.data_version !== undefined) {
+          if (lastDataVersion.current !== null && status.data_version > lastDataVersion.current) {
+            console.log("Live Sync: Data changed (version " + lastDataVersion.current + " -> " + status.data_version + "). Refreshing views...");
+            dispatchRefresh();
+          }
+          lastDataVersion.current = status.data_version;
+        }
+
+        // 2. Offline Detection
         // Only show offline if explicitly told so by backend AND api is disconnected AND we are logged in
         const shouldBeOffline = status.api_authenticated && (status.is_offline || !status.api_connected);
         setIsOffline(shouldBeOffline);
@@ -1503,26 +1752,21 @@ export default function App() {
         if (!shouldBeOffline) setDismissedOffline(false);
         setNotificationCount(status.unread_notifications || 0);
       } catch {
-        // If the health check fails, the backend might be down. 
-        // We don't want to show the "Browsing local" banner immediately 
-        // as it might just be a server restart.
+        // Silent fail on health poll
       }
     }
     checkSystem();
-    const interval = setInterval(checkSystem, 30000);
+    const interval = setInterval(checkSystem, 10000); // Poll faster (10s) for snappier sync
     return () => clearInterval(interval);
   }, []);
 
   // Check if onboarding should be shown
   useEffect(() => {
-    // Only show onboarding if we have health data AND user is NOT authenticated
-    if (healthStatus && !healthStatus.api_authenticated) {
-      const hasSeenOnboarding = localStorage.getItem("anicat_onboarding_seen");
-      if (!hasSeenOnboarding) {
-        setShowOnboarding(true);
-      }
-    } else if (healthStatus?.api_authenticated) {
-      // If we are authenticated, definitely don't show it
+    // Only show onboarding if user hasn't seen it yet
+    const hasSeenOnboarding = localStorage.getItem("anicat_onboarding_seen");
+    if (!hasSeenOnboarding && healthStatus) {
+      setShowOnboarding(true);
+    } else {
       setShowOnboarding(false);
     }
   }, [healthStatus]);
@@ -1544,8 +1788,9 @@ export default function App() {
     onToggleHelp: () => setShowHelp(h => !h),
   });
 
-  const handleSelect = (item: MediaItem) => {
+  const handleSelect = (item: MediaItem, action?: "play") => {
     setSelectedItem(item);
+    setInitialAction(action || null);
   };
 
   const renderView = () => {
@@ -1566,6 +1811,8 @@ export default function App() {
         return <SettingsView health={healthStatus} onUpdateStarted={() => setRefreshNeeded(true)} />;
       case "notifications":
         return <NotificationsView onSelect={handleSelect} />;
+      case "schedule":
+        return <ScheduleView onSelect={handleSelect} />;
       case "profile":
         return <ProfileView />;
     }
@@ -1649,7 +1896,34 @@ export default function App() {
 
       {/* Media detail panel */}
       {selectedItem && (
-        <MediaDetail item={selectedItem} onClose={() => setSelectedItem(null)} />
+        <MediaDetail 
+          item={selectedItem} 
+          initialAction={initialAction || undefined}
+          onRead={(chapter) => setReadingChapter(chapter)}
+          onClose={() => {
+            setSelectedItem(null);
+            setInitialAction(null);
+          }} 
+        />
+      )}
+
+      {selectedItem && readingChapter && (
+        <MangaReader
+          mediaId={selectedItem.id}
+          chapterNumber={readingChapter}
+          onClose={() => {
+            setReadingChapter(null);
+            dispatchRefresh();
+          }}
+          onProgressUpdate={async (num) => {
+            try {
+              await mediaApi.updateStatus(selectedItem.id, undefined, undefined, parseInt(num));
+              dispatchRefresh();
+            } catch (error) {
+              console.error("Failed to update manga progress:", error);
+            }
+          }}
+        />
       )}
 
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}

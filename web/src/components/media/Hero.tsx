@@ -7,19 +7,36 @@ import { dispatchRefresh } from "@/lib/events";
 
 interface HeroProps {
   item: MediaItem;
-  onSelect?: (item: MediaItem) => void;
+  onSelect?: (item: MediaItem, action?: "play") => void;
 }
 
 export default function Hero({ item, onSelect }: HeroProps) {
   const title = item.title.english || item.title.romaji || "Unknown";
-  const nextEpisode = (item.user_status?.progress || 0) + 1;
+  const currentProgress = item.user_status?.progress || 0;
+  const total = item.episodes || item.chapters || 0;
+  const isManga = item.type === "MANGA";
+  
+  // If airing, we might be caught up even if progress < total
+  const latestAvailable = item.next_airing ? (item.next_airing.episode - 1) : total;
+  const isFinished = total > 0 && currentProgress >= total;
+  const isCaughtUp = !isFinished && latestAvailable > 0 && currentProgress >= latestAvailable;
 
   const [loading, setLoading] = useState(false);
   const handlePlay = async () => {
+    if (isManga && onSelect) {
+      onSelect(item, "play");
+      return;
+    }
+    
     setLoading(true);
     try {
-      // Use explicit next episode if available for better accuracy
-      const nextEp = item.user_status?.progress !== undefined ? String(item.user_status.progress + 1) : undefined;
+      // If finished, start over from 1
+      let nextEpNum = currentProgress + 1;
+      if (isFinished) {
+        nextEpNum = 1;
+      }
+      
+      const nextEp = String(nextEpNum);
       await mediaApi.play(item.id, nextEp);
       dispatchRefresh();
     } catch (error) {
@@ -48,11 +65,11 @@ export default function Hero({ item, onSelect }: HeroProps) {
         <div className="space-y-3">
           <div className="flex items-center space-x-3">
             <span className="px-3 py-1 bg-accent/90 text-white rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-accent/20">
-              {item.user_status ? "Continue Watching" : "Featured"}
+              {item.user_status ? (isManga ? "Reading" : "Watching") : "Featured"}
             </span>
-            {item.user_status && (
+            {item.user_status && !isFinished && !isCaughtUp && (
               <span className="text-gray-400 font-semibold text-xs uppercase tracking-wider">
-                Episode {nextEpisode}
+                {isManga ? "Chapter" : "Episode"} {currentProgress + 1}
               </span>
             )}
           </div>
@@ -71,15 +88,24 @@ export default function Hero({ item, onSelect }: HeroProps) {
         <div className="flex items-center space-x-3 pt-2">
           <button 
             onClick={handlePlay}
-            disabled={loading}
-            className="flex items-center space-x-3 bg-white text-black px-8 py-3.5 rounded-xl hover:bg-accent hover:text-white transition-all duration-300 font-bold text-sm active:scale-95 shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
+            disabled={loading || isCaughtUp}
+            className="flex items-center space-x-3 bg-white text-black px-8 py-3.5 rounded-xl hover:bg-accent hover:text-white transition-all duration-300 font-bold text-sm active:scale-95 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-black"
           >
             {loading ? (
               <Loader2 className="animate-spin" size={18} />
             ) : (
               <Play fill="currentColor" size={18} />
             )}
-            <span>{loading ? "Starting..." : (item.user_status?.progress ? "Resume" : "Play Now")}</span>
+            <span>
+              {loading 
+                ? "Starting..." 
+                : isFinished
+                  ? (isManga ? "Read Again" : "Re-watch")
+                  : isCaughtUp
+                    ? "Caught Up"
+                    : (item.user_status?.progress ? "Resume" : (isManga ? "Read Now" : "Play Now"))
+              }
+            </span>
           </button>
           
           <button 
