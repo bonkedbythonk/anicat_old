@@ -13,7 +13,7 @@ pub fn run() {
       let (mut rx, child) = sidecar.spawn().expect("Failed to spawn sidecar");
       
       // Temporarily disabled to debug immediate exit
-      // app.manage(child);
+      app.manage(child);
 
       tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
