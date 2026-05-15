@@ -897,7 +897,7 @@ function SettingsView({ health }: { health: HealthStatus | null }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState<"general" | "streaming" | "downloads" | "anilist" | "registry" | "system">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "streaming" | "downloads" | "anilist" | "registry" | "maintenance" | "system">("general");
   const [refreshNeeded, setRefreshNeeded] = useState(false);
   const [registryStats, setRegistryStats] = useState<any>(null);
   const [backingUp, setBackingUp] = useState(false);
@@ -1026,7 +1026,7 @@ function SettingsView({ health }: { health: HealthStatus | null }) {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${
                 activeTab === tab.id
                   ? "bg-accent text-white shadow-lg"
