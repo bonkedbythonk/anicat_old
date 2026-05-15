@@ -2,7 +2,7 @@
 
 A specialized media companion for macOS designed for seamless anime and manga management. Anicat provides a centralized dashboard to stream content, track progress via AniList, and manage local downloads with a focus on performance and minimalist design.
 
-![Anicat Dashboard](./anicat_dashboard.png)
+![Anicat Dashboard](./dashboard_preview.png)
 
 ---
 
