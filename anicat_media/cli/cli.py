@@ -40,6 +40,7 @@ commands = {
     "queue": "queue.queue",
     "completions": "completions.completions",
     "dashboard": "dashboard.dashboard",
+    "stop": "stop.stop",
 }
 
 
