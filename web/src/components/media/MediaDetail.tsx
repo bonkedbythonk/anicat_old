@@ -58,7 +58,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead }: Me
     } else if (activeTab === "characters" && characters.length === 0) {
       setLoadingChars(true);
       mediaApi.getCharacters(item.id)
-        .then(setCharacters)
+        .then(res => setCharacters(res.characters))
         .catch(err => console.error("Failed to load characters:", err))
         .finally(() => setLoadingChars(false));
     } else if (activeTab === "reviews" && reviews.length === 0) {
