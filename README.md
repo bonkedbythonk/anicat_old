@@ -1,85 +1,80 @@
-# 🐱 Anicat
+# Anicat
 
-**Your premium anime and manga companion for macOS.**  
-Stream, track, and download your favorite media with a beautiful, minimalist experience.
+A specialized media companion for macOS designed for seamless anime and manga management. Anicat provides a centralized dashboard to stream content, track progress via AniList, and manage local downloads with a focus on performance and minimalist design.
 
 ![Anicat Dashboard](./anicat_dashboard.png)
 
 ---
 
-## 🚀 Quick Start (2 Steps)
+## Installation
 
-### 1. Open Terminal & Install
-Open your **Terminal** (Cmd+Space, type `terminal`, and press Enter).  
-Copy and paste this entire line and press Enter:
+Anicat can be installed via a single command. Open your Terminal and execute the following:
 
 ```bash
 git clone https://github.com/bonkedbythonk/anicat.git && cd anicat && ./scripts/install.sh
 ```
 
-### 2. Enjoy!
-The installer will handle everything (including system tools like `mpv`) and automatically open the **Anicat Dashboard** in your browser.
+The installation script automatically manages system dependencies, including Homebrew and MPV, and initializes the web dashboard.
 
 ---
 
-## ✨ Features
+## Core Features
 
-- **Premium Dashboard**: A sleek, dark-themed web interface with glassmorphism aesthetics.
-- **Smart Progress Sync**: Instant, "Local-First" syncing with **AniList**. Your progress updates are reflected the microsecond you click.
-- **Anime Streaming**: Search and stream high-quality episodes (up to 1080p).
-- **Manga Reader**: A clean, distraction-free reader for your favorite chapters.
-- **Offline Mode**: Full registry support to track your library even without an internet connection.
-- **Mobile Access**: Built-in support for iPhones and Tablets on your local network.
+- **Centralized Dashboard**: A responsive, dark-themed web interface for media management.
+- **Bi-Directional Sync**: Real-time synchronization with AniList using a local-first architecture for zero-latency progress tracking.
+- **Integrated Streaming**: Direct streaming support for anime with resolution options up to 1080p.
+- **Manga Support**: A high-performance reading environment for manga chapters.
+- **Background Operation**: Optimized to run as a lightweight background service.
+- **Local Registry**: Persistent offline tracking for progress and library metadata.
 
 ---
 
-## 🛠 Managing Anicat
+## Usage and Commands
 
-Anicat is designed to stay out of your way. Once installed, you can control it with these simple commands:
+Anicat is controlled via the `anicat` command-line utility.
 
-### **Start the Server**
-Launch the dashboard and hide it in the background:
+### Launching the Dashboard
+To start the dashboard and run it as a background service:
 ```bash
 anicat dashboard &
 ```
-*Note: You can close your terminal immediately after running this!*
+Once the command is executed, the terminal window can be closed. The dashboard will remain accessible at `http://localhost:8000`.
 
-### **Stop the Server**
-Shut down the background dashboard safely:
+### Stopping the Service
+To terminate all background Anicat processes:
 ```bash
 anicat stop
 ```
 
-### **One-Click Updates**
-Instead of using the terminal, you can simply click the **"Update"** button in the **Settings > Maintenance** tab on the website. The app will pull the latest code, rebuild itself, and restart automatically.
+### Updates
+Anicat supports automated updates. Navigate to the **Settings > Maintenance** section within the web dashboard to check for and install the latest version. This process handles code retrieval, dependency synchronization, and service restarts automatically.
 
 ---
 
-## 📱 Mobile Use
-Want to watch on your iPhone? 
-1. Run `anicat dashboard`.
-2. Look for the **"Remote"** URL in the terminal (e.g., `http://192.168.1.50:8000`).
-3. Open that URL on your phone! 
-*Tip: On iPhone, tap the "Share" button and select **"Add to Home Screen"** to use Anicat like a native app.*
+## Mobile Integration
+
+The dashboard is accessible from any device on the same local network. 
+1. Identify your local IP address (displayed in the terminal during startup).
+2. Access the dashboard via `http://[YOUR-IP]:8000` on your mobile device.
+3. For a native experience on iOS, select "Add to Home Screen" from the sharing menu.
 
 ---
 
-## ❓ Troubleshooting
+## Troubleshooting
 
-**"Destination path 'anicat' already exists"**
-Run this to overwrite and start fresh:
+### Directory Conflicts
+If an existing installation is detected, remove the directory before re-cloning:
 ```bash
 rm -rf anicat && git clone https://github.com/bonkedbythonk/anicat.git && cd anicat && ./scripts/install.sh
 ```
 
-**"Command not found: anicat"**
-Restart your terminal or run `source ~/.zshrc`.
-
-**Homebrew or MPV missing?**
-Don't worry! The installer will detect them and ask to install them for you automatically.
+### Command Resolution
+If the `anicat` command is not recognized after installation, ensure your shell environment is refreshed:
+```bash
+source ~/.zshrc
+```
 
 ---
 
-## ⚖️ License
-Anicat is a specialized macOS fork of the [Viu](https://github.com/viu-media/viu) project, refined for a premium dashboard experience and "Zero-Knowledge" automation.
-Licensed under the [UNLICENSE](https://unlicense.org/).
+## License
+Anicat is a macOS-focused implementation based on the Viu project. It is released under the UNLICENSE.
