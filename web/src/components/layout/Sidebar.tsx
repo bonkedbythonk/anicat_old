@@ -55,22 +55,6 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0 
     return () => clearInterval(interval);
   }, [fetchHealth]);
 
-  const syncColor = health
-    ? health.is_offline
-      ? "bg-red-400"
-      : health.api_connected
-        ? "bg-green-400 animate-pulse"
-        : "bg-yellow-400"
-    : "bg-gray-600";
-
-  const syncLabel = health
-    ? health.is_offline
-      ? "Offline"
-      : health.api_connected
-        ? "Synced"
-        : "Connecting..."
-    : "Checking...";
-
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-[72px] lg:w-60 bg-black/60 backdrop-blur-xl border-r border-white/[0.04] z-50 flex flex-col py-6 transition-all duration-300">
 
@@ -136,8 +120,6 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0 
           );
         })}
       </nav>
-
-      </div>
     </aside>
   );
 }
