@@ -92,3 +92,6 @@ htmlcov/
 *.bak
 *.swp
 *~
+
+# Static build artifacts
+anicat_media/api/static/

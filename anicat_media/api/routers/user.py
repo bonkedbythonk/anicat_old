@@ -57,11 +57,7 @@ async def update_list_entry(req: ListUpdateRequest):
             progress=req.progress,
             score=req.score
         )
-        success = ctx.media_api.update_list_entry(params)
-        if not success:
-            raise HTTPException(status_code=500, detail="Failed to update list entry")
-        
-        # Also update local registry to stay in sync
+        # 1. Update local registry first (Live source of truth)
         ctx.media_registry.update_media_index_entry(
             media_id=req.media_id,
             status=req.status,
@@ -69,11 +65,13 @@ async def update_list_entry(req: ListUpdateRequest):
             score=req.score
         )
         
-        if success:
-            # Clear playback status when updating entry (ensure Now Playing bar reflects changes)
-            from .status import clear_playback
-            await clear_playback()
+        # 2. Attempt to sync with AniList
+        success = ctx.media_api.update_list_entry(params)
+        
+        # 3. Handle playback clear
+        from .status import clear_playback
+        await clear_playback()
             
-        return {"status": "success" if success else "failed"}
+        return {"status": "success", "synced": success}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -130,12 +130,38 @@ async def search_media(
 
 @router.get("/{media_id}", response_model=MediaItem)
 async def get_media_details(media_id: int):
-    """Get detailed information for a specific media."""
+    """Get detailed information for a specific media, merged with local registry status."""
     try:
         ctx = get_ctx()
         media = ctx.media_api.get_media_item(media_id)
         if not media:
             raise HTTPException(status_code=404, detail="Media not found")
+            
+        # Merge with local registry for "Live" feel and offline support
+        local_entry = ctx.media_registry.get_media_index_entry(media_id)
+        if local_entry:
+            if not media.user_status:
+                from ...libs.media_api.types import UserListItem
+                media.user_status = UserListItem(
+                    status=local_entry.status,
+                    progress=int(local_entry.progress) if local_entry.progress.isdigit() else 0,
+                    score=local_entry.score
+                )
+            else:
+                # If local registry was updated recently (or just has different data),
+                # we might want to prioritize it to avoid "stale" AniList data issues.
+                # For now, let's always trust the local progress if it exists and is different.
+                if local_entry.progress.isdigit():
+                    local_progress = int(local_entry.progress)
+                    if local_progress != media.user_status.progress:
+                        media.user_status.progress = local_progress
+                
+                if local_entry.status != media.user_status.status:
+                    media.user_status.status = local_entry.status
+                
+                if local_entry.score != media.user_status.score:
+                    media.user_status.score = local_entry.score
+                    
         return media
     except HTTPException:
         raise

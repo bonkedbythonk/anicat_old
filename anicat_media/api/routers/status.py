@@ -162,7 +162,10 @@ async def trigger_update():
         # Root is 4 levels up
         repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
         
-        # 1. Run git pull in the repo root
+        # 1. Stash any local build artifacts so they don't block the pull
+        subprocess.run(["git", "stash"], cwd=repo_root)
+        
+        # 2. Run git pull in the repo root
         result = subprocess.run(
             ["git", "pull"], 
             capture_output=True, 
@@ -170,6 +173,9 @@ async def trigger_update():
             timeout=60,
             cwd=repo_root
         )
+        
+        # 3. Pop the stash back (even if pull failed or no changes)
+        subprocess.run(["git", "stash", "pop"], cwd=repo_root)
         
         if result.returncode != 0:
             return {"status": "error", "message": f"Git pull failed: {result.stderr or result.stdout}"}
