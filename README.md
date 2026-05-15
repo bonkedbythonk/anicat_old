@@ -1,80 +1,73 @@
-# Anicat
+# <p align="center">🐈‍⬛ Anicat</p>
 
-A specialized media companion for macOS designed for seamless anime and manga management. Anicat provides a centralized dashboard to stream content, track progress via AniList, and manage local downloads with a focus on performance and minimalist design.
+<p align="center">
+  <strong>The specialized media companion for macOS.</strong><br>
+  <em>Stream anime, read manga, and track progress with zero friction.</em>
+</p>
 
-![Anicat Dashboard](./dashboard_preview.png)
-
----
-
-## Installation
-
-Anicat can be installed via a single command. Open your Terminal and execute the following:
-
-```bash
-git clone https://github.com/bonkedbythonk/anicat.git && cd anicat && ./scripts/install.sh
-```
-
-The installation script automatically manages system dependencies, including Homebrew and MPV, and initializes the web dashboard.
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-macOS-silver?style=for-the-badge&logo=apple" alt="macOS">
+  <img src="https://img.shields.io/badge/Interface-Web_%2F_TUI-amber?style=for-the-badge" alt="Interface">
+  <img src="https://img.shields.io/badge/Sync-AniList-blue?style=for-the-badge" alt="AniList">
+</p>
 
 ---
 
-## Core Features
+Anicat is a production-ready media dashboard designed for the modern macOS experience. It bridges the gap between your local files, streaming sources, and AniList, all within a beautiful, minimalist PWA that lives silently in your background.
 
-- **Centralized Dashboard**: A responsive, dark-themed web interface for media management.
-- **Bi-Directional Sync**: Real-time synchronization with AniList using a local-first architecture for zero-latency progress tracking.
-- **Integrated Streaming**: Direct streaming support for anime with resolution options up to 1080p.
-- **Manga Support**: A high-performance reading environment for manga chapters.
-- **Background Operation**: Optimized to run as a lightweight background service.
-- **Local Registry**: Persistent offline tracking for progress and library metadata.
+![Anicat Dashboard Preview](https://raw.githubusercontent.com/bonkedbythonk/anicat/main/dashboard_preview.png)
 
----
+## 🚀 One-Command Install
 
-## Usage and Commands
+Get up and running in seconds. This script handles dependencies (mpv, ffmpeg, chafa), sets up the background service, and creates a native macOS App bundle.
 
-Anicat is controlled via the `anicat` command-line utility.
-
-### Launching the Dashboard
-To start the dashboard and run it as a background service:
 ```bash
-anicat dashboard &
-```
-Once the command is executed, the terminal window can be closed. The dashboard will remain accessible at `http://localhost:8000`.
-
-### Stopping the Service
-To terminate all background Anicat processes:
-```bash
-anicat stop
-```
-
-### Updates
-Anicat supports automated updates. Navigate to the **Settings > Maintenance** section within the web dashboard to check for and install the latest version. This process handles code retrieval, dependency synchronization, and service restarts automatically.
-
----
-
-## Mobile Integration
-
-The dashboard is accessible from any device on the same local network. 
-1. Identify your local IP address (displayed in the terminal during startup).
-2. Access the dashboard via `http://[YOUR-IP]:8000` on your mobile device.
-3. For a native experience on iOS, select "Add to Home Screen" from the sharing menu.
-
----
-
-## Troubleshooting
-
-### Directory Conflicts
-If an existing installation is detected, remove the directory before re-cloning:
-```bash
-rm -rf anicat && git clone https://github.com/bonkedbythonk/anicat.git && cd anicat && ./scripts/install.sh
-```
-
-### Command Resolution
-If the `anicat` command is not recognized after installation, ensure your shell environment is refreshed:
-```bash
-source ~/.zshrc
+curl -sSL https://raw.githubusercontent.com/bonkedbythonk/anicat/main/scripts/install.sh | bash
 ```
 
 ---
 
-## License
-Anicat is a macOS-focused implementation based on the Viu project. It is released under the UNLICENSE.
+## ✨ Key Features
+
+### 🖥️ macOS Native Experience
+- **Silent Persistence**: Runs as a macOS `LaunchAgent`—starts on login and stays in the background with near-zero CPU usage.
+- **App Bundle**: Installs as `Anicat Dashboard.app` in your Applications folder for a native Dock presence.
+- **Stealth Mode**: Locked to `127.0.0.1` (Localhost) for total privacy and isolation from your network.
+
+### 📚 High-Performance Manga Reader
+- **Turbo-Proxy**: Bypasses provider throttling and hotlink blocks for instant page loads.
+- **Persistent Disk Cache**: Automatically pre-fetches and saves chapters to your local cache for instantaneous forwards/backwards navigation.
+- **Reading Modes**: Support for Single Page, Double Page, and Vertical Long-strip modes.
+
+### 🎬 Seamless Anime Streaming
+- **1080p Playback**: Integrated MPV support with high-quality streaming buffers.
+- **AniList Sync**: Bi-directional real-time sync. Watch an episode, and your AniList is updated before you even close the player.
+- **Offline-First**: Uses a local registry to track progress even when you're disconnected.
+
+---
+
+## 🛠️ Usage
+
+Once installed, you can control Anicat via the web dashboard or the `anicat` CLI.
+
+- **Open Dashboard**: Click the **Anicat Dashboard** icon in your Applications folder.
+- **Check Updates**: A pulsating amber dot appears in the sidebar when a new fix is ready. Update with one click from **Settings > Maintenance**.
+- **CLI Control**: 
+  - `anicat dashboard` — Start/Stop the server.
+  - `anicat status` — Check server health.
+  - `anicat stop` — Kill all background processes.
+
+---
+
+## 🔒 Privacy & Security
+
+Anicat is designed to be a "quiet citizen" on your Mac:
+- **Local Only**: No data ever leaves your machine except to talk to AniList.
+- **Zero Tracking**: No telemetry, no analytics, no third-party scripts.
+- **Invisible**: The background service is optimized to stay out of your way and out of your Activity Monitor.
+
+---
+
+<p align="center">
+  Released under the <a href="./LICENSE">UNLICENSE</a>. Built with ❤️ for the macOS community.
+</p>
