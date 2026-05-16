@@ -225,18 +225,20 @@ export default function App() {
 
       <NowPlaying />
 
-      {/* Media detail panel */}
-      {selectedItem && (
-        <MediaDetail 
-          item={selectedItem} 
-          initialAction={initialAction || undefined}
-          onRead={(chapter) => setReadingChapter(chapter)}
-          onClose={() => {
-            setSelectedItem(null);
-            setInitialAction(null);
-          }} 
-        />
-      )}
+      {/* Media detail drawer */}
+      <AnimatePresence>
+        {selectedItem && (
+          <MediaDetail 
+            item={selectedItem} 
+            initialAction={initialAction || undefined}
+            onRead={(chapter) => setReadingChapter(chapter)}
+            onClose={() => {
+              setSelectedItem(null);
+              setInitialAction(null);
+            }} 
+          />
+        )}
+      </AnimatePresence>
 
       {selectedItem && readingChapter && (
         <MangaReader
