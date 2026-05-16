@@ -207,9 +207,35 @@ class MpvPlayer(BasePlayer):
         # Add pre-args if configured
         pre_args = self.config.pre_args.split(",") if self.config.pre_args else []
 
-        logger.info(f"Starting MPV with IPC socket: {socket_path}")
+        # Set up a dedicated debug log file for MPV output
+        log_dir = os.path.expanduser("~/Library/Caches/anicat/logs")
+        if sys.platform != "darwin":
+            log_dir = os.path.expanduser("~/.cache/anicat/logs")
+        
+        try:
+            os.makedirs(log_dir, exist_ok=True)
+            mpv_log_path = os.path.join(log_dir, "mpv.log")
+            mpv_log_file = open(mpv_log_path, "w", encoding="utf-8")
+            logger.info(f"Redirecting MPV process stdout/stderr to: {mpv_log_path}")
+        except Exception as e:
+            logger.warning(f"Could not create MPV log file: {e}. Falling back to DEVNULL.")
+            mpv_log_file = subprocess.DEVNULL
 
-        process = subprocess.Popen(pre_args + mpv_args,env=detect.get_clean_env())
+        full_cmd = pre_args + mpv_args
+        logger.info(f"Starting MPV with IPC socket: {socket_path}")
+        logger.info(f"MPV Command: {' '.join(full_cmd)}")
+        logger.info(f"MPV Environment (clean): {detect.get_clean_env()}")
+
+        try:
+            process = subprocess.Popen(
+                full_cmd,
+                env=detect.get_clean_env(),
+                stdout=mpv_log_file,
+                stderr=mpv_log_file,
+            )
+        except Exception as e:
+            logger.error(f"Failed to spawn MPV process: {e}", exc_info=True)
+            raise AnicatError(f"Failed to spawn MPV player process: {e}")
 
         return process
 
