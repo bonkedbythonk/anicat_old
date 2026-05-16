@@ -39,6 +39,7 @@ GENERAL_TIME_FORMAT = "The time format to use for dates and times (12h or 24h)."
 
 # StreamConfig
 STREAM_PLAYER = "The media player to use for streaming."
+STREAM_PLAYER_TYPE = "Type of player to use (embedded in-app or external MPV)."
 STREAM_QUALITY = "Preferred stream quality."
 STREAM_TRANSLATION_TYPE = "Preferred audio/subtitle language type."
 STREAM_SERVER = (

@@ -249,6 +249,17 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <option value="dub">Dubbed (EN)</option>
                 </select>
               </SettingField>
+
+              <SettingField label="Player Type" description="Choose between native cinematic in-app player or external MPV.">
+                <select
+                  value={String(config.stream?.player_type || "embedded")}
+                  onChange={(e) => updateField("stream", "player_type", e.target.value)}
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="embedded">Embedded Cinematic Overlay (In-App HLS)</option>
+                  <option value="external">External Media Player (MPV client with Anime4K upscaling)</option>
+                </select>
+              </SettingField>
             </div>
           )}
 

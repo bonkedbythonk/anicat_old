@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import socket
+import sys
 import subprocess
 import tempfile
 import threading
@@ -302,8 +303,8 @@ class MpvIPCPlayer(BaseIPCPlayer):
     """MPV Player implementation using IPC for advanced features."""
 
     stream_config: StreamConfig
-    mpv_process: subprocess.Popen
-    ipc_client: MPVIPCClient
+    mpv_process: Optional[subprocess.Popen]
+    ipc_client: Optional[MPVIPCClient]
     player_state: PlayerState
     player_fetching: bool = False
     player_first_run: bool = True
@@ -323,6 +324,8 @@ class MpvIPCPlayer(BaseIPCPlayer):
         self.socket_path: Optional[str] = None
         self._fetch_thread: Optional[threading.Thread] = None
         self._fetch_result_queue: Queue = Queue()
+        self.ipc_client: Optional[MPVIPCClient] = None
+        self.mpv_process: Optional[subprocess.Popen] = None
 
     def play(
         self,
@@ -365,6 +368,13 @@ class MpvIPCPlayer(BaseIPCPlayer):
             logger.warning(
                 f"IPC connection failed: {e}. Falling back to non-IPC playback."
             )
+            is_interactive = sys.stdin and sys.stdin.isatty()
+            if not is_interactive:
+                logger.info(
+                    "Non-interactive session: automatically falling back to standard playback."
+                )
+                return player.play(params)
+            
             if (
                 input("Failed to play with IPC. Continue without it? (Y/n): ").lower()
                 != "n"
@@ -525,17 +535,16 @@ class MpvIPCPlayer(BaseIPCPlayer):
                     logger.error(f"Error in message handler for '{handler_name}': {e}")
 
     def _cleanup(self):
-        if hasattr(self, 'ipc_client') and self.ipc_client:
+        if self.ipc_client:
             self.ipc_client.disconnect()
-        if hasattr(self, 'mpv_process') and self.mpv_process:
+        if self.mpv_process:
             try:
                 self.mpv_process.terminate()
                 self.mpv_process.wait(timeout=3)
             except subprocess.TimeoutExpired:
                 self.mpv_process.kill()
         if (
-            hasattr(self, 'socket_path')
-            and self.socket_path
+            self.socket_path
             and not self.socket_path.startswith("\\\\.\\pipe\\")
             and Path(self.socket_path).exists()
         ):
@@ -652,7 +661,8 @@ class MpvIPCPlayer(BaseIPCPlayer):
 
                 self.player_state.reset()
                 self.player_state.episode = target_episode
-                self.ipc_client.send_command(["loadfile", str(file_path)])
+                if self.ipc_client:
+                    self.ipc_client.send_command(["loadfile", str(file_path)])
                 # time.sleep(1)
                 # self.ipc_client.send_command(["seek", 0, "absolute"])
                 # self.ipc_client.send_command(

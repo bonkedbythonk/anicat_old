@@ -247,6 +247,10 @@ class StreamConfig(BaseConfig):
         default=defaults.STREAM_PLAYER,
         description=desc.STREAM_PLAYER,
     )
+    player_type: Literal["embedded", "external"] = Field(
+        default=defaults.STREAM_PLAYER_TYPE,
+        description=desc.STREAM_PLAYER_TYPE,
+    )
     quality: Literal["360", "480", "720", "1080"] = Field(
         default=defaults.STREAM_QUALITY,
         description=desc.STREAM_QUALITY,

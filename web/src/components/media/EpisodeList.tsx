@@ -12,10 +12,22 @@ interface EpisodeListProps {
   progress?: number;
   isManga?: boolean;
   onRead?: (chapterNum: string) => void;
+  onPlayEpisode?: (epNum: string) => void;
+  playerType?: "embedded" | "external";
   onUnwatch?: (epNum: string) => void;
 }
 
-export default function EpisodeList({ mediaId, episodes, loading, progress = 0, isManga = false, onRead, onUnwatch }: EpisodeListProps) {
+export default function EpisodeList({
+  mediaId,
+  episodes,
+  loading,
+  progress = 0,
+  isManga = false,
+  onRead,
+  onPlayEpisode,
+  playerType = "external",
+  onUnwatch
+}: EpisodeListProps) {
   const [playingEp, setPlayingEp] = useState<string | null>(null);
   const [queueingEp, setQueueingEp] = useState<string | null>(null);
   const [batchStart, setBatchStart] = useState("");
@@ -33,6 +45,12 @@ export default function EpisodeList({ mediaId, episodes, loading, progress = 0, 
       onRead(epNum);
       return;
     }
+    
+    if (playerType === "embedded" && onPlayEpisode) {
+      onPlayEpisode(epNum);
+      return;
+    }
+    
     setPlayingEp(epNum);
     try {
       await mediaApi.play(mediaId, epNum);

@@ -236,6 +236,27 @@ export const mediaApi = {
   play: (mediaId: number, episode?: string) =>
     fetchFromApi(`/actions/play/${mediaId}${episode ? `?episode=${episode}` : ''}`, { method: 'POST' }),
 
+  resolveStream: (mediaId: number, episode?: string): Promise<{
+    stream_url: string;
+    raw_stream_url: string;
+    title: string;
+    episode: string;
+    start_time: number | null;
+    media_id: number;
+    headers: Record<string, string>;
+  }> =>
+    fetchFromApi(`/actions/play/${mediaId}/resolve${episode ? `?episode=${episode}` : ''}`, { method: 'POST' }),
+
+  trackPlayback: (mediaId: number, episode: string, currentTime: number, totalTime: number): Promise<{
+    status: string;
+    completed: boolean;
+    synced: boolean;
+  }> =>
+    fetchFromApi('/actions/playback/track', {
+      method: 'POST',
+      body: JSON.stringify({ media_id: mediaId, episode, current_time: currentTime, total_time: totalTime })
+    }),
+
   playNext: (mediaId: number) =>
     fetchFromApi(`/actions/play/${mediaId}`, { method: 'POST' }),
 

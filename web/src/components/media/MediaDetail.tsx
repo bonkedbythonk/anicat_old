@@ -13,9 +13,10 @@ interface MediaDetailProps {
   onClose: () => void;
   initialAction?: "play";
   onRead?: (chapter: string) => void;
+  onPlayEpisode?: (episodeNum: string) => void;
 }
 
-export default function MediaDetail({ item, onClose, initialAction, onRead }: MediaDetailProps) {
+export default function MediaDetail({ item, onClose, initialAction, onRead, onPlayEpisode }: MediaDetailProps) {
   const refreshKey = useRefreshTrigger();
   const [fullItem, setFullItem] = useState<MediaItem>(item);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
@@ -94,8 +95,15 @@ export default function MediaDetail({ item, onClose, initialAction, onRead }: Me
         const nextChapter = (fullItem.user_status?.progress || 0) + 1;
         if (onRead) onRead(nextChapter.toString());
       } else {
-        await mediaApi.playNext(item.id);
-        dispatchRefresh();
+        const playerType = config?.stream?.player_type;
+        if (playerType === "embedded" && onPlayEpisode) {
+          const nextEpisode = (fullItem.user_status?.progress || 0) + 1;
+          onPlayEpisode(nextEpisode.toString());
+          onClose();
+        } else {
+          await mediaApi.playNext(item.id);
+          dispatchRefresh();
+        }
       }
     } catch (error) {
       console.error("Failed to play next:", error);
@@ -395,7 +403,22 @@ export default function MediaDetail({ item, onClose, initialAction, onRead }: Me
               </div>
 
               <div className="animate-fade-in min-h-[300px]">
-                {activeTab === "episodes" && <EpisodeList mediaId={item.id} episodes={episodes} loading={loadingEps} progress={fullItem.user_status?.progress} isManga={isManga} onRead={onRead} onUnwatch={(num) => handleUpdateProgress(Number(num) - 1)} />}
+                {activeTab === "episodes" && (
+                  <EpisodeList 
+                    mediaId={item.id} 
+                    episodes={episodes} 
+                    loading={loadingEps} 
+                    progress={fullItem.user_status?.progress} 
+                    isManga={isManga} 
+                    onRead={onRead} 
+                    onPlayEpisode={(epNum) => {
+                      if (onPlayEpisode) onPlayEpisode(epNum);
+                      onClose(); // Automatically close detail drawer upon playing
+                    }}
+                    playerType={config?.stream?.player_type}
+                    onUnwatch={(num) => handleUpdateProgress(Number(num) - 1)} 
+                  />
+                )}
                 {activeTab === "characters" && (
                   <div className="grid grid-cols-2 gap-4">
                     {loadingChars ? (

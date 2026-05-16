@@ -6,6 +6,7 @@ import Sidebar, { type ViewName } from "@/components/layout/Sidebar";
 import NowPlaying from "@/components/layout/NowPlaying";
 import MediaDetail from "@/components/media/MediaDetail";
 import MangaReader from "@/components/media/MangaReader";
+import AnimePlayer from "@/components/media/AnimePlayer";
 import useKeyboardShortcuts from "@/lib/useKeyboardShortcuts";
 import { mediaApi, type MediaItem, type HealthStatus } from "@/lib/api";
 import { dispatchRefresh } from "@/lib/events";
@@ -30,6 +31,7 @@ export default function App() {
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const [initialAction, setInitialAction] = useState<"play" | null>(null);
   const [readingChapter, setReadingChapter] = useState<string | null>(null);
+  const [playingEpisode, setPlayingEpisode] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [dismissedOffline, setDismissedOffline] = useState(() => {
@@ -232,6 +234,7 @@ export default function App() {
             item={selectedItem} 
             initialAction={initialAction || undefined}
             onRead={(chapter) => setReadingChapter(chapter)}
+            onPlayEpisode={(episode) => setPlayingEpisode(episode)}
             onClose={() => {
               setSelectedItem(null);
               setInitialAction(null);
@@ -256,6 +259,30 @@ export default function App() {
               console.error("Failed to update manga progress:", error);
             }
           }}
+        />
+      )}
+
+      {selectedItem && playingEpisode && (
+        <AnimePlayer
+          mediaId={selectedItem.id}
+          episodeNumber={playingEpisode}
+          onClose={() => {
+            setPlayingEpisode(null);
+            dispatchRefresh();
+          }}
+          onEpisodeCompleted={async (num) => {
+            try {
+              await mediaApi.updateStatus(selectedItem.id, undefined, undefined, parseInt(num));
+              dispatchRefresh();
+            } catch (error) {
+              console.error("Failed to update watch progress:", error);
+            }
+          }}
+          onPlayNextEpisode={() => {
+            const nextEp = String(parseInt(playingEpisode) + 1);
+            setPlayingEpisode(nextEp);
+          }}
+          hasNextEpisode={selectedItem.episodes ? parseInt(playingEpisode) < selectedItem.episodes : true}
         />
       )}
 
