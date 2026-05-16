@@ -43,6 +43,10 @@ Anicat uses mpv for high-quality playback. Here is how to unlock its full potent
 | Command | Action |
 | :--- | :--- |
 | Shift + N | **Play Next Episode** (Automated sync with Anicat) |
+| Shift + P | Play Previous Episode |
+| Shift + R | Reload Current Episode |
+| Shift + A | Toggle Auto-play |
+| Shift + T | Toggle Dub / Sub |
 | Space | Play / Pause |
 | f | Toggle Fullscreen |
 | s | Take Screenshot |
