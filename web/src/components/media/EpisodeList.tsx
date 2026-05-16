@@ -21,12 +21,27 @@ export default function EpisodeList({ mediaId, episodes, loading, progress = 0, 
   const [batchStart, setBatchStart] = useState("");
   const [batchEnd, setBatchEnd] = useState("");
   const [batchQueuing, setBatchQueuing] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const activeEpRef = useRef<HTMLDivElement>(null);
+  const [hasScrolled, setHasScrolled] = useState(false);
 
-  // Removed automatic scrolling to prevent UI glitches during panel animations
   useEffect(() => {
-    // We let the user decide their scroll position manually
-  }, [loading, episodes]);
+    if (!loading && episodes.length > 0 && !hasScrolled) {
+      // Wait for the panel animation to finish, then snap the list position
+      const timer = setTimeout(() => {
+        if (containerRef.current && activeEpRef.current) {
+          containerRef.current.scrollTop = activeEpRef.current.offsetTop - 10;
+          setHasScrolled(true);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, episodes, hasScrolled]);
+
+  useEffect(() => {
+    // Reset scroll flag when media changes
+    setHasScrolled(false);
+  }, [mediaId]);
 
   const handlePlay = async (epNum: string) => {
     if (isManga && onRead) {
@@ -103,7 +118,7 @@ export default function EpisodeList({ mediaId, episodes, loading, progress = 0, 
           No {isManga ? "chapters" : "episodes"} found from this provider.
         </div>
       ) : (
-        <div className="space-y-1 max-h-[50vh] overflow-y-auto scrollbar-hide pr-1">
+        <div ref={containerRef} className="space-y-1 max-h-[50vh] overflow-y-auto scrollbar-hide pr-1">
           {episodes.map((ep) => {
             const epNum = String(ep.number);
             const isWatched = Number(ep.number) <= progress;
