@@ -95,5 +95,12 @@ We recommend installing **[uosc](https://github.com/tomasklaen/uosc)** or **[mod
 
 ---
 
+## Legal
+Anicat is for educational and personal use only. The developer is not responsible for how the user utilizes the software. 
+- [Disclaimer](DISCLAIMER.md)
+- [Security Policy](SECURITY.md)
+
+---
+
 ## License & Credits
 Anicat is a fork of [Viu](https://github.com/viu-media/viu). Distributed under the MIT License.
