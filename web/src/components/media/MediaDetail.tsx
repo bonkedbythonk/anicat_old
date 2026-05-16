@@ -109,9 +109,6 @@ export default function MediaDetail({ item, onClose, initialAction, onRead }: Me
     }
   };
 
-    }
-  };
-
   const handleUnwatch = async () => {
     if (confirm(`Are you sure you want to remove ${item.title.english || item.title.romaji} from your list?`)) {
       try {
