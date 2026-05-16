@@ -36,6 +36,14 @@ jobs:
           cache: 'npm'
           cache-dependency-path: web/package-lock.json
 
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: web/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('web/package-lock.json') }}-${{ hashFiles('web/src/**/*.js', 'web/src/**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('web/package-lock.json') }}-
+
       - name: install python
         uses: actions/setup-python@v5
         with:
@@ -70,6 +78,7 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT_TELEMETRY_DISABLED: 1
         with:
           projectPath: web
           tagName: v__VERSION__
