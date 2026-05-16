@@ -103,7 +103,7 @@ export default function EpisodeList({ mediaId, episodes, loading, progress = 0, 
           No {isManga ? "chapters" : "episodes"} found from this provider.
         </div>
       ) : (
-        <div ref={containerRef} className="space-y-1 max-h-[50vh] overflow-y-auto scrollbar-hide pr-1">
+        <div className="space-y-1 max-h-[50vh] overflow-y-auto scrollbar-hide pr-1">
           {episodes.map((ep) => {
             const epNum = String(ep.number);
             const isWatched = Number(ep.number) <= progress;

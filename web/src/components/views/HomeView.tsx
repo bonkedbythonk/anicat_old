@@ -15,7 +15,7 @@ export default function HomeView({ onSelect }: HomeViewProps) {
   const { data, isLoading } = useQuery({
     queryKey: ["home-data"],
     queryFn: async () => {
-      const [watching, trending, seasonal] = await Promise.all([
+      const [watching, trending, seasonal, playbackStatus] = await Promise.all([
         mediaApi.getUserList("watching", "ANIME"),
         mediaApi.getTrending("ANIME"),
         mediaApi.getSeasonal("ANIME"),
