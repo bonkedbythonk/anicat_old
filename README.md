@@ -1,5 +1,7 @@
 # Anicat
 
+![Anicat Dashboard](assets/branding/dashboard.png)
+
 **Premium Anime & Manga Experience for macOS.**
 
 Anicat is a high-performance, native media hub designed for those who want a seamless, unified interface for searching, streaming, and tracking their favorite content. It is a powerful fork of the viu engine, evolved into a full-featured macOS application.
