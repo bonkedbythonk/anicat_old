@@ -149,7 +149,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead }: Me
         {/* Close Button */}
         <button 
           onClick={onClose} 
-          className="absolute top-6 left-6 z-50 p-2 bg-black/40 hover:bg-black/60 text-white/70 hover:text-white rounded-full backdrop-blur-sm transition-all border border-white/5 active:scale-90"
+          className="absolute top-6 right-6 z-50 p-2 bg-black/40 hover:bg-black/60 text-white/70 hover:text-white rounded-full backdrop-blur-sm transition-all border border-white/5 active:scale-90"
         >
           <X size={20} />
         </button>
