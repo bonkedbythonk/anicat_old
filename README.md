@@ -37,51 +37,11 @@ Access the Anicat interface from any browser on your local network.
 
 ---
 
-## Professional MPV Setup
+---
 
-Anicat uses mpv for high-quality playback. Here is how to unlock its full potential:
-
-### Keyboard Shortcuts
-| Command | Action |
-| :--- | :--- |
-| Shift + N | **Play Next Episode** (Automated sync with Anicat) |
-| Shift + P | Play Previous Episode |
-| Shift + R | Reload Current Episode |
-| Shift + A | Toggle Auto-play |
-| Shift + T | Toggle Dub / Sub |
-| Space | Play / Pause |
-| f | Toggle Fullscreen |
-
-### Improving the Visuals (Anime4K)
-Anime4K is a set of state-of-the-art open-source real-time anime upscaling algorithms.
-
-1.  Download the shaders from [Anime4K GitHub](https://github.com/bloc97/Anime4K).
-2.  Place them in ~/.config/mpv/shaders/.
-3.  Configure your mpv.conf based on your hardware:
-
-#### Tier 1: Low-End / Base Apple Silicon (M1/M2/M3 Base, Intel iGPU)
-*Focus on speed and stability.*
-```conf
-# Add to mpv.conf
-glsl-shaders="~/.config/mpv/shaders/Anime4K_Upscale_CNN_M_x2_Fast.glsl"
-```
-
-#### Tier 2: Mid-Range (M1/M2/M3 Pro, RTX 3060/4060)
-*The "Sweet Spot" for quality.*
-```conf
-glsl-shaders="~/.config/mpv/shaders/Anime4K_Upscale_CNN_L_x2_HQ.glsl;~/.config/mpv/shaders/Anime4K_Auto_Restore_VL.glsl"
-```
-
-#### Tier 3: High-End (M1/M2/M3 Max/Ultra, RTX 3080/4090)
-*Ultimate quality with no compromises.*
-```conf
-glsl-shaders="~/.config/mpv/shaders/Anime4K_Upscale_CNN_UL_x2_Thin.glsl;~/.config/mpv/shaders/Anime4K_Restore_CNN_UL.glsl"
-```
-
-### Modern UI Skin
-We highly recommend installing **[ModernX](https://github.com/cyl0/ModernX)** for a sleek, macOS-native look that replaces the default mpv bar. It provides a premium interface that perfectly complements the Anicat dashboard.
-
-Alternatively, you can try **[uosc](https://github.com/tomasklaen/uosc)** for a more minimalist approach.
+## Power User Guide
+Anicat uses **mpv** for high-quality playback. To unlock features like Anime4K upscaling, custom skins (ModernX), and advanced keyboard shortcuts, see our:
+- [MPV Customization Guide](MPV_GUIDE.md)
 
 ---
 
