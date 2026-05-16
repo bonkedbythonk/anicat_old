@@ -22,9 +22,6 @@ jobs:
           - platform: 'macos-14' # Apple Silicon (M1) Runner
             args: '--target aarch64-apple-darwin'
             triple: 'aarch64-apple-darwin'
-          - platform: 'macos-13' # Intel Runner
-            args: '--target x86_64-apple-darwin'
-            triple: 'x86_64-apple-darwin'
           # Add Windows/Linux here if needed later
 
     runs-on: ${{ matrix.platform }}
