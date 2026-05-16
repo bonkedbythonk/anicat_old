@@ -22,41 +22,79 @@ Anicat synchronizes your progress automatically when you use these shortcuts.
 
 ## Modern UI Skin (Recommended)
 
-The default mpv interface is functional but basic. We highly recommend installing a modern "On-Screen Controller" (OSC).
+The default mpv interface is basic. We highly recommend installing **[ModernX](https://github.com/cyl0/ModernX)** for a premium macOS-native feel.
 
-### [ModernX](https://github.com/cyl0/ModernX)
-A sleek, minimal, and feature-rich OSC that matches the Anicat aesthetic perfectly.
+### Step-by-Step Installation
 
-### [uosc](https://github.com/tomasklaen/uosc)
-A minimalist, proximity-based UI that stays out of your way until you need it.
+1.  **Create the Scripts folder**:
+    Open your Terminal and run:
+    ```bash
+    mkdir -p ~/.config/mpv/scripts
+    ```
+2.  **Download the Skin**:
+    Go to the [ModernX Releases](https://github.com/cyl0/ModernX/releases) and download the `modernx.lua` file.
+3.  **Place the file**:
+    Move `modernx.lua` into the `~/.config/mpv/scripts/` folder you just created.
+4.  **Restart MPV**:
+    Close any open videos and play a new one. You should see the new sleek interface!
 
 ---
 
 ## High-Quality Shaders (Anime4K)
 
-Anime4K is a set of open-source real-time anime upscaling algorithms that significantly improve visual quality.
+Anime4K uses your GPU to upscale anime in real-time, making it look crisp on high-resolution screens.
 
 ### Installation
-1.  Download the shaders from [Anime4K GitHub](https://github.com/bloc97/Anime4K).
-2.  Place the `.glsl` files in `~/.config/mpv/shaders/`.
-3.  Configure your `mpv.conf` (~/.config/mpv/mpv.conf) based on your hardware:
 
-### Hardware Tiers
+1.  **Create the Shaders folder**:
+    Open Terminal and run:
+    ```bash
+    mkdir -p ~/.config/mpv/shaders
+    ```
+2.  **Download Shaders**:
+    Download the `.glsl` files from the [Anime4K GitHub](https://github.com/bloc97/Anime4K/releases).
+3.  **Place the files**:
+    Move all the downloaded `.glsl` files into `~/.config/mpv/shaders/`.
+4.  **Configure MPV**:
+    You need to tell MPV to use these shaders. Create or edit your config file:
+    ```bash
+    nano ~/.config/mpv/mpv.conf
+    ```
+    Copy and paste **one** of the following blocks based on your Mac:
 
-#### Tier 1: Low-End (Base M1/M2/M3, Intel iGPU)
+### Hardware Settings for mpv.conf
+
+#### Tier 1: Low-End (Base M1/M2/M3, MacBook Air, Intel iGPU)
 ```conf
+# Add to mpv.conf
 glsl-shaders="~/.config/mpv/shaders/Anime4K_Upscale_CNN_M_x2_Fast.glsl"
 ```
 
-#### Tier 2: Mid-Range (M1 Pro/Max, RTX 3060)
+#### Tier 2: Mid-Range (M1/M2 Pro, RTX 3060)
 ```conf
+# Add to mpv.conf
 glsl-shaders="~/.config/mpv/shaders/Anime4K_Upscale_CNN_L_x2_HQ.glsl;~/.config/mpv/shaders/Anime4K_Auto_Restore_VL.glsl"
 ```
 
-#### Tier 3: High-End (M2/M3 Max/Ultra, RTX 4080+)
+#### Tier 3: High-End (M1/M2/M3 Max/Ultra, Dedicated GPU)
 ```conf
+# Add to mpv.conf
 glsl-shaders="~/.config/mpv/shaders/Anime4K_Upscale_CNN_UL_x2_Thin.glsl;~/.config/mpv/shaders/Anime4K_Restore_CNN_UL.glsl"
 ```
+
+---
+
+## Folder Structure Reference
+When finished, your configuration should look exactly like this:
+```text
+~/.config/mpv/
+├── mpv.conf (your settings)
+├── scripts/
+│   └── modernx.lua (the skin)
+└── shaders/
+    └── Anime4K_... .glsl (the shaders)
+```
+
 
 ---
 
