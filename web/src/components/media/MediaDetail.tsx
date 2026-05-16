@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Play, Loader2, Star, Users, Calendar, Clock, Building2, Monitor, CheckCircle2, Bookmark, Pause, XCircle, Download, BookOpen, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
+import { X, Play, Loader2, Star, Users, Calendar, Clock, Building2, Monitor, CheckCircle2, Bookmark, Pause, XCircle, Download, BookOpen, RotateCcw, ChevronDown, ChevronUp, MoreHorizontal } from "lucide-react";
 import { mediaApi, type MediaItem, type Episode, type Character, type Review } from "@/lib/api";
 import { dispatchRefresh, useRefreshTrigger } from "@/lib/events";
 import { formatTime, formatRelativeTime } from "@/lib/date";
@@ -185,6 +185,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead }: Me
                   const currentProgress = fullItem.user_status?.progress || 0;
                   const total = fullItem.episodes || fullItem.chapters || 0;
                   const latestAvailable = episodes.length > 0 ? Math.max(...episodes.map(e => Number(e.number))) : total;
+                  const nextEpisode = (fullItem.user_status?.progress || 0) + 1;
                   const isFinished = total > 0 && currentProgress >= total;
                   const isCaughtUp = !isFinished && latestAvailable > 0 && currentProgress >= latestAvailable;
 
@@ -200,7 +201,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead }: Me
                         <>
                           {isManga ? <BookOpen size={18} /> : <Play size={18} fill="currentColor" />}
                           <span>
-                            {isFinished ? "Completed" : isCaughtUp ? "Caught Up" : `Continue ${isManga ? 'Reading' : 'Watching'}`}
+                            {isFinished ? "Completed" : isCaughtUp ? "Caught Up" : `${isManga ? 'Read' : 'Continue'} Episode ${nextEpisode}`}
                           </span>
                         </>
                       )}
@@ -210,6 +211,10 @@ export default function MediaDetail({ item, onClose, initialAction, onRead }: Me
                 
                 <button className="p-3.5 bg-white/[0.05] hover:bg-white/[0.1] text-white/70 hover:text-white rounded-2xl transition-all border border-white/5 active:scale-95">
                   <Bookmark size={22} />
+                </button>
+
+                <button className="p-3.5 bg-white/[0.05] hover:bg-white/[0.1] text-white/70 hover:text-white rounded-2xl transition-all border border-white/5 active:scale-95">
+                  <MoreHorizontal size={22} />
                 </button>
               </div>
 
@@ -224,7 +229,9 @@ export default function MediaDetail({ item, onClose, initialAction, onRead }: Me
                   <div className="h-8 w-px bg-white/10" />
                   <div className="flex flex-col">
                     <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Score</span>
-                    <span className="text-base font-bold text-white">{fullItem.user_status?.score || '-'} <span className="text-gray-600 font-medium">/</span> 10</span>
+                    <span className="text-base font-bold text-white">
+                      {fullItem.user_status?.score || '-'} <span className={`text-gray-600 font-medium ${!fullItem.user_status?.score ? 'hidden' : ''}`}>/ 10</span>
+                    </span>
                   </div>
                 </div>
                 
