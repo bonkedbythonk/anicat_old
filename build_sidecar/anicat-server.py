@@ -1,32 +1,40 @@
 import os
 import sys
+import argparse
 
-# Add project root to path so we can find anicat_media
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(current_dir, "../../../"))
-sys.path.insert(0, project_root)
+# Handle PyInstaller paths
+if getattr(sys, 'frozen', False):
+    # If the application is run as a bundle, the PyInstaller bootloader
+    # extends the sys module by a flag frozen=True and sets the app 
+    # path into variable _MEIPASS.
+    bundle_dir = sys._MEIPASS
+else:
+    bundle_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Add the project root to sys.path so we can import anicat_media
+# In the bundle, anicat_media is at the root of bundle_dir
+sys.path.insert(0, bundle_dir)
 
 import uvicorn
-from anicat_media.api.main import create_app
-
-import sys
-print(f"DEBUG: Sidecar project root: {project_root}")
-sys.stdout.flush()
+try:
+    from anicat_media.api.main import create_app
+except ImportError as e:
+    print(f"Error: Could not import anicat_media. sys.path: {sys.path}")
+    print(f"Import error: {e}")
+    sys.exit(1)
 
 def main():
-    # When running as a bundled sidecar, we might need to adjust paths
-    if getattr(sys, 'frozen', False):
-        # Running in a bundle
-        base_dir = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
-    else:
-        # Running in normal python
-        base_dir = os.path.dirname(os.path.abspath(__file__))
+    parser = argparse.ArgumentParser(description="Anicat API Server (Sidecar)")
+    parser.add_argument("--port", type=int, default=13370, help="Port to run the server on")
+    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to bind to")
+    args = parser.parse_args()
+
+    print(f"Starting Anicat Sidecar on http://{args.host}:{args.port}")
+    sys.stdout.flush()
     
     app = create_app()
     
-    # Run the server on localhost
-    # We use 127.0.0.1 for maximum privacy and to avoid firewall prompts
-    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 if __name__ == "__main__":
     main()

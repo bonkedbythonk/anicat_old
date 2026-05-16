@@ -6,30 +6,32 @@ use tauri_plugin_shell::ShellExt;
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_shell::init())
+    .plugin(tauri_plugin_log::Builder::default().build())
     .setup(|app| {
       let shell = app.shell();
       let sidecar = shell.sidecar("anicat-server").unwrap();
       
       let (mut rx, child) = sidecar.spawn().expect("Failed to spawn sidecar");
       
-      // Temporarily disabled to debug immediate exit
       app.manage(child);
 
       tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
-          if let CommandEvent::Stdout(line) = event {
-            println!("sidecar: {}", String::from_utf8_lossy(&line));
+          match event {
+            CommandEvent::Stdout(line) => {
+              log::info!("sidecar-out: {}", String::from_utf8_lossy(&line).trim());
+            }
+            CommandEvent::Stderr(line) => {
+              log::error!("sidecar-err: {}", String::from_utf8_lossy(&line).trim());
+            }
+            CommandEvent::Terminated(payload) => {
+              log::warn!("sidecar-terminated: {:?}", payload);
+            }
+            _ => {}
           }
         }
       });
 
-      if cfg!(debug_assertions) {
-        app.handle().plugin(
-          tauri_plugin_log::Builder::default()
-            .level(log::LevelFilter::Info)
-            .build(),
-        )?;
-      }
       Ok(())
     })
     .run(tauri::generate_context!())

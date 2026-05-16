@@ -253,7 +253,7 @@ pkill -f "anicat dashboard" || true
 nohup anicat dashboard --no-browser > /dev/null 2>&1 &
 # Open the browser/PWA
 sleep 2
-open "http://localhost:8000"
+open "http://localhost:13370"
 EOF
     chmod +x "$APP_PATH/Contents/MacOS/Anicat"
 

@@ -6,6 +6,7 @@ from ...libs.player.types import PlayerResult
 from .status import set_playback
 
 router = APIRouter()
+_active_requests = set()
 
 def get_ctx():
     from ..main import ctx
@@ -24,12 +25,18 @@ def _play_and_track(ctx, params, anime, media_item):
         logger.error(f"Error in background playback tracking: {e}")
         import traceback
         traceback.print_exc()
+    finally:
+        _active_requests.discard(media_item.id)
 
 @router.post("/play/{media_id}")
 async def play_media(media_id: int, background_tasks: BackgroundTasks, episode: Optional[str] = None):
     """
     Smart Play: Finds the next episode and triggers playback in MPV.
     """
+    if media_id in _active_requests:
+        raise HTTPException(status_code=429, detail="Playback request already in progress for this media")
+    
+    _active_requests.add(media_id)
     try:
         ctx = get_ctx()
         media_item = ctx.media_api.get_media_item(media_id)
@@ -107,6 +114,7 @@ async def play_media(media_id: int, background_tasks: BackgroundTasks, episode: 
             # Track for Now Playing
             set_playback(media_id=media_id, media_title=title, episode=str(episode))
             
+            _active_requests.discard(media_id)
             return {"status": "reading", "media": title, "episode": episode}
 
         # 3. Search anime provider
@@ -183,8 +191,10 @@ async def play_media(media_id: int, background_tasks: BackgroundTasks, episode: 
         return {"status": "playing", "media": title, "episode": episode}
         
     except HTTPException:
+        _active_requests.discard(media_id)
         raise
     except Exception as e:
+        _active_requests.discard(media_id)
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

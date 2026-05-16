@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Play, Loader2 } from "lucide-react";
 import { mediaApi, type MediaItem } from "@/lib/api";
 
@@ -11,9 +11,14 @@ interface MediaCardProps {
 
 export default function MediaCard({ item, onSelect }: MediaCardProps) {
   const [loading, setLoading] = useState(false);
+  const isProcessing = useRef(false);
   const handlePlay = async (e: React.MouseEvent) => {
+    if (loading || isProcessing.current) return;
+    
     e.preventDefault();
     e.stopPropagation();
+    
+    isProcessing.current = true;
     setLoading(true);
     try {
       await mediaApi.play(item.id);
@@ -21,6 +26,9 @@ export default function MediaCard({ item, onSelect }: MediaCardProps) {
       console.error("Failed to trigger playback:", error);
     } finally {
       setLoading(false);
+      setTimeout(() => {
+        isProcessing.current = false;
+      }, 500);
     }
   };
 

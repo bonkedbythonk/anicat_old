@@ -3,50 +3,79 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
-  release:
+  build:
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-latest]
+        include:
+          - platform: 'macos-latest'
+            args: '--target aarch64-apple-darwin'
+            triple: 'aarch64-apple-darwin'
+          - platform: 'macos-latest'
+            args: '--target x86_64-apple-darwin'
+            triple: 'x86_64-apple-darwin'
+          # Add Windows/Linux here if needed later
+
     runs-on: ${{ matrix.platform }}
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
+
       - name: setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
-      - name: setup python
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: install python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: setup uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          version: "latest"
-      - name: install dependencies
-        run: |
-          cd web && npm ci
-          cd ..
-          uv sync --dev --all-extras
+
+      - name: install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: install python dependencies
+        run: uv sync
+
       - name: build sidecar
         run: |
-          uv run pyinstaller --version # Verify pyinstaller is there
-          bash scripts/build_sidecar.sh
-      - name: build tauri
-        run: |
-          cd web
-          npm run build
-          npx tauri build
-      - name: upload release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+          uv run pyinstaller --noconfirm build_sidecar/sidecar.spec
+          mkdir -p web/src-tauri/binaries
+          mv dist/anicat-server web/src-tauri/binaries/anicat-server-${{ matrix.triple }}
+
+      - name: install rust stable
+        uses: dtolnay/rust-toolchain@stable
         with:
-          files: |
-            web/src-tauri/target/release/bundle/dmg/*.dmg
+          targets: ${{ matrix.triple }}
+
+      - name: install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: install frontend dependencies
+        run: cd web && npm install
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+        with:
+          projectPath: web
+          tagName: v__VERSION__ # tauri-action will replace this with the version from tauri.conf.json
+          releaseName: 'Anicat v__VERSION__'
+          releaseBody: 'See the assets below to download the latest version of Anicat.'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

@@ -16,7 +16,7 @@ def is_port_in_use(port):
 def open_gui(ctx: Context, state: State) -> State | InternalDirective:
     """Action to launch the Anicat GUI."""
     icons = ctx.config.general.icons
-    port = 8000
+    port = 13370
     
     if is_port_in_use(port):
         rprint(f"\n[bold green]{ICONS.get('BROWSER', icons)}Anicat Dashboard is already running![/]")

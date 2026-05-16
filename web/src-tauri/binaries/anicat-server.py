@@ -1,16 +1,22 @@
 import os
 import sys
 
-# Add project root to path so we can find anicat_media
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(current_dir, "../../../"))
-sys.path.insert(0, project_root)
+# When running as a bundled sidecar (PyInstaller), we use sys._MEIPASS
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    base_dir = sys._MEIPASS
+    # In PyInstaller, the anicat_media package is added to the root of _MEIPASS
+    sys.path.insert(0, base_dir)
+else:
+    # Running in normal python (development)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(current_dir, "../../../"))
+    sys.path.insert(0, project_root)
+    base_dir = current_dir
 
 import uvicorn
 from anicat_media.api.main import create_app
 
-import sys
-print(f"DEBUG: Sidecar project root: {project_root}")
+print(f"DEBUG: Sidecar base_dir: {base_dir}")
 sys.stdout.flush()
 
 def main():

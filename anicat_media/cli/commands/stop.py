@@ -9,7 +9,7 @@ def stop():
     try:
         # Use pgrep to find processes running uvicorn with 'anicat_media.api.main:create_app'
         # or just look for port 8000
-        result = subprocess.run(["lsof", "-ti", ":8000"], capture_output=True, text=True)
+        result = subprocess.run(["lsof", "-ti", ":13370"], capture_output=True, text=True)
         pids = result.stdout.strip().split("\n")
         
         if not pids or not pids[0]:

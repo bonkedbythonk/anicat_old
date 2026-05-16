@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-PORT=8000
+PORT=13370
 URL="http://localhost:$PORT"
 
 # 1. Determine Project Directory

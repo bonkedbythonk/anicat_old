@@ -1,7 +1,13 @@
 import asyncio
 
 async def main():
-    from anicat_media.api.main import ctx
+    from anicat_media.api.main import ctx, create_app
+    # Ensure context is initialized
+    try:
+        _ = ctx.config
+    except RuntimeError:
+        create_app()
+    
     # Let's try calling play_media logic directly
     media_item = ctx.media_api.get_media_item(167143)
     if not media_item:
@@ -52,4 +58,5 @@ async def main():
     # params = PlayerParams(url=stream_link, query=title, episode=episode, title=title, headers=server.headers)
     # ctx.player.play(params, anime=anime_ref, media_item=media_item)
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

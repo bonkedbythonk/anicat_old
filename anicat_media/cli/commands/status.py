@@ -7,7 +7,7 @@ import sys
 def status(ctx):
     """Check the health and status of the background Anicat service."""
     host = "127.0.0.1"
-    port = 8000
+    port = 13370
     url = f"http://{host}:{port}/api/status/health"
     
     click.echo(f"Checking Anicat service at {url}...")

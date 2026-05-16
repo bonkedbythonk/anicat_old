@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { X, Play, Loader2, Star, Users, Calendar, Clock, Building2, Monitor, CheckCircle2, Bookmark, Pause, XCircle, Download, BookOpen, RotateCcw } from "lucide-react";
 import { mediaApi, type MediaItem, type Episode, type Character, type Review } from "@/lib/api";
 import { dispatchRefresh, useRefreshTrigger } from "@/lib/events";
@@ -79,8 +79,12 @@ export default function MediaDetail({ item, onClose, initialAction, onRead }: Me
     }
   }, [initialAction, loading]);
 
+  const isProcessingAction = useRef(false);
+
   const handlePlayNext = async () => {
-    if (isPlayingNext) return;
+    if (isPlayingNext || isProcessingAction.current) return;
+    
+    isProcessingAction.current = true;
     setIsPlayingNext(true);
     try {
       if (isManga) {
@@ -95,6 +99,11 @@ export default function MediaDetail({ item, onClose, initialAction, onRead }: Me
       console.error("Failed to play next:", error);
     } finally {
       setIsPlayingNext(false);
+      // Keep locked for a short moment to prevent accidental double-clicks 
+      // even after the request finished
+      setTimeout(() => {
+        isProcessingAction.current = false;
+      }, 500);
     }
   };
 

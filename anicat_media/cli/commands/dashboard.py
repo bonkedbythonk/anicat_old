@@ -4,7 +4,7 @@ import webbrowser
 from ...core.config import AppConfig
 
 @click.command()
-@click.option("--port", default=8000, help="Port to run the API on.")
+@click.option("--port", default=13370, help="Port to run the API on.")
 @click.option("--host", default="127.0.0.1", help="Host to bind the server to. Use 127.0.0.1 for maximum privacy.")
 @click.option("--no-browser", is_flag=True, help="Don't open the browser automatically.")
 @click.option("--reload", is_flag=True, help="Enable hot reload on code changes (development mode).")

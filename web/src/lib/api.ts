@@ -1,5 +1,5 @@
 const isBrowser = typeof window !== 'undefined';
-const DEFAULT_API_BASE_ORIGIN = 'http://127.0.0.1:8000';
+const DEFAULT_API_BASE_ORIGIN = 'http://127.0.0.1:13370';
 
 export const API_BASE_ORIGIN = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE_ORIGIN;
 export const API_BASE_URL = `${API_BASE_ORIGIN}/api`;
