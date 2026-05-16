@@ -37,26 +37,10 @@ interface SidebarProps {
   activeView: ViewName;
   onNavigate: (view: ViewName) => void;
   notificationCount?: number;
+  health?: HealthStatus | null;
 }
 
-export default function Sidebar({ activeView, onNavigate, notificationCount = 0 }: SidebarProps) {
-  const [health, setHealth] = useState<HealthStatus | null>(null);
-
-  const fetchHealth = useCallback(async () => {
-    try {
-      const status = await mediaApi.getHealthStatus();
-      setHealth(status);
-    } catch {
-      setHealth({ api_connected: false, api_authenticated: false, worker_running: false, is_offline: true });
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchHealth();
-    const interval = setInterval(fetchHealth, 30000);
-    return () => clearInterval(interval);
-  }, [fetchHealth]);
-
+export default function Sidebar({ activeView, onNavigate, notificationCount = 0, health }: SidebarProps) {
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-[72px] lg:w-60 bg-black/60 backdrop-blur-xl border-r border-white/[0.04] z-50 flex flex-col py-6 transition-all duration-300">
 

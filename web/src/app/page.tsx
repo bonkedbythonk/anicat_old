@@ -142,7 +142,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen relative">
-      <Sidebar activeView={activeView} onNavigate={setActiveView} notificationCount={notificationCount} />
+      <Sidebar activeView={activeView} onNavigate={setActiveView} notificationCount={notificationCount} health={healthStatus} />
 
       {/* Main content */}
       <main className="flex-1 ml-[72px] lg:ml-60 overflow-y-auto scrollbar-hide relative">
@@ -209,7 +209,7 @@ export default function App() {
           </div>
         )}
 
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence mode="wait">
           <motion.div
             key={activeView}
             initial={{ opacity: 0, y: 10 }}
