@@ -53,6 +53,11 @@ class MpvPlayer(BasePlayer):
                 if os.path.exists(path):
                     self.executable = path
                     break
+        
+        if self.executable:
+            logger.info(f"MPV executable discovered at: {self.executable}")
+        else:
+            logger.warning("MPV executable NOT FOUND in standard locations.")
 
     def play(self, params):
         """
