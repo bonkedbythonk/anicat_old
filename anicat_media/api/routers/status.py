@@ -191,55 +191,37 @@ async def check_for_updates():
 
 @router.post("/update")
 async def trigger_update():
-    """Trigger a git pull to update the application."""
+    """Trigger the official installation script to update the application."""
     try:
-        # Get the root of the repository
-        # This file is at: anicat_media/api/routers/status.py
-        # Root is 4 levels up
-        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-        
-        # 1. Stash any local build artifacts so they don't block the pull
-        subprocess.run(["git", "stash"], cwd=repo_root, capture_output=True)
-        
-        # 2. Run git pull in the repo root
-        result = subprocess.run(
-            ["git", "pull"], 
-            capture_output=True, 
-            text=True, 
-            timeout=60,
-            cwd=repo_root
-        )
-        
-        # 3. Pop the stash back (even if pull failed or no changes)
-        subprocess.run(["git", "stash", "pop"], cwd=repo_root, capture_output=True)
-        
-        if result.returncode != 0:
-            return {"status": "error", "message": f"Git pull failed: {result.stderr or result.stdout}"}
-            
-        if "Already up to date." in result.stdout:
-            return {"status": "success", "message": "Already on the latest version."}
-        
-        # 2. Run the installation script to sync everything and rebuild frontend
-        install_script = os.path.join(repo_root, "scripts", "install.sh")
-        if os.path.exists(install_script):
-            # Run install script in the background so we don't block the API too long
-            # but we use a timeout to wait for it to at least start successfully
-            # Pass --no-launch so it doesn't open a new browser window
-            # Redirect stdout/stderr to DEVNULL to prevent "suspended (tty output)"
+        # For macOS, the most reliable way to update the native app is via the installer script
+        # which downloads the latest release and replaces the binary.
+        import platform
+        if platform.system() == "Darwin":
+            logger.info("[UPDATE] Triggering macOS native update via installer script")
             subprocess.Popen(
-                ["bash", install_script, "--no-launch"], 
-                cwd=repo_root,
+                "curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/main/scripts/install_macos.sh | bash",
+                shell=True,
+                start_new_session=True,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True
+                stderr=subprocess.DEVNULL
             )
+            return {"status": "success", "message": "Native update triggered! The application will download the latest version and restart shortly. Please wait a few moments."}
+
+        # Fallback for dev/git-based installations
+        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        if os.path.exists(os.path.join(repo_root, ".git")):
+            subprocess.run(["git", "stash"], cwd=repo_root, capture_output=True)
+            result = subprocess.run(["git", "pull"], cwd=repo_root, capture_output=True, text=True, timeout=60)
+            subprocess.run(["git", "stash", "pop"], cwd=repo_root, capture_output=True)
             
-            # We return the message, and then the install script will eventually 
-            # rebuild and the user will refresh. To be safe, we don't kill ourselves 
-            # immediately, but we've already removed the rocket from THIS message below.
-            return {"status": "success", "message": "Update in progress. The application will rebuild in the background. Please refresh this page in about a minute to apply the changes."}
+            if result.returncode == 0:
+                install_script = os.path.join(repo_root, "scripts", "install.sh")
+                if os.path.exists(install_script):
+                    subprocess.Popen(["bash", install_script, "--no-launch"], cwd=repo_root, start_new_session=True)
+                    return {"status": "success", "message": "Update in progress (Git). Rebuilding frontend..."}
+                return {"status": "success", "message": "Updated successfully (Git code only)."}
         
-        return {"status": "success", "message": "Updated successfully (code only)."}
+        return {"status": "error", "message": "Could not determine update method for this platform."}
         
     except subprocess.TimeoutExpired:
         return {"status": "error", "message": "Update timed out. Please try running 'git pull' manually in the terminal."}

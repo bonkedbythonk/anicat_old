@@ -47,36 +47,11 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
         isTauri = false;
       }
 
-      if (isTauri) {
-        // Use Tauri Shell to run the update script
-        const { Command } = await import("@tauri-apps/plugin-shell");
-        const cmd = Command.create("bash", [
-          "-c",
-          "curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/main/scripts/install_macos.sh | bash"
-        ]);
-        
-        setUpdateMessage({ text: "Update started! The app will restart shortly.", type: "success" });
-        
-        const child = await cmd.spawn();
-        console.log("Update process spawned:", child.pid);
-        
-        // Give it a second to start before potentially closing (though the script handles replacement)
-        if (onUpdateStarted) onUpdateStarted();
-      } else {
-        // Fallback for web/dev mode
-        if (hasUpdate) {
-          const res = await mediaApi.triggerUpdate();
-          setUpdateMessage({ text: res.message, type: res.status === "success" ? "success" : "error" });
-          if (res.status === "success") {
-            if (onUpdateStarted) onUpdateStarted();
-          }
-        } else {
-          const res = await mediaApi.checkUpdate();
-          setUpdateMessage({ text: res.message, type: res.status === "success" ? "success" : "error" });
-          if (res.status === "success" && res.update_available) {
-            setHasUpdate(true);
-          }
-        }
+      // Trigger update via the backend (more reliable permissions)
+      const res = await mediaApi.triggerUpdate();
+      setUpdateMessage({ text: res.message, type: res.status === "success" ? "success" : "error" });
+      if (res.status === "success" && onUpdateStarted) {
+        onUpdateStarted();
       }
     } catch (err) {
       console.error("Update failed:", err);

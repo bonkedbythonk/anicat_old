@@ -112,8 +112,8 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0 
               <div className={`relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${isActive ? "bg-accent text-white shadow-lg shadow-accent/25" : "group-hover:text-accent"
                 }`}>
                 <item.icon size={18} />
-                {hasUpdate && (
-                  <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-black animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                 {hasUpdate && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-black animate-pulse shadow-[0_0_12px_rgba(245,158,11,0.8)]" />
                 )}
                 {item.view === "notifications" && notificationCount > 0 && (
                   <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-black">
