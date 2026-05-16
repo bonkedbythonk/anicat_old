@@ -23,12 +23,9 @@ export default function EpisodeList({ mediaId, episodes, loading, progress = 0, 
   const [batchQueuing, setBatchQueuing] = useState(false);
   const activeEpRef = useRef<HTMLDivElement>(null);
 
+  // Removed automatic scrolling to prevent UI glitches during panel animations
   useEffect(() => {
-    if (!loading && episodes.length > 0) {
-      // Use 'nearest' so it only scrolls if the episode isn't already visible,
-      // and it won't "jump" to the top if it can just show it at the bottom.
-      activeEpRef.current?.scrollIntoView({ behavior: 'instant', block: 'nearest' });
-    }
+    // We let the user decide their scroll position manually
   }, [loading, episodes]);
 
   const handlePlay = async (epNum: string) => {
