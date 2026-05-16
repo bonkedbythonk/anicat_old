@@ -20,6 +20,13 @@ The premium way to use Anicat. It sits in your Dock and Menu Bar, manages a back
 curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/main/scripts/install_macos.sh | bash
 ```
 *   **Updates:** Simply click "Install Update" in the Settings > Maintenance tab within the app. No more terminal commands needed after the first install.
+*   **macOS Gatekeeper & MPV Troubleshooting:**
+    If you are running a public release DMG and find that MPV does not open, this is due to macOS Gatekeeper quarantine policies. To resolve:
+    1. Ensure you have dragged `Anicat.app` to your `/Applications` folder (never run it directly from the mounted DMG volume).
+    2. Run the following command in Terminal to allow the background server sidecar to launch external programs like MPV:
+       ```bash
+       xattr -dr com.apple.quarantine /Applications/Anicat.app
+       ```
 
 ### 2. The TUI / CLI
 For those who live in the terminal. Fast, keyboard-driven, and lightweight.

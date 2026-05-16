@@ -38,7 +38,7 @@
         "binaries/anicat-server"
     ],
     "macOS": {
-      "entitlements": null,
+      "entitlements": "entitlements.mac.plist",
       "dmg": {
         "windowSize": {
           "width": 540,

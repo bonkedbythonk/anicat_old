@@ -256,12 +256,23 @@ async def resolve_media_stream(media_id: int, episode: Optional[str] = None):
         
         proxied_stream_url = f"{proxy_prefix}?url={urllib.parse.quote(raw_stream_url)}&headers={urllib.parse.quote(headers_str)}"
         
+        start_time_seconds = 0
+        if resolved["start_time"]:
+            from ...core.utils.converter import time_to_seconds
+            if ":" in str(resolved["start_time"]):
+                start_time_seconds = time_to_seconds(resolved["start_time"])
+            else:
+                try:
+                    start_time_seconds = float(resolved["start_time"])
+                except (ValueError, TypeError):
+                    start_time_seconds = 0
+        
         return {
             "stream_url": proxied_stream_url,
             "raw_stream_url": raw_stream_url,
             "title": resolved["title"],
             "episode": resolved["episode"],
-            "start_time": resolved["start_time"],
+            "start_time": start_time_seconds,
             "media_id": media_id,
             "headers": stream_headers
         }
@@ -385,10 +396,23 @@ async def track_playback(req: PlaybackTrackRequest):
 
         # 1. Save local watch history
         from ...libs.player.types import PlayerResult
+        
+        def _to_hhmmss(sec) -> str | None:
+            if sec is None:
+                return None
+            try:
+                total_sec = int(float(sec))
+                h = total_sec // 3600
+                m = (total_sec % 3600) // 60
+                s = total_sec % 60
+                return f"{h:02d}:{m:02d}:{s:02d}"
+            except (ValueError, TypeError):
+                return None
+
         result = PlayerResult(
             episode=req.episode,
-            stop_time=req.current_time,
-            total_time=req.total_time
+            stop_time=_to_hhmmss(req.current_time),
+            total_time=_to_hhmmss(req.total_time)
         )
         ctx.watch_history.track(media_item, result)
         
