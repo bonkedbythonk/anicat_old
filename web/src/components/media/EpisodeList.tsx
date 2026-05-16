@@ -112,7 +112,6 @@ export default function EpisodeList({ mediaId, episodes, loading, progress = 0, 
             return (
               <div
                 key={epNum}
-                ref={isNext ? activeEpRef : null}
                 className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${isNext ? 'bg-white/[0.04] border border-white/[0.05] shadow-lg' : 'hover:bg-white/[0.03]'}`}
               >
                 <div className="flex items-center space-x-4 min-w-0">
