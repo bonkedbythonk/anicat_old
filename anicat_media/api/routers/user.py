@@ -85,6 +85,9 @@ async def update_list_entry(req: ListUpdateRequest):
         await clear_playback()
         ctx.data_version += 1
         return {"status": "success", "synced": success}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.delete("/{media_id}")
 async def delete_list_entry(media_id: int):
     """Delete a user's list entry for a media item."""
