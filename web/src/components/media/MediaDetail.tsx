@@ -109,17 +109,36 @@ export default function MediaDetail({ item, onClose, initialAction, onRead }: Me
     }
   };
 
+    }
+  };
+
   const handleUnwatch = async () => {
     if (confirm(`Are you sure you want to remove ${item.title.english || item.title.romaji} from your list?`)) {
       try {
         await mediaApi.updateStatus(item.id, "REPEATING", undefined, 0); // Hack to clear
-        // Correct way would be a delete endpoint, but we can just set to planning/removed if supported
-        // For now, let's just clear progress
         dispatchRefresh();
         onClose();
       } catch (error) {
         console.error("Failed to unwatch:", error);
       }
+    }
+  };
+
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const handleToggleWatchlist = async () => {
+    if (isUpdatingStatus) return;
+    setIsUpdatingStatus(true);
+    
+    const isPlanning = fullItem.user_status?.status === 'PLANNING';
+    const newStatus = isPlanning ? 'REPEATING' : 'PLANNING'; // REPEATING + 0 progress = hacky way to remove/reset
+    
+    try {
+      await mediaApi.updateStatus(item.id, newStatus);
+      dispatchRefresh();
+    } catch (error) {
+      console.error("Failed to toggle watchlist:", error);
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -209,8 +228,17 @@ export default function MediaDetail({ item, onClose, initialAction, onRead }: Me
                   );
                 })()}
                 
-                <button className="p-3.5 bg-white/[0.05] hover:bg-white/[0.1] text-white/70 hover:text-white rounded-2xl transition-all border border-white/5 active:scale-95">
-                  <Bookmark size={22} />
+                <button 
+                  onClick={handleToggleWatchlist}
+                  disabled={isUpdatingStatus}
+                  title={fullItem.user_status?.status === 'PLANNING' ? "Remove from Watchlist" : "Add to Watchlist"}
+                  className={`p-3.5 rounded-2xl transition-all border active:scale-95 ${
+                    fullItem.user_status?.status === 'PLANNING' 
+                    ? "bg-accent/20 border-accent/30 text-accent" 
+                    : "bg-white/[0.05] border-white/5 text-white/70 hover:text-white hover:bg-white/[0.1]"
+                  }`}
+                >
+                  {isUpdatingStatus ? <Loader2 size={22} className="animate-spin" /> : <Bookmark size={22} fill={fullItem.user_status?.status === 'PLANNING' ? "currentColor" : "none"} />}
                 </button>
 
                 <button 

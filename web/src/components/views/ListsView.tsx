@@ -105,23 +105,37 @@ export default function ListsView({ onSelect }: ListsViewProps) {
       </div>
 
       {/* Grid */}
-      {loading ? (
-        <div className="flex items-center justify-center py-24">
-          <Loader2 className="animate-spin text-accent" size={36} />
-        </div>
-      ) : items.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
-          {items.map((item) => (
-            <MediaCard key={item.id} item={item} onSelect={onSelect} />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-24 border-2 border-dashed border-white/[0.04] rounded-2xl">
-          <Heart size={40} className="mx-auto text-gray-800 mb-4" />
-          <p className="text-gray-600 font-semibold">This list is empty</p>
-          <p className="text-gray-700 text-sm mt-1">Search for {type.toLowerCase()} and add them to your list.</p>
-        </div>
-      )}
+      <div className={`relative transition-all duration-300 ${loading ? "opacity-50 pointer-events-none grayscale-[0.2]" : "opacity-100"}`}>
+        {loading && items.length > 0 && (
+          <div className="absolute top-0 left-0 right-0 z-10 flex justify-center mt-12">
+            <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10 flex items-center space-x-3 shadow-2xl">
+              <Loader2 className="animate-spin text-accent" size={20} />
+              <span className="text-xs font-bold text-white uppercase tracking-widest">Updating List...</span>
+            </div>
+          </div>
+        )}
+
+        {items.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 animate-fade-in">
+            {items.map((item) => (
+              <MediaCard key={item.id} item={item} onSelect={onSelect} />
+            ))}
+          </div>
+        ) : loading ? (
+          <div className="flex items-center justify-center py-48">
+            <div className="flex flex-col items-center space-y-4">
+              <Loader2 className="animate-spin text-accent" size={48} />
+              <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Synchronizing List</p>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-24 border-2 border-dashed border-white/[0.04] rounded-2xl">
+            <Heart size={40} className="mx-auto text-gray-800 mb-4" />
+            <p className="text-gray-600 font-semibold">This list is empty</p>
+            <p className="text-gray-700 text-sm mt-1">Search for {type.toLowerCase()} and add them to your list.</p>
+          </div>
+        )}
+      </div>
 
       <InfiniteScroll hasMore={hasMore} loading={loadingMore} onLoadMore={loadMore} />
     </div>

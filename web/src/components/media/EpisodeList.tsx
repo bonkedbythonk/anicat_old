@@ -26,7 +26,7 @@ export default function EpisodeList({ mediaId, episodes, loading, progress = 0, 
   useEffect(() => {
     if (!loading && episodes.length > 0) {
       setTimeout(() => {
-        activeEpRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        activeEpRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 300);
     }
   }, [loading, episodes]);
