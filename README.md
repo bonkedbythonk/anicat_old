@@ -49,10 +49,6 @@ Anicat uses mpv for high-quality playback. Here is how to unlock its full potent
 | Shift + T | Toggle Dub / Sub |
 | Space | Play / Pause |
 | f | Toggle Fullscreen |
-| s | Take Screenshot |
-| j | Cycle Subtitles |
-| [ / ] | Change Playback Speed |
-| 9 / 0 | Volume Control |
 
 ### Improving the Visuals (Anime4K)
 Anime4K is a set of state-of-the-art open-source real-time anime upscaling algorithms.
@@ -86,11 +82,14 @@ We recommend installing **[uosc](https://github.com/tomasklaen/uosc)** or **[mod
 ---
 
 ## Features
-- **AniList Sync**: Automated progress tracking and library management.
-- **High-Speed Scrapers**: Native integration with AnimePahe and MangaKatana.
-- **Smart Caching**: Powered by TanStack Query for instant navigation.
-- **System Tray**: Keep Anicat alive in the background for automated downloads.
-- **Fluid UI**: Framer Motion transitions for a premium software feel.
+- **AniList Native Sync**: Automated real-time progress tracking for both anime and manga.
+- **Zero-Terminal Updates**: One-click in-app update mechanism for a seamless end-user experience.
+- **Persistent Background Engine**: Dedicated system tray integration keeps the server alive and ready.
+- **Smart Scrapers**: High-speed native integration with AnimePahe and MangaKatana.
+- **Real-Time Data Sync**: Instant UI updates across all views powered by TanStack Query.
+- **Airing Schedules**: Live relative countdowns for currently releasing series.
+- **Premium Design**: Fluid Framer Motion transitions, glassmorphism, and a sleek media drawer layout.
+- **Cross-Platform Access**: Switch between the Native macOS App, TUI/CLI, or Web Dashboard.
 
 ---
 
