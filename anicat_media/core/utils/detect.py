@@ -95,15 +95,12 @@ def get_clean_env() -> dict[str, str]:
     
     # 1. Fix library paths for frozen apps
     if is_frozen():
-        if "LD_LIBRARY_PATH_ORIG" in env:
-            env["LD_LIBRARY_PATH"] = env["LD_LIBRARY_PATH_ORIG"]
-        else:
-            env.pop("LD_LIBRARY_PATH", None)
-            
-        if "DYLD_LIBRARY_PATH_ORIG" in env:
-            env["DYLD_LIBRARY_PATH"] = env["DYLD_LIBRARY_PATH_ORIG"]
-        else:
-            env.pop("DYLD_LIBRARY_PATH", None)
+        for var in ["LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "DYLD_FRAMEWORK_PATH", "DYLD_FALLBACK_LIBRARY_PATH", "DYLD_FALLBACK_FRAMEWORK_PATH"]:
+            orig_var = f"{var}_ORIG"
+            if orig_var in env:
+                env[var] = env[orig_var]
+            else:
+                env.pop(var, None)
 
     # 2. Inject common paths for macOS GUI launches
     if sys.platform == "darwin":

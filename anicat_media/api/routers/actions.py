@@ -1,6 +1,5 @@
 from typing import Optional
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-import webbrowser
 import time
 from ...libs.player.params import PlayerParams
 from ...libs.player.types import PlayerResult
@@ -16,6 +15,23 @@ def get_ctx():
 def _play_and_track(ctx, params, anime, media_item):
     """Background task to play media and then track watch history."""
     try:
+        from ...libs.provider.anime.types import SearchResult as AnimeSearchResult
+        from ...libs.provider.anime.params import AnimeParams
+        if anime and isinstance(anime, AnimeSearchResult):
+            try:
+                full_anime = ctx.provider.get(
+                    AnimeParams(
+                        id=anime.id,
+                        query=media_item.title.english or media_item.title.romaji or ""
+                    )
+                )
+                if full_anime:
+                    anime = full_anime
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to resolve full anime details in background playback: {e}")
+
         player_result = ctx.player.play(params, anime=anime, media_item=media_item)
         if player_result:
             ctx.watch_history.track(media_item, player_result)
@@ -27,7 +43,6 @@ def _play_and_track(ctx, params, anime, media_item):
         import traceback
         traceback.print_exc()
     finally:
-        import time
         _active_requests.pop(media_item.id, None)
 
 @router.post("/play/{media_id}")
