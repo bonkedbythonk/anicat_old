@@ -19,10 +19,11 @@ class UpdaterService:
         # If still unknown and we're in a git repo, try to get it from git
         if self.local_hash == "Unknown":
             try:
-                import subprocess
-                result = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=2.0)
-                if result.returncode == 0:
-                    self.local_hash = result.stdout.strip()
+                from anicat_media.utils.subprocess import run_cmd
+
+                rc, stdout, _ = run_cmd(["git", "rev-parse", "HEAD"], timeout=2)
+                if rc == 0 and stdout:
+                    self.local_hash = stdout.strip()
             except Exception:
                 pass
 
