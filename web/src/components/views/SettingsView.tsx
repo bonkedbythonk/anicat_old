@@ -20,6 +20,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
   const [backingUp, setBackingUp] = useState(false);
   const [backupUrl, setBackupUrl] = useState<string | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [downloadingNightly, setDownloadingNightly] = useState(false);
   const [stagedHasUpdate, setStagedHasUpdate] = useState(health?.update_available || false);
   const [updateMessage, setUpdateMessage] = useState<{ text: string; type: "success" | "error" | null }>({ text: "", type: null });
   const [options, setOptions] = useState<Record<string, any> | null>(null);
@@ -76,6 +77,28 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
       setUpdateMessage({ text: "Failed to process update action.", type: "error" });
     } finally {
       setCheckingUpdate(false);
+    }
+  };
+
+  const handleDownloadNightly = async () => {
+    if (downloadingNightly) return;
+    setDownloadingNightly(true);
+    setUpdateMessage({ text: "", type: null });
+    try {
+      if (onUpdateStarted) {
+        onUpdateStarted("Downloading and checking out the nightly development branch... The application will download files and reload shortly. Please wait a few moments.");
+      }
+      const res = await mediaApi.triggerUpdate("nightly");
+      if (res.status === "success") {
+        setStagedHasUpdate(false);
+      } else {
+        setUpdateMessage({ text: res.message, type: "error" });
+      }
+    } catch (err) {
+      console.error("Nightly update failed:", err);
+      setUpdateMessage({ text: "Failed to trigger nightly update.", type: "error" });
+    } finally {
+      setDownloadingNightly(false);
     }
   };
 
@@ -369,6 +392,26 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                     {checkingUpdate ? <Loader2 size={16} className="animate-spin" /> : hasUpdate ? <Download size={16} /> : <RotateCcw size={16} />}
                     <span>{checkingUpdate ? (hasUpdate ? "Updating..." : "Checking...") : hasUpdate ? "Install Update" : "Check for Updates"}</span>
                   </button>
+
+                  <div className="pt-2 border-t border-white/5 flex flex-col space-y-2">
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>Want to try upcoming developer features?</span>
+                      <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 font-bold text-[9px] uppercase tracking-wider">Bleeding Edge</span>
+                    </div>
+                    <button
+                      onClick={handleDownloadNightly}
+                      disabled={downloadingNightly}
+                      className="flex items-center justify-center space-x-2 py-2.5 bg-white/[0.03] hover:bg-amber-600 hover:text-white border border-white/5 hover:border-amber-500/20 rounded-xl text-xs font-bold text-gray-400 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      {downloadingNightly ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Download size={14} />
+                      )}
+                      <span>{downloadingNightly ? "Downloading Nightly Branch..." : "Download & Install Nightly Branch"}</span>
+                    </button>
+                  </div>
+
                   {updateMessage.text && (
                     <div className={`p-3 rounded-xl text-xs font-semibold flex items-center space-x-2 animate-fade-in ${
                       updateMessage.type === "success" ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"

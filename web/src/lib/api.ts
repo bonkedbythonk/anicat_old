@@ -83,6 +83,7 @@ export type QueueItem = {
   episode_number: string;
   status: string;
   error_message?: string;
+  cover_image?: string;
 };
 
 export type Character = {
@@ -327,8 +328,11 @@ export const mediaApi = {
   checkUpdate: (): Promise<{ status: string; update_available: boolean; message: string }> =>
     fetchFromApi('/status/check-update', { method: 'POST' }),
 
-  triggerUpdate: (): Promise<{ status: string; message: string }> =>
-    fetchFromApi('/status/update', { method: 'POST' }),
+  triggerUpdate: (branch?: 'stable' | 'nightly'): Promise<{ status: string; message: string }> =>
+    fetchFromApi('/status/update', {
+      method: 'POST',
+      body: branch ? JSON.stringify({ branch }) : undefined
+    }),
 
   getHealthStatus: (): Promise<HealthStatus> =>
     fetchFromApi('/status/health'),

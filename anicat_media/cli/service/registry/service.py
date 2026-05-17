@@ -186,6 +186,8 @@ class MediaRegistryService:
     ):
         if media_item:
             self.get_or_create_record(media_item)
+        else:
+            self.get_or_create_index_entry(media_id)
 
         index = self._load_index()
         index_entry = index.media_index[f"{self._media_api}_{media_id}"]

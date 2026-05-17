@@ -1,6 +1,6 @@
 from typing import Optional
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
 from pydantic import BaseModel
 import time
 import json
@@ -26,7 +26,7 @@ def get_ctx():
     from ..main import ctx
     return ctx
 
-def _play_and_track(ctx, params, anime, media_item):
+def _play_and_track(ctx, params, anime, media_item, local: bool = False):
     """Background task to play media and then track watch history."""
     try:
         from ...libs.provider.anime.types import SearchResult as AnimeSearchResult
@@ -46,7 +46,7 @@ def _play_and_track(ctx, params, anime, media_item):
                 logger = logging.getLogger(__name__)
                 logger.error(f"Failed to resolve full anime details in background playback: {e}")
 
-        player_result = ctx.player.play(params, anime=anime, media_item=media_item)
+        player_result = ctx.player.play(params, anime=anime, media_item=media_item, local=local)
         if player_result:
             ctx.watch_history.track(media_item, player_result)
             ctx.data_version += 1
@@ -213,6 +213,48 @@ async def play_media(media_id: int, background_tasks: BackgroundTasks, episode: 
             _active_requests.pop(media_id, None)
             return {"status": "reading", "media": title, "episode": episode, "chapter_data": chapter_data}
 
+        # Intercept for completed local downloads before resolving HLS stream
+        resolved_episode = episode
+        start_time = None
+        if not resolved_episode:
+            resolved_episode, start_time = ctx.watch_history.get_episode(media_item)
+            resolved_episode = str(resolved_episode) if resolved_episode else "1"
+        else:
+            _, resume_time = ctx.watch_history.get_episode(media_item)
+            current_progress = str(media_item.user_status.progress) if media_item.user_status else "0"
+            if resolved_episode == str(int(current_progress) + 1) or resolved_episode == current_progress:
+                start_time = resume_time
+
+        from ...cli.service.registry.models import DownloadStatus
+        record = ctx.media_registry.get_media_record(media_id)
+        ep_record = next((e for e in record.media_episodes if e.episode_number == resolved_episode), None) if record and record.media_episodes else None
+        
+        is_local = False
+        if ep_record and ep_record.download_status == DownloadStatus.COMPLETED and ep_record.file_path:
+            from pathlib import Path
+            file_path = Path(ep_record.file_path)
+            if file_path.exists():
+                is_local = True
+
+        if is_local:
+            local_title = f"{media_item.title.english or media_item.title.romaji}; Episode {resolved_episode}"
+            if media_item.streaming_episodes and media_item.streaming_episodes.get(resolved_episode):
+                local_title = media_item.streaming_episodes[resolved_episode].title
+                
+            params = PlayerParams(
+                url=str(file_path),
+                query=media_item.title.english or media_item.title.romaji or "",
+                episode=resolved_episode,
+                title=local_title,
+                headers={},
+                start_time=start_time
+            )
+            background_tasks.add_task(_play_and_track, ctx, params, anime=None, media_item=media_item, local=True)
+            
+            set_playback(media_id=media_id, media_title=media_item.title.english or media_item.title.romaji, episode=resolved_episode)
+            _active_requests.pop(media_id, None)
+            return {"status": "playing", "media": media_item.title.english or media_item.title.romaji, "episode": resolved_episode, "local": True}
+
         # 3. Resolve stream
         resolved = await _resolve_episode_stream(media_id, episode)
         
@@ -245,6 +287,63 @@ async def resolve_media_stream(media_id: int, episode: Optional[str] = None):
     Resolves the stream details for embedded in-app playback without launching MPV.
     """
     try:
+        ctx = get_ctx()
+        media_item = ctx.media_api.get_media_item(media_id)
+        if not media_item:
+            raise HTTPException(status_code=404, detail="Media not found")
+
+        resolved_episode = episode
+        start_time = None
+        if not resolved_episode:
+            resolved_episode, start_time = ctx.watch_history.get_episode(media_item)
+            resolved_episode = str(resolved_episode) if resolved_episode else "1"
+        else:
+            _, resume_time = ctx.watch_history.get_episode(media_item)
+            current_progress = str(media_item.user_status.progress) if media_item.user_status else "0"
+            if resolved_episode == str(int(current_progress) + 1) or resolved_episode == current_progress:
+                start_time = resume_time
+
+        # Check if locally downloaded
+        from ...cli.service.registry.models import DownloadStatus
+        record = ctx.media_registry.get_media_record(media_id)
+        ep_record = next((e for e in record.media_episodes if e.episode_number == resolved_episode), None) if record and record.media_episodes else None
+        
+        is_local = False
+        if ep_record and ep_record.download_status == DownloadStatus.COMPLETED and ep_record.file_path:
+            from pathlib import Path
+            file_path = Path(ep_record.file_path)
+            if file_path.exists():
+                is_local = True
+
+        if is_local:
+            title = media_item.title.english or media_item.title.romaji
+            set_playback(media_id=media_id, media_title=title, episode=resolved_episode)
+            
+            # Serve local file via FastAPI route
+            local_stream_url = f"http://127.0.0.1:13370/api/actions/local-file/{media_id}/{resolved_episode}"
+            
+            start_time_seconds = 0
+            if start_time:
+                from ...core.utils.converter import time_to_seconds
+                if ":" in str(start_time):
+                    start_time_seconds = time_to_seconds(start_time)
+                else:
+                    try:
+                        start_time_seconds = float(start_time)
+                    except (ValueError, TypeError):
+                        start_time_seconds = 0
+            
+            return {
+                "stream_url": local_stream_url,
+                "raw_stream_url": local_stream_url,
+                "title": title,
+                "episode": resolved_episode,
+                "start_time": start_time_seconds,
+                "media_id": media_id,
+                "headers": {},
+                "local": True
+            }
+
         resolved = await _resolve_episode_stream(media_id, episode)
         
         # Track playback for Now Playing bar
@@ -385,6 +484,32 @@ async def hls_stream_proxy(url: str, headers: str):
                     "Cache-Control": "public, max-age=86400"
                 }
             )
+
+@router.get("/local-file/{media_id}/{episode}")
+async def serve_local_file(media_id: int, episode: str):
+    """
+    Serves a completed local download file for in-app browser playback.
+    """
+    ctx = get_ctx()
+    record = ctx.media_registry.get_media_record(media_id)
+    if not record or not record.media_episodes:
+        raise HTTPException(status_code=404, detail="Media record not found")
+        
+    ep_record = next((e for e in record.media_episodes if e.episode_number == episode), None)
+    if not ep_record or not ep_record.file_path:
+        raise HTTPException(status_code=404, detail="Downloaded episode not found")
+        
+    from pathlib import Path
+    file_path = Path(ep_record.file_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Local video file does not exist")
+        
+    import mimetypes
+    media_type, _ = mimetypes.guess_type(str(file_path))
+    if not media_type:
+        media_type = "video/mp4"
+        
+    return FileResponse(path=str(file_path), media_type=media_type)
 
 @router.get("/test")
 async def test_actions():

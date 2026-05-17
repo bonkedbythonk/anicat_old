@@ -357,6 +357,15 @@ class MpvIPCPlayer(BaseIPCPlayer):
             self._setup_event_handling()
             self._setup_key_bindings()
             self._setup_message_handlers()
+
+            # Explicitly load the initial local file if registry is present (local playback)
+            # or if the URL does not start with http/https. This ensures MPV bypasses the
+            # idle state (especially on macOS) and plays the local file immediately.
+            is_local = self.registry is not None or not (params.url.startswith("http://") or params.url.startswith("https://"))
+            if is_local and self.ipc_client:
+                logger.info(f"Explicitly loading local file via IPC: {params.url}")
+                self.ipc_client.send_command(["loadfile", params.url])
+
             self._wait_for_playback()
 
             return PlayerResult(

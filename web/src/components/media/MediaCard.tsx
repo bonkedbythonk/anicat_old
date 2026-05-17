@@ -1,6 +1,6 @@
 "use client";
 
-import { Play } from "lucide-react";
+import { Play, BookOpen } from "lucide-react";
 import { type MediaItem } from "@/lib/api";
 
 interface MediaCardProps {
@@ -64,7 +64,11 @@ export default function MediaCard({ item, onSelect }: MediaCardProps) {
             onClick={handlePlay}
             className="bg-accent p-3.5 rounded-full hover:scale-110 active:scale-95 transition-transform duration-200 shadow-xl shadow-accent/30 text-white"
           >
-            <Play fill="currentColor" size={22} className="ml-0.5" />
+            {isManga ? (
+              <BookOpen size={22} className="text-white" />
+            ) : (
+              <Play fill="currentColor" size={22} className="ml-0.5" />
+            )}
           </button>
         </div>
 

@@ -12,6 +12,11 @@ import sys
 
 logger = logging.getLogger(__name__)
 
+
+class UpdateTriggerRequest(BaseModel):
+    branch: Optional[str] = None
+
+
 router = APIRouter()
 
 @router.get("/logs")
@@ -359,7 +364,7 @@ async def check_for_updates():
         return {"status": "error", "update_available": False, "message": f"Failed to check for updates: {str(e)}"}
 
 @router.post("/update")
-async def trigger_update():
+async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
     """Trigger the official installation script to update the application."""
     global _last_update_check, _cached_update_available
     try:
@@ -377,6 +382,9 @@ async def trigger_update():
         except Exception:
             # If config can't be read, continue with env-only check
             update_branch = "stable"
+
+        if req and req.branch in ("stable", "nightly"):
+            update_branch = req.branch
 
         # For macOS, the most reliable way to update the native app is via the installer script
         # which downloads the latest release and replaces the binary.

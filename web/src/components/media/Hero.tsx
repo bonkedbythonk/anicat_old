@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, Maximize } from "lucide-react";
+import { Play, Maximize, BookOpen } from "lucide-react";
 import { type MediaItem } from "@/lib/api";
 
 interface HeroProps {
@@ -69,7 +69,7 @@ export default function Hero({ item, onSelect }: HeroProps) {
             disabled={isCaughtUp}
             className="flex items-center space-x-3 bg-white text-black px-8 py-3.5 rounded-xl hover:bg-accent hover:text-white transition-all duration-300 font-bold text-sm active:scale-95 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-black"
           >
-            <Play fill="currentColor" size={18} />
+            {isManga ? <BookOpen size={18} /> : <Play fill="currentColor" size={18} />}
             <span>
               {isFinished
                 ? (isManga ? "Read Again" : "Re-watch")

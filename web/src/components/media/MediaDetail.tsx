@@ -38,6 +38,8 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   const [config, setConfig] = useState<DetailConfig | null>(null);
 
   const isManga = item.type === "MANGA" || !!(item.format && ["MANGA", "ONE_SHOT", "NOVEL"].includes(item.format));
+  const normalizedUserStatus = fullItem.user_status?.status?.toLowerCase();
+  const isPlanning = normalizedUserStatus === "planning";
 
   useEffect(() => {
     async function loadDetails() {
@@ -183,12 +185,15 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
     if (isUpdatingStatus) return;
     setIsUpdatingStatus(true);
 
-    const currentStatus = fullItem.user_status?.status?.toLowerCase();
-    const isPlanning = currentStatus === "planning";
-    const newStatus = isPlanning ? "watching" : "planning";
-
     try {
-      await mediaApi.updateStatus(item.id, newStatus);
+      if (isPlanning) {
+        await mediaApi.deleteFromList(item.id);
+      } else {
+        await mediaApi.updateStatus(item.id, "planning");
+      }
+      // Re-fetch media details after modifying list entry to instantly update UI state
+      const details = await mediaApi.getDetails(item.id);
+      setFullItem(details);
       dispatchRefresh();
     } catch (error) {
       console.error("Failed to toggle watchlist:", error);
@@ -289,14 +294,14 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                 <button 
                   onClick={handleToggleWatchlist}
                   disabled={isUpdatingStatus}
-                  title={fullItem.user_status?.status?.toLowerCase() === 'planning' ? "Remove from Watchlist" : "Add to Watchlist"}
+                  title={isPlanning ? "Remove from Watchlist" : "Add to Watchlist"}
                   className={`p-3.5 rounded-2xl transition-all border active:scale-95 ${
-                    fullItem.user_status?.status?.toLowerCase() === 'planning' 
+                    isPlanning 
                     ? "bg-accent/20 border-accent/30 text-accent" 
                     : "bg-white/[0.05] border-white/5 text-white/70 hover:text-white hover:bg-white/[0.1]"
                   }`}
                 >
-                  {isUpdatingStatus ? <Loader2 size={22} className="animate-spin" /> : <Bookmark size={22} fill={fullItem.user_status?.status?.toLowerCase() === 'planning' ? "currentColor" : "none"} />}
+                  {isUpdatingStatus ? <Loader2 size={22} className="animate-spin" /> : <Bookmark size={22} fill={isPlanning ? "currentColor" : "none"} />}
                 </button>
 
                 <button 
