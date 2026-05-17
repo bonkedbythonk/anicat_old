@@ -104,3 +104,38 @@ def test_logs_tail_reads_requested_lines(client_and_ctx, tmp_path, monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["logs"].splitlines() == ["line 3", "line 4"]
+
+
+def test_hls_proxy_returns_content(client_and_ctx, monkeypatch):
+    client, _ = client_and_ctx
+
+    class FakeHttpResponse:
+        def __init__(self, text, content, status_code, headers):
+            self.text = text
+            self.content = content
+            self.status_code = status_code
+            self.headers = headers
+
+    async def fake_get(*args, **kwargs):
+        return FakeHttpResponse(
+            text="#EXTM3U\n#EXT-X-STREAM-INF\nsegment.ts",
+            content=b"fake-ts-binary-bytes",
+            status_code=200,
+            headers={"content-type": "video/mp2t"}
+        )
+
+    # Monkeypatch the httpx.AsyncClient.get call
+    import httpx
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+
+    # 1. Test m3u8 playlist proxying (should rewrite the content)
+    response = client.get("/api/actions/proxy?url=http://example.com/playlist.m3u8&headers=%7B%7D")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/x-mpegURL"
+    assert "/api/actions/proxy" in response.text
+
+    # 2. Test ts segment proxying (should return binary content directly)
+    response = client.get("/api/actions/proxy?url=http://example.com/segment.ts&headers=%7B%7D")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "video/mp2t"
+    assert response.content == b"fake-ts-binary-bytes"

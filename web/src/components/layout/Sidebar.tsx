@@ -42,7 +42,7 @@ interface SidebarProps {
 
 export default function Sidebar({ activeView, onNavigate, notificationCount = 0, health }: SidebarProps) {
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-[72px] lg:w-60 bg-black/60 backdrop-blur-xl border-r border-white/[0.04] z-50 flex flex-col py-6 transition-all duration-300">
+    <aside className="fixed left-0 top-0 bottom-0 w-[72px] lg:w-60 bg-black/60 backdrop-blur-xl border-r border-white/[0.04] z-50 flex flex-col py-6 transition-[background-color,border-color] duration-300">
 
       {/* Logo */}
       <div className="flex flex-col items-center justify-center px-4 mb-10 pt-2">

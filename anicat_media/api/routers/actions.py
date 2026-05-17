@@ -1,6 +1,6 @@
 from typing import Optional
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response
 from pydantic import BaseModel
 import time
 import json
@@ -353,13 +353,10 @@ async def hls_stream_proxy(url: str, headers: str):
                 }
             )
         else:
-            # For HLS video segments (.ts), stream binary data directly to the webview
-            def iter_bytes_chunks():
-                for chunk in response.iter_bytes(chunk_size=65536):
-                    yield chunk
-
-            return StreamingResponse(
-                iter_bytes_chunks(),
+            # For HLS video segments (.ts), return standard Response containing all binary bytes.
+            # Avoid using StreamingResponse after exiting the httpx client context block.
+            return Response(
+                content=response.content,
                 status_code=response.status_code,
                 media_type=response.headers.get("content-type", "video/mp2t"),
                 headers={

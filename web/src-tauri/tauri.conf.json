@@ -38,21 +38,7 @@
         "binaries/anicat-server"
     ],
     "macOS": {
-      "entitlements": "entitlements.mac.plist",
-      "dmg": {
-        "windowSize": {
-          "width": 540,
-          "height": 380
-        },
-        "appPosition": {
-          "x": 150,
-          "y": 160
-        },
-        "applicationFolderPosition": {
-          "x": 390,
-          "y": 160
-        }
-      }
+      "entitlements": "entitlements.mac.plist"
     }
   },
   "plugins": {

@@ -169,7 +169,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose} 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm will-change-opacity transform-gpu" 
       />
       
       {/* Sidebar Drawer */}
@@ -179,7 +179,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
         exit={{ x: "100%" }}
         transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
         style={{ willChange: "transform" }}
-        className="relative w-full max-w-2xl h-full bg-[#0c0c0c] border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col"
+        className="relative w-full max-w-2xl h-full bg-[#0c0c0c] border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col transform-gpu"
       >
         {/* Close Button */}
         <button 

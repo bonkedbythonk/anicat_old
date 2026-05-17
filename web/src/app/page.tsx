@@ -91,21 +91,12 @@ export default function App() {
     }
     
     checkSystem();
-    const quickInterval = setInterval(() => {
-      if (failedAttempts < 6) {
-        checkSystem();
-      }
-    }, 1500);
-
-    const normalInterval = setInterval(() => {
-      if (failedAttempts >= 6) {
-        checkSystem();
-      }
-    }, 5000);
+    const interval = setInterval(() => {
+      checkSystem();
+    }, 10000); // 10s interval keeps main thread clear for buttery-smooth 120Hz ProMotion animations
 
     return () => {
-      clearInterval(quickInterval);
-      clearInterval(normalInterval);
+      clearInterval(interval);
     };
   }, []);
 
@@ -384,7 +375,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className={`p-6 lg:p-10 max-w-[1600px] ${isOffline && !dismissedOffline ? 'pt-24 lg:pt-28' : ''}`}
+            className={`p-6 lg:p-10 max-w-[1600px] transform-gpu will-change-[transform,opacity] ${isOffline && !dismissedOffline ? 'pt-24 lg:pt-28' : ''}`}
           >
             {renderView()}
           </motion.div>

@@ -1,0 +1,101 @@
+name: Build Nightly (testbranch)
+
+on:
+  push:
+    branches:
+      - testbranch
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-14' # Apple Silicon (M1) Runner
+            args: '--target aarch64-apple-darwin'
+            triple: 'aarch64-apple-darwin'
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Restore Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: web/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('web/package-lock.json') }}-${{ hashFiles('web/src/**/*.js', 'web/src/**/*.jsx', 'web/src/**/*.ts', 'web/src/**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('web/package-lock.json') }}-
+
+      - name: install python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: install python dependencies
+        run: uv sync
+
+      - name: build sidecar
+        run: |
+          uv run pyinstaller --noconfirm build_sidecar/sidecar.spec
+          mkdir -p web/src-tauri/binaries
+          mv dist/anicat-server web/src-tauri/binaries/anicat-server-${{ matrix.triple }}
+
+      - name: install rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.triple }}
+
+      - name: install frontend dependencies
+        run: cd web && npm install
+
+      - name: build frontend
+        working-directory: web
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+        run: npm run build
+
+      - name: Delete old nightly release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Cleaning up existing nightly release to allow asset overwrite..."
+          gh release delete nightly --yes --cleanup-tag || true
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT_TELEMETRY_DISABLED: 1
+        with:
+          projectPath: web
+          tagName: 'nightly'
+          releaseName: 'Anicat Nightly Build'
+          releaseBody: |
+            This is an automated rolling pre-release built from the `testbranch` branch.
+            
+            **Last updated**: `${{ github.event.head_commit.timestamp || 'Manual Trigger' }}`
+            **Commit**: `${{ github.sha }}`
+            
+            *Caution: This is a pre-release/nightly build and may contain experimental features or bugs.*
+          releaseDraft: false
+          prerelease: true
+          args: ${{ matrix.args }}
