@@ -219,7 +219,10 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                 {(() => {
                   const currentProgress = fullItem.user_status?.progress || 0;
                   const total = fullItem.episodes || fullItem.chapters || 0;
-                  const latestAvailable = episodes.length > 0 ? Math.max(...episodes.map(e => Number(e.number))) : total;
+                  const nextAiringEp = fullItem.next_airing?.episode;
+                  const latestAvailable = episodes.length > 0 
+                    ? Math.max(...episodes.filter(e => !nextAiringEp || Number(e.number) < nextAiringEp).map(e => Number(e.number))) 
+                    : total;
                   const nextEpisode = (fullItem.user_status?.progress || 0) + 1;
                   const isFinished = total > 0 && currentProgress >= total;
                   const isCaughtUp = !isFinished && latestAvailable > 0 && currentProgress >= latestAvailable;
@@ -417,6 +420,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                     }}
                     playerType={config?.stream?.player_type}
                     onUnwatch={(num) => handleUpdateProgress(Number(num) - 1)} 
+                    nextAiringEpisode={fullItem.next_airing?.episode}
                   />
                 )}
                 {activeTab === "characters" && (

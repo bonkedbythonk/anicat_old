@@ -15,6 +15,7 @@ interface EpisodeListProps {
   onPlayEpisode?: (epNum: string) => void;
   playerType?: "embedded" | "external";
   onUnwatch?: (epNum: string) => void;
+  nextAiringEpisode?: number;
 }
 
 export default function EpisodeList({
@@ -26,7 +27,8 @@ export default function EpisodeList({
   onRead,
   onPlayEpisode,
   playerType = "external",
-  onUnwatch
+  onUnwatch,
+  nextAiringEpisode
 }: EpisodeListProps) {
   const [playingEp, setPlayingEp] = useState<string | null>(null);
   const [queueingEp, setQueueingEp] = useState<string | null>(null);
@@ -126,11 +128,12 @@ export default function EpisodeList({
             const epNum = String(ep.number);
             const isWatched = Number(ep.number) <= progress;
             const isNext = Number(ep.number) === progress + 1;
+            const isUnaired = !isManga && nextAiringEpisode !== undefined && Number(ep.number) >= nextAiringEpisode;
             
             return (
               <div
                 key={epNum}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${isNext ? 'bg-white/[0.04] border border-white/[0.05] shadow-lg' : 'hover:bg-white/[0.03]'}`}
+                className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${isNext && !isUnaired ? 'bg-white/[0.04] border border-white/[0.05] shadow-lg' : 'hover:bg-white/[0.03]'}`}
               >
                 <div className="flex items-center space-x-4 min-w-0">
                   <div className="flex items-center space-x-1 w-10 justify-end shrink-0">
@@ -149,42 +152,48 @@ export default function EpisodeList({
                         </div>
                       </button>
                     )}
-                    <span className={`font-bold text-sm ${isWatched ? "text-green-500" : "text-accent"}`}>
+                    <span className={`font-bold text-sm ${isWatched ? "text-green-500" : isUnaired ? "text-gray-600" : "text-accent"}`}>
                       {epNum}
                     </span>
                   </div>
-                  <span className={`text-sm truncate group-hover:text-white transition-colors ${isWatched ? "text-gray-500" : "text-gray-300"}`}>
+                  <span className={`text-sm truncate group-hover:text-white transition-colors ${isWatched ? "text-gray-500" : isUnaired ? "text-gray-600" : "text-gray-300"}`}>
                     {ep.title}
                   </span>
                   {statusIcon(ep.download_status)}
                 </div>
 
-                <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <button
-                    onClick={() => handlePlay(epNum)}
-                    disabled={playingEp === epNum}
-                    className="flex items-center space-x-1.5 bg-accent text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-accent-light transition-colors active:scale-95"
-                  >
-                    {playingEp === epNum ? (
-                      <Loader2 size={12} className="animate-spin" />
-                    ) : (
-                      isManga ? <BookOpen size={12} /> : <Play fill="currentColor" size={12} />
-                    )}
-                    <span>{isManga ? "Read" : "Play"}</span>
-                  </button>
-                  <button
-                    onClick={() => handleQueue(epNum)}
-                    disabled={queueingEp === epNum || ep.download_status === "completed"}
-                    className="flex items-center space-x-1.5 bg-white/[0.06] text-gray-300 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-white/10 transition-colors disabled:opacity-30 active:scale-95"
-                  >
-                    {queueingEp === epNum ? (
-                      <Loader2 size={12} className="animate-spin" />
-                    ) : (
-                      <Download size={12} />
-                    )}
-                    <span>DL</span>
-                  </button>
-                </div>
+                {!isUnaired ? (
+                  <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <button
+                      onClick={() => handlePlay(epNum)}
+                      disabled={playingEp === epNum}
+                      className="flex items-center space-x-1.5 bg-accent text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-accent-light transition-colors active:scale-95"
+                    >
+                      {playingEp === epNum ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        isManga ? <BookOpen size={12} /> : <Play fill="currentColor" size={12} />
+                      )}
+                      <span>{isManga ? "Read" : "Play"}</span>
+                    </button>
+                    <button
+                      onClick={() => handleQueue(epNum)}
+                      disabled={queueingEp === epNum || ep.download_status === "completed"}
+                      className="flex items-center space-x-1.5 bg-white/[0.06] text-gray-300 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-white/10 transition-colors disabled:opacity-30 active:scale-95"
+                    >
+                      {queueingEp === epNum ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <Download size={12} />
+                      )}
+                      <span>DL</span>
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 px-2.5 py-1 bg-white/[0.02] border border-white/[0.04] rounded-lg shrink-0">
+                    Airing Soon
+                  </span>
+                )}
               </div>
             );
           })}
