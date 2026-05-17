@@ -92,6 +92,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEXT_TELEMETRY_DISABLED: 1
+          TAURI_BUNDLER_DMG_IGNORE_CI: "true"
         with:
           projectPath: web
           tagName: ${{ github.ref_name }}
