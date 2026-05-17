@@ -391,7 +391,7 @@ export default function AnimePlayer({
       ref={containerRef}
       onMouseMove={resetControlsTimeout}
       onMouseLeave={() => isPlaying && setShowControls(false)}
-      className="fixed inset-0 z-50 bg-[#050505] flex flex-col items-center justify-center select-none overflow-hidden"
+      className="fixed inset-0 z-[200] bg-[#050505] flex flex-col items-center justify-center select-none overflow-hidden"
     >
       {loading && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 space-y-4 z-40">
