@@ -12,6 +12,8 @@
     "build:sidecar": "cd ../ && python3 -m pip install pyinstaller --break-system-packages && python3 -m PyInstaller --onefile --name anicat-server web/src-tauri/binaries/anicat-server.py && mkdir -p web/src-tauri/binaries && cp dist/anicat-server web/src-tauri/binaries/anicat-server-$(uname -m)-apple-darwin",
     "dev:full": "npm run build:sidecar && npm run tauri dev",
     "tauri:dev": "tauri dev"
+    ,
+    "test:e2e": "npx playwright test"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.10",
@@ -34,5 +36,8 @@
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
     "typescript": "^5"
+    ,
+    "@playwright/test": "^1.40.0",
+    "http-server": "^14.1.1"
   }
 }

@@ -8,7 +8,7 @@ import MediaDetail from "@/components/media/MediaDetail";
 import MangaReader from "@/components/media/MangaReader";
 import AnimePlayer from "@/components/media/AnimePlayer";
 import useKeyboardShortcuts from "@/lib/useKeyboardShortcuts";
-import { mediaApi, type MediaItem, type HealthStatus } from "@/lib/api";
+import { mediaApi, type MediaItem, type HealthStatus, API_BASE_ORIGIN } from "@/lib/api";
 import { dispatchRefresh } from "@/lib/events";
 import Onboarding from "@/components/layout/Onboarding";
 import { X, WifiOff, RotateCcw } from "lucide-react";
@@ -46,6 +46,8 @@ export default function App() {
     sessionStorage.setItem("anicat_offline_dismissed", "true");
   };
   const [notificationCount, setNotificationCount] = useState(0);
+  const [connectionStatus, setConnectionStatus] = useState<"checking" | "connected" | "failed">("checking");
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [refreshNeeded, setRefreshNeeded] = useState(false);
@@ -54,10 +56,14 @@ export default function App() {
   
   // Poll health for offline banner, notifications, and live sync
   useEffect(() => {
+    let failedAttempts = 0;
+    
     async function checkSystem() {
       try {
         const status = await mediaApi.getHealthStatus();
         setHealthStatus(status);
+        setConnectionStatus("connected");
+        setConnectionError(null);
         
         // 1. Live Sync Detection
         if (status.data_version !== undefined) {
@@ -69,19 +75,38 @@ export default function App() {
         }
 
         // 2. Offline Detection
-        // Only show offline if explicitly told so by backend AND api is disconnected AND we are logged in
         const shouldBeOffline = status.api_authenticated && (status.is_offline || !status.api_connected);
         setIsOffline(shouldBeOffline);
         
         if (!shouldBeOffline) setDismissedOffline(false);
         setNotificationCount(status.unread_notifications || 0);
-      } catch {
-        // Silent fail on health poll
+      } catch (err: any) {
+        failedAttempts++;
+        console.error("Health check failed:", err);
+        if (failedAttempts >= 3) {
+          setConnectionStatus("failed");
+          setConnectionError(err?.message || "Connection refused (backend sidecar unreachable on port 13370).");
+        }
       }
     }
+    
     checkSystem();
-    const interval = setInterval(checkSystem, 10000); // Poll faster (10s) for snappier sync
-    return () => clearInterval(interval);
+    const quickInterval = setInterval(() => {
+      if (failedAttempts < 3) {
+        checkSystem();
+      }
+    }, 1500);
+
+    const normalInterval = setInterval(() => {
+      if (failedAttempts >= 3) {
+        checkSystem();
+      }
+    }, 5000);
+
+    return () => {
+      clearInterval(quickInterval);
+      clearInterval(normalInterval);
+    };
   }, []);
 
   // Check if onboarding should be shown
@@ -143,6 +168,109 @@ export default function App() {
         return <ProfileView />;
     }
   };
+
+  const handleCopyDiagnostics = async () => {
+    try {
+      const report = [
+        `# AniCat Diagnostic Report`,
+        `Generated: ${new Date().toISOString()}`,
+        `Platform: ${typeof window !== "undefined" ? window.navigator.userAgent : "Server"}`,
+        `Client Origin: ${typeof window !== "undefined" ? window.location.origin : "Unknown"}`,
+        `API Target: ${API_BASE_ORIGIN}`,
+        `Connection Status: FAILED`,
+        `Connection Error: ${connectionError || "None"}`,
+        `Onboarding Seen: ${localStorage.getItem("anicat_onboarding_seen") || "false"}`,
+        `\n## Common Resolution Steps:`,
+        `1. A port conflict on 13370 is the most common cause. Close any other running instances.`,
+        `2. On macOS, ensure Gatekeeper didn't block the sidecar by checking: System Settings -> Privacy & Security.`,
+        `3. Check the detailed backend logs inside the application cache log folder.`
+      ].join("\n");
+      await navigator.clipboard.writeText(report);
+      alert("Diagnostics report copied to your clipboard! Please send this to the developer.");
+    } catch (e) {
+      alert("Failed to copy report: " + String(e));
+    }
+  };
+
+  const handleOpenLogs = async () => {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("open_logs_folder");
+    } catch (err) {
+      console.error("Failed to open logs:", err);
+      alert("Could not open logs folder. Please look inside your user Library/Caches/anicat folder manually.");
+    }
+  };
+
+  if (connectionStatus === "failed") {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#050505] text-white p-6 font-sans">
+        <div className="max-w-md w-full bg-white/[0.02] border border-white/[0.08] backdrop-blur-xl rounded-3xl p-8 space-y-6 shadow-2xl shadow-black/80 animate-fade-in">
+          {/* Header */}
+          <div className="space-y-2 text-center">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 mb-2 animate-pulse">
+              <WifiOff size={28} />
+            </div>
+            <h2 className="text-2xl font-black tracking-tight">Sidecar Connection Failed</h2>
+            <p className="text-sm text-gray-400">
+              The AniCat frontend could not establish a connection with the local Python API service.
+            </p>
+          </div>
+
+          {/* Diagnostic Details */}
+          <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05] space-y-3.5 text-xs">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500 font-medium">Frontend Client</span>
+              <span className="px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20 font-bold">Online</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500 font-medium">Backend Sidecar</span>
+              <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 font-bold">Unreachable</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500 font-medium">API Endpoint</span>
+              <span className="font-mono text-gray-400">{API_BASE_ORIGIN}</span>
+            </div>
+            <div className="pt-2 border-t border-white/5 text-[10px] text-red-300/80 leading-relaxed font-mono whitespace-pre-wrap break-all">
+              Error: {connectionError || "Failed to fetch"}
+            </div>
+          </div>
+
+          {/* Action Steps */}
+          <div className="space-y-3">
+            <button
+              onClick={handleCopyDiagnostics}
+              className="w-full py-3 bg-accent hover:bg-accent-light text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-accent/20 active:scale-95 flex items-center justify-center space-x-2"
+            >
+              <span>Copy Diagnostics Report</span>
+            </button>
+            
+            <button
+              onClick={handleOpenLogs}
+              className="w-full py-3 bg-white/[0.04] hover:bg-white/[0.08] text-white/80 border border-white/10 font-bold rounded-xl text-sm transition-all active:scale-95 flex items-center justify-center space-x-2"
+            >
+              <span>Open Application Logs</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setConnectionStatus("checking");
+                window.location.reload();
+              }}
+              className="w-full py-2.5 text-xs font-semibold text-gray-500 hover:text-white transition-colors"
+            >
+              Retry Connection
+            </button>
+          </div>
+
+          {/* Footer Info */}
+          <p className="text-[10px] text-center text-gray-600 leading-normal">
+            A port conflict (another process on port 13370) or Gatekeeper quarantine is the most common cause on macOS.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen relative">
