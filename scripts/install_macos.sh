@@ -47,8 +47,15 @@ rm "$TMP_DMG"
 echo "Configuring security permissions..."
 xattr -d com.apple.quarantine "$INSTALL_PATH" 2>/dev/null || true
 
+# 7. Automatically Restart the Application
+echo "Relaunching Anicat..."
+open -a "$INSTALL_PATH"
+
+# Wait a brief moment for the new app window to request launch resources, then kill the old one
+sleep 1
+killall "Anicat" || true
+killall "Anicat Dev" || true
+
 echo ""
-echo "Installation Complete!"
-echo "You can now find Anicat in your Applications folder or Launchpad."
-echo "Note: If you are asked for permissions, click 'Allow'."
+echo "Installation Complete and Anicat has restarted!"
 echo ""
