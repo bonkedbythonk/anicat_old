@@ -224,7 +224,12 @@ class YtDLPDownloader(BaseDownloader):
 
             # Run the ffmpeg command
             try:
-                subprocess.run(args, env=get_clean_env())
+                from ....utils.subprocess import run_cmd
+
+                rc, out, err = run_cmd(args, timeout=3600, capture_output=False, env=get_clean_env())
+                if rc != 0:
+                    logger.error(f"FFmpeg merge failed: {err or out}")
+                    return None
                 final_output_path = video_path.parent / merged_filename
 
                 if final_output_path.exists():

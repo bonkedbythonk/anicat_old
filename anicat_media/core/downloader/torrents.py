@@ -257,13 +257,13 @@ class TorrentDownloader:
             ]
             logger.info(f"Running webtorrent command: {' '.join(cmd)}")
 
-            result = subprocess.run(
-                cmd, check=True, capture_output=True, text=True, timeout=3600
-            )
+            from ..utils.subprocess import run_cmd
+
+            rc, out, err = run_cmd(cmd, timeout=3600, capture_output=True)
 
             # Try to determine the download path from the output
             # This is a best-effort approach since webtorrent output format may vary
-            output_lines = result.stdout.split("\n")
+            output_lines = out.split("\n") if out else []
             for line in output_lines:
                 if "Downloaded" in line and "to" in line:
                     # Extract path from output
@@ -292,15 +292,9 @@ class TorrentDownloader:
             )
             return self.download_path
 
-        except subprocess.CalledProcessError as e:
-            error_msg = e.stderr or e.stdout or "Unknown error"
-            raise TorrentDownloadError(
-                f"webtorrent CLI failed (exit code {e.returncode}): {error_msg}"
-            ) from e
-        except subprocess.TimeoutExpired as e:
-            raise TorrentDownloadError(
-                f"webtorrent CLI timeout after {e.timeout} seconds"
-            ) from e
+        except Exception as e:
+            # Normalize errors into TorrentDownloadError for upstream handling
+            raise TorrentDownloadError(f"webtorrent CLI failed: {e}") from e
         except Exception as e:
             raise TorrentDownloadError(
                 f"Failed to download with webtorrent: {str(e)}"

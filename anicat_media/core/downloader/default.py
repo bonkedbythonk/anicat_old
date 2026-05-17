@@ -369,13 +369,19 @@ class DefaultDownloader(BaseDownloader):
 
             try:
                 # Run ffmpeg - use silent flag to control ffmpeg output, not progress
-                subprocess.run(
+                from ..utils.subprocess import run_cmd
+
+                rc, out, err = run_cmd(
                     args,
+                    timeout=3600,
                     capture_output=params.silent,  # Only suppress ffmpeg output if silent
-                    text=True,
-                    check=True,
                     env=get_clean_env(),
                 )
+                if rc != 0:
+                    error_msg = err or out or f"ffmpeg exited with code {rc}"
+                    logger.error(error_msg)
+                    print(f"[red bold]Merge failed:[/] {error_msg}")
+                    return None
 
                 final_output_path = video_path.parent / merged_filename
 

@@ -1,5 +1,6 @@
 import os
 import subprocess
+from anicat_media.utils.subprocess import run_cmd
 import shutil
 import platform
 
@@ -36,9 +37,16 @@ def main():
     print("Running PyInstaller...")
     # Use 'uv run' if available, otherwise assume pyinstaller is in path
     try:
-        subprocess.run(["uv", "run", "pyinstaller", "--noconfirm", spec_file], check=True)
+        rc, out, err = run_cmd(["uv", "run", "pyinstaller", "--noconfirm", spec_file], timeout=1200, capture_output=True)
+        if rc != 0:
+            # Fall back to system pyinstaller if `uv` wrapper not available or failed
+            rc2, out2, err2 = run_cmd(["pyinstaller", "--noconfirm", spec_file], timeout=1200, capture_output=True)
+            if rc2 != 0:
+                raise RuntimeError(f"PyInstaller failed: {err2 or out2}")
     except FileNotFoundError:
-        subprocess.run(["pyinstaller", "--noconfirm", spec_file], check=True)
+        rc, out, err = run_cmd(["pyinstaller", "--noconfirm", spec_file], timeout=1200, capture_output=True)
+        if rc != 0:
+            raise RuntimeError(f"PyInstaller failed: {err or out}")
         
     # Source binary name
     src_name = "anicat-server"

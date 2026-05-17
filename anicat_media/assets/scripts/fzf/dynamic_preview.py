@@ -10,6 +10,7 @@ import json
 import os
 import shutil
 import subprocess
+from ....utils.subprocess import run_cmd
 import sys
 from hashlib import sha256
 from pathlib import Path
@@ -166,33 +167,25 @@ def render_kitty(file_path, width, height, scale_up):
 
     args.append(file_path)
 
-    subprocess.run(cmd + args, stdout=sys.stdout, stderr=sys.stderr)
+    run_cmd(cmd + args, capture_output=False)
     return True
 
 
 def render_sixel(file_path, width, height):
     """Render using Sixel."""
     if which("chafa"):
-        subprocess.run(
-            ["chafa", "-f", "sixel", "-s", f"{width}x{height}", file_path],
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-        )
+        run_cmd(["chafa", "-f", "sixel", "-s", f"{width}x{height}", file_path], capture_output=False)
         return True
 
     if which("img2sixel"):
         pixel_width = width * 10
         pixel_height = height * 20
-        subprocess.run(
-            [
-                "img2sixel",
-                f"--width={pixel_width}",
-                f"--height={pixel_height}",
-                file_path,
-            ],
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-        )
+        run_cmd([
+            "img2sixel",
+            f"--width={pixel_width}",
+            f"--height={pixel_height}",
+            file_path,
+        ], capture_output=False)
         return True
 
     return False
@@ -201,19 +194,11 @@ def render_sixel(file_path, width, height):
 def render_iterm(file_path, width, height):
     """Render using iTerm2 Inline Image Protocol."""
     if which("imgcat"):
-        subprocess.run(
-            ["imgcat", "-W", str(width), "-H", str(height), file_path],
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-        )
+        run_cmd(["imgcat", "-W", str(width), "-H", str(height), file_path], capture_output=False)
         return True
 
     if which("chafa"):
-        subprocess.run(
-            ["chafa", "-f", "iterm", "-s", f"{width}x{height}", file_path],
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-        )
+        run_cmd(["chafa", "-f", "iterm", "-s", f"{width}x{height}", file_path], capture_output=False)
         return True
     return False
 
@@ -221,11 +206,7 @@ def render_iterm(file_path, width, height):
 def render_timg(file_path, width, height):
     """Render using timg."""
     if which("timg"):
-        subprocess.run(
-            ["timg", f"-g{width}x{height}", "--upscale", file_path],
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-        )
+        run_cmd(["timg", f"-g{width}x{height}", "--upscale", file_path], capture_output=False)
         return True
     return False
 
@@ -233,11 +214,7 @@ def render_timg(file_path, width, height):
 def render_chafa_auto(file_path, width, height):
     """Render using Chafa in auto mode."""
     if which("chafa"):
-        subprocess.run(
-            ["chafa", "-s", f"{width}x{height}", file_path],
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-        )
+        run_cmd(["chafa", "-s", f"{width}x{height}", file_path], capture_output=False)
         return True
     return False
 
