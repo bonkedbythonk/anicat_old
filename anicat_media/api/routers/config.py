@@ -23,9 +23,15 @@ async def update_config(updates: dict):
     """Update specific configuration fields."""
     try:
         logger.info("Received config update: %s", updates)
-        ctx = get_ctx()
-        # Load current config dict
-        config_dict = ctx.config.model_dump()
+        # Prefer using the running context, but fall back to loading config from disk
+        try:
+            ctx = get_ctx()
+            config_dict = ctx.config.model_dump()
+        except Exception:
+            from ...cli.config import ConfigLoader as _ConfigLoader
+            loader = _ConfigLoader()
+            current = loader.load(allow_setup=False)
+            config_dict = current.model_dump()
         
         # Merge updates
         for section, fields in updates.items():
@@ -42,9 +48,12 @@ async def update_config(updates: dict):
         toml_content = generate_config_toml_from_app_model(new_config)
         USER_CONFIG.write_text(toml_content, encoding="utf-8")
         
-        # Update current context
-        ctx.config = new_config
-        ctx.data_version += 1
+        # Attempt to update the in-memory context if available
+        try:
+            ctx.config = new_config
+            ctx.data_version += 1
+        except Exception:
+            logger.info("No active context to refresh; updated config written to disk only.")
 
         # If the token was updated, reset the media_api instance and force online status
         if "anilist" in updates and "token" in updates["anilist"]:
