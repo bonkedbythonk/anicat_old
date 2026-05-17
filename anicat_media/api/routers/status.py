@@ -94,7 +94,6 @@ def set_playback(media_id: int, media_title: str, episode: str):
 async def get_playback_status():
     """Get the current/last playback status."""
     global _last_playback, _playback_expiry
-    
     # Auto-dismiss if MPV is no longer running
     try:
         # Determine if MPV is currently running in a platform-safe manner
@@ -124,7 +123,10 @@ async def get_playback_status():
             if _last_playback:
                 _last_playback = None
                 _playback_expiry = None
-    
+    except Exception:
+        # If process detection fails, be conservative and keep playback info
+        pass
+
     if _last_playback and _playback_expiry and datetime.now() > _playback_expiry:
         _last_playback = None
         _playback_expiry = None
@@ -143,36 +145,30 @@ async def get_health():
     """Get system health status."""
     try:
         ctx = get_ctx()
-        
         # Check for updates (cached logic)
         global _last_update_check, _cached_update_available
-        
+
         now = datetime.now()
+        # Determine repository root once
+        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
         if _last_update_check is None or now - _last_update_check > timedelta(minutes=15):
             _last_update_check = now
             _cached_update_available = False
             try:
                 # Check if we are behind origin/main using a safer wrapper
                 from anicat_media.utils.subprocess import run_cmd
-
                 rc, _, _ = run_cmd(["git", "fetch", "--quiet"], timeout=8, cwd=repo_root)
                 rc, stdout, _ = run_cmd(["git", "status", "-uno"], timeout=5, cwd=repo_root)
                 if stdout and "behind" in stdout:
                     _cached_update_available = True
             except Exception:
                 pass
-        
-        # Auto-check for updates every hour in the background
+
+        # Auto-check for updates every hour in the background (fire-and-forget)
         if not _last_update_check or (datetime.now() - _last_update_check) > timedelta(hours=1):
-            # Run a quiet fetch in the background
             try:
-                repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-                # Fire-and-forget background fetch (best-effort)
-                try:
-                    subprocess.Popen(["git", "fetch", "--quiet"], cwd=repo_root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                except Exception:
-                    pass
-                # We don't wait for it here to keep the health check fast, but we'll see results in the next health check.
+                subprocess.Popen(["git", "fetch", "--quiet"], cwd=repo_root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 _last_update_check = datetime.now()
             except Exception:
                 pass
@@ -246,21 +242,18 @@ async def check_for_updates():
         # If config can't be read, fall back to env-only opt-out
         pass
 
-    _last_update_check = datetime.now()
-    _cached_update_available = False
-        try:
-            # Get the root of the repository
-            repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    try:
+        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        from anicat_media.utils.subprocess import run_cmd
 
-            from anicat_media.utils.subprocess import run_cmd
+        run_cmd(["git", "fetch", "--quiet"], timeout=10, cwd=repo_root)
+        rc, stdout, _ = run_cmd(["git", "status", "-uno"], timeout=8, cwd=repo_root)
+        _last_update_check = datetime.now()
+        if stdout and "behind" in stdout:
+            _cached_update_available = True
+            return {"status": "success", "update_available": True, "message": "A new version of Anicat is available!"}
 
-            # Run fetch and status with explicit CWD
-            run_cmd(["git", "fetch", "--quiet"], timeout=10, cwd=repo_root)
-            rc, stdout, _ = run_cmd(["git", "status", "-uno"], timeout=8, cwd=repo_root)
-
-            if stdout and "behind" in stdout:
-                _cached_update_available = True
-                return {"status": "success", "update_available": True, "message": "A new version of Anicat is available!"}
+        _cached_update_available = False
         return {"status": "success", "update_available": False, "message": "You are running the latest version."}
     except Exception as e:
         logger.error(f"[UPDATE CHECK] Error: {str(e)}")
