@@ -504,6 +504,32 @@ async def serve_local_file(media_id: int, episode: str):
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Local video file does not exist")
         
+    if file_path.suffix == ".m3u8":
+        import json
+        headers = {}
+        provider = (ep_record.provider_name or "").lower()
+        if "animepahe" in provider:
+            headers["Referer"] = "https://animepahe.pw"
+        elif "hianime" in provider:
+            headers["Referer"] = "https://hianime.to"
+        elif "allanime" in provider:
+            headers["Referer"] = "https://allanime.to"
+        else:
+            headers["Referer"] = "https://animepahe.pw"
+            
+        headers_json = json.dumps(headers)
+        m3u8_content = file_path.read_text(encoding="utf-8")
+        rewritten = _proxy_m3u8_content(m3u8_content, base_url="", headers_json=headers_json)
+        return Response(
+            content=rewritten,
+            media_type="application/x-mpegURL",
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "*",
+                "Cache-Control": "no-cache"
+            }
+        )
+        
     import mimetypes
     media_type, _ = mimetypes.guess_type(str(file_path))
     if not media_type:

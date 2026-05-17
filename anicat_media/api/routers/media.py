@@ -181,8 +181,13 @@ async def get_media_details(media_id: int):
                 if local_entry.progress.isdigit():
                     local_progress = int(local_entry.progress)
                     if local_progress != media.user_status.progress:
-                        logger.info(f"Overriding AniList progress ({media.user_status.progress}) with local progress ({local_progress}) for media {media_id}")
-                        media.user_status.progress = local_progress
+                        if media.user_status.progress > local_progress:
+                            logger.info(f"Syncing local registry progress up to higher AniList progress for media {media_id}: {local_progress} -> {media.user_status.progress}")
+                            local_entry.progress = str(media.user_status.progress)
+                            ctx.media_registry.save_media_index_entry(local_entry)
+                        else:
+                            logger.info(f"Overriding AniList progress ({media.user_status.progress}) with higher local progress ({local_progress}) for media {media_id}")
+                            media.user_status.progress = local_progress
                 
                 if local_entry.status != media.user_status.status:
                     media.user_status.status = local_entry.status
