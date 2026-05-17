@@ -51,6 +51,7 @@ export default function App() {
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [refreshNeeded, setRefreshNeeded] = useState(false);
+  const [updateMessageText, setUpdateMessageText] = useState<string | null>(null);
 
   const lastDataVersion = useRef<number | null>(null);
   
@@ -159,7 +160,15 @@ export default function App() {
       case "library":
         return <LibraryView onSelect={handleSelect} />;
       case "settings":
-        return <SettingsView health={healthStatus} onUpdateStarted={() => setRefreshNeeded(true)} />;
+        return (
+          <SettingsView
+            health={healthStatus}
+            onUpdateStarted={(msg) => {
+              setUpdateMessageText(msg || "Update in progress...");
+              setRefreshNeeded(true);
+            }}
+          />
+        );
       case "notifications":
         return <NotificationsView onSelect={handleSelect} />;
       case "schedule":
@@ -319,19 +328,25 @@ export default function App() {
             <div className="mx-6 mt-6 lg:mx-10 bg-green-500/10 border border-green-500/20 backdrop-blur-md rounded-2xl p-4 flex items-center justify-between shadow-xl">
               <div className="flex items-center space-x-3 text-green-400">
                 <RotateCcw size={18} className="animate-spin-slow" />
-                <span className="text-sm font-bold">
-                  Update in progress. Please refresh in about a minute to apply changes.
+                <span className="text-sm font-bold leading-normal">
+                  {updateMessageText || "Update in progress. Please wait a moment..."}
                 </span>
               </div>
               <div className="flex items-center space-x-4">
+                {/* Only show manual reload button if it is NOT a native app restart update */}
+                {!(updateMessageText?.toLowerCase().includes("restart") || updateMessageText?.toLowerCase().includes("native")) && (
+                  <button 
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-400 text-white text-xs font-bold transition-all shadow-lg shadow-green-500/20"
+                  >
+                    Refresh Now
+                  </button>
+                )}
                 <button 
-                  onClick={() => window.location.reload()}
-                  className="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-400 text-white text-xs font-bold transition-all shadow-lg shadow-green-500/20"
-                >
-                  Refresh Now
-                </button>
-                <button 
-                  onClick={() => setRefreshNeeded(false)}
+                  onClick={() => {
+                    setRefreshNeeded(false);
+                    setUpdateMessageText(null);
+                  }}
                   className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
                 >
                   <X size={16} className="text-gray-400" />

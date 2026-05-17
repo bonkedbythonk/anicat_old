@@ -7,7 +7,7 @@ import ErrorBanner from "@/components/ErrorBanner";
 
 interface SettingsViewProps {
   health: HealthStatus | null;
-  onUpdateStarted?: () => void;
+  onUpdateStarted?: (message?: string) => void;
 }
 
 export default function SettingsView({ health, onUpdateStarted }: SettingsViewProps) {
@@ -67,7 +67,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
       const res = await mediaApi.triggerUpdate();
       setUpdateMessage({ text: res.message, type: res.status === "success" ? "success" : "error" });
       if (res.status === "success" && onUpdateStarted) {
-        onUpdateStarted();
+        onUpdateStarted(res.message);
       }
     } catch (err) {
       console.error("Update failed:", err);
