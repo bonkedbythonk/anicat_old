@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
+from ....utils.subprocess import run_cmd
 
 from ....core.config import MpvConfig
 from ....core.exceptions import AnicatError
@@ -137,7 +138,8 @@ class MpvPlayer(BasePlayer):
                 "is.xyz.mpv/.MPVActivity",
             ]
 
-        subprocess.run(args,env=detect.get_clean_env())
+        # Use `run_cmd` to enforce timeouts and avoid uncaught exceptions
+        run_cmd(args, timeout=10, capture_output=False, env=detect.get_clean_env())
 
         return PlayerResult(params.episode)
 
@@ -180,16 +182,14 @@ class MpvPlayer(BasePlayer):
         stop_time = None
         total_time = None
 
-        proc = subprocess.run(
+        rc, out, err = run_cmd(
             pre_args + mpv_args,
+            timeout=600,
             capture_output=True,
-            text=True,
-            encoding="utf-8",
-            check=False,
             env=detect.get_clean_env(),
         )
-        if proc.stdout:
-            for line in reversed(proc.stdout.split("\n")):
+        if out:
+            for line in reversed(out.split("\n")):
                 match = MPV_AV_TIME_PATTERN.search(line.strip())
                 if match:
                     stop_time = match.group(1)
@@ -280,7 +280,7 @@ class MpvPlayer(BasePlayer):
             args.append("--player-args")
             args.extend(mpv_args)
 
-        subprocess.run(args,env=detect.get_clean_env())
+        run_cmd(args, timeout=300, capture_output=False, env=detect.get_clean_env())
         return PlayerResult(params.episode)
 
     def _stream_on_desktop_with_syncplay(self, params: PlayerParams) -> PlayerResult:
@@ -302,7 +302,7 @@ class MpvPlayer(BasePlayer):
         if mpv_args := self._create_mpv_cli_options(params):
             args.append("--")
             args.extend(mpv_args)
-        subprocess.run(args,env=detect.get_clean_env())
+        run_cmd(args, timeout=300, capture_output=False, env=detect.get_clean_env())
 
         return PlayerResult(params.episode)
 

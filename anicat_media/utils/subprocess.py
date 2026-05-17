@@ -15,6 +15,7 @@ def run_cmd(
     cwd: Optional[str] = None,
     capture_output: bool = True,
     text: bool = True,
+    env: Optional[dict] = None,
 ) -> Tuple[int, str, str]:
     try:
         cp = subprocess.run(
@@ -24,6 +25,7 @@ def run_cmd(
             capture_output=capture_output,
             text=text,
             shell=isinstance(cmd, str),
+            env=env,
         )
         return cp.returncode, cp.stdout or "", cp.stderr or ""
     except subprocess.TimeoutExpired as e:

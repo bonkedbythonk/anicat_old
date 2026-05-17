@@ -39,7 +39,23 @@ class _ContextProxy:
     def set(self, ctx: Context) -> None:
         self._ctx = ctx
 
+    def is_initialized(self) -> bool:
+        return self._ctx is not None
+
+    def get_config(self) -> AppConfig:
+        # If the runtime context isn't available, load the on-disk config
+        # so callers can still read configuration safely during early startup.
+        if self._ctx is None:
+            loader = ConfigLoader()
+            return loader.load(allow_setup=False)
+        return self._ctx.config
+
     def __getattr__(self, name):
+        # Allow safe access to `config` even before the interactive Context
+        # has been created. This prevents endpoints and utilities that only
+        # need read access from raising during early initialization.
+        if name == "config":
+            return self.get_config()
         if self._ctx is None:
             raise RuntimeError("Anicat API context has not been initialized.")
         return getattr(self._ctx, name)

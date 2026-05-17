@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Loader2, CheckCircle2, Save, Cpu, PlayCircle, HardDrive, Globe, Activity, RotateCcw, XCircle, AlertCircle, Download } from "lucide-react";
 import { mediaApi, type HealthStatus, API_BASE_ORIGIN } from "@/lib/api";
+import ErrorBanner from "@/components/ErrorBanner";
 
 interface SettingsViewProps {
   health: HealthStatus | null;
@@ -22,6 +23,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
   const [hasUpdate, setHasUpdate] = useState(health?.update_available || false);
   const [updateMessage, setUpdateMessage] = useState<{ text: string; type: "success" | "error" | null }>({ text: "", type: null });
   const [options, setOptions] = useState<Record<string, any> | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     mediaApi.getConfig()
@@ -44,7 +46,8 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
       await invoke("open_logs_folder");
     } catch (err) {
       console.error("Failed to open logs:", err);
-      alert("Could not open logs folder automatically.");
+      setErrorMessage("Could not open logs folder automatically.");
+      setTimeout(() => setErrorMessage(null), 6000);
     }
   };
 
@@ -85,7 +88,8 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
       console.error("Save failed:", err);
       // Attempt to show structured server errors if present
       const msg = err?.message || "Unknown error";
-      alert("Save failed: " + msg);
+      setErrorMessage("Save failed: " + msg);
+      setTimeout(() => setErrorMessage(null), 6000);
     } finally {
       setSaving(false);
     }
@@ -134,6 +138,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {errorMessage && <ErrorBanner message={errorMessage} />}
       <div className="flex items-end justify-between">
         <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white">Settings</h1>
         <button
@@ -381,9 +386,11 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                           logs.logs
                         ].join('\n');
                         await navigator.clipboard.writeText(report);
-                        alert("Debug report copied to clipboard!");
+                        setErrorMessage("Debug report copied to clipboard!");
+                        setTimeout(() => setErrorMessage(null), 4000);
                       } catch (err) {
-                        alert("Failed to generate report.");
+                        setErrorMessage("Failed to generate report.");
+                        setTimeout(() => setErrorMessage(null), 6000);
                       }
                     }}
                     className="text-[10px] font-bold text-accent hover:text-accent-light flex items-center space-x-1"
