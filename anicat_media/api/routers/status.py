@@ -232,6 +232,16 @@ async def check_for_updates():
     if os.environ.get("ANICAT_DISABLE_AUTO_UPDATE", "0") == "1":
         return {"status": "error", "update_available": False, "message": "Auto-updates disabled by environment"}
 
+    # Respect user's config setting (allow disabling update checks via AppConfig)
+    try:
+        loader = ConfigLoader()
+        current_config = loader.load(allow_setup=False)
+        if not getattr(current_config.general, "check_for_updates", True):
+            return {"status": "error", "update_available": False, "message": "Auto-updates disabled in configuration"}
+    except Exception:
+        # If config can't be read, fall back to env-only opt-out
+        pass
+
     _last_update_check = datetime.now()
     _cached_update_available = False
     try:
@@ -257,6 +267,16 @@ async def trigger_update():
         # Respect opt-out environment variable for automated updates
         if os.environ.get("ANICAT_DISABLE_AUTO_UPDATE", "0") == "1":
             return {"status": "error", "message": "Auto-updates disabled by environment"}
+
+        # Respect user's config setting (allow disabling update actions via AppConfig)
+        try:
+            loader = ConfigLoader()
+            current_config = loader.load(allow_setup=False)
+            if not getattr(current_config.general, "check_for_updates", True):
+                return {"status": "error", "message": "Auto-updates disabled in configuration"}
+        except Exception:
+            # If config can't be read, continue with env-only check
+            pass
         # For macOS, the most reliable way to update the native app is via the installer script
         # which downloads the latest release and replaces the binary.
         import platform
