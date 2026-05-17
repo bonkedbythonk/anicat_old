@@ -64,7 +64,6 @@ export default function AnimePlayer({
     mediaApi.resolveStream(mediaId, episodeNumber)
       .then(data => {
         setResolved(data);
-        setLoading(false);
       })
       .catch(err => {
         console.error("Failed to resolve stream:", err);
@@ -391,7 +390,7 @@ export default function AnimePlayer({
       ref={containerRef}
       onMouseMove={resetControlsTimeout}
       onMouseLeave={() => isPlaying && setShowControls(false)}
-      className="fixed inset-0 z-[200] bg-[#050505] flex flex-col items-center justify-center select-none overflow-hidden"
+      className="fixed inset-0 z-[200] bg-[#050505] flex flex-col items-center justify-center select-none overflow-hidden transform-gpu will-change-[transform,opacity]"
     >
       {loading && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 space-y-4 z-40">
@@ -435,7 +434,13 @@ export default function AnimePlayer({
         onDurationChange={handleTimeUpdate}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
-        className={`w-full h-full object-contain cursor-pointer ${resolved ? "block" : "hidden"}`}
+        onPlaying={() => {
+          setIsPlaying(true);
+          setLoading(false);
+        }}
+        onWaiting={() => setLoading(true)}
+        onLoadedData={() => setLoading(false)}
+        className={`w-full h-full object-contain cursor-pointer bg-black transform-gpu will-change-[transform,opacity] ${resolved ? "block" : "hidden"}`}
         playsInline
       />
 
