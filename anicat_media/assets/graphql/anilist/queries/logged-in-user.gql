@@ -7,5 +7,79 @@ query {
       large
       medium
     }
+    about
+    statistics {
+      anime {
+        count
+        minutesWatched
+        episodesWatched
+        genres {
+          count
+          meanScore
+          genre
+        }
+      }
+      manga {
+        count
+        chaptersRead
+        volumesRead
+      }
+    }
+    favourites {
+      anime {
+        nodes {
+          id
+          idMal
+          format
+          status
+          type
+          episodes
+          averageScore
+          bannerImage
+          title {
+            romaji
+            english
+            native
+          }
+          coverImage {
+            large
+            medium
+          }
+          mediaListEntry {
+            id
+            status
+            progress
+            score
+          }
+        }
+      }
+      manga {
+        nodes {
+          id
+          idMal
+          format
+          status
+          type
+          chapters
+          averageScore
+          bannerImage
+          title {
+            romaji
+            english
+            native
+          }
+          coverImage {
+            large
+            medium
+          }
+          mediaListEntry {
+            id
+            status
+            progress
+            score
+          }
+        }
+      }
+    }
   }
 }

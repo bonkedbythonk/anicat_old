@@ -181,7 +181,7 @@ export default function App() {
       case "schedule":
         return <ScheduleView onSelect={handleSelect} />;
       case "profile":
-        return <ProfileView />;
+        return <ProfileView onSelect={handleSelect} />;
     }
   };
 

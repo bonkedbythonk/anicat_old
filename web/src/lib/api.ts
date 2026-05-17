@@ -121,6 +121,16 @@ export type UserProfile = {
   avatar_url?: string;
   banner_url?: string;
   unread_notifications?: number;
+  about?: string;
+  anime_count?: number;
+  minutes_watched?: number;
+  episodes_watched?: number;
+  manga_count?: number;
+  chapters_read?: number;
+  volumes_read?: number;
+  genres?: { genre: string; count: number; meanScore?: number }[];
+  favorite_anime?: MediaItem[];
+  favorite_manga?: MediaItem[];
 };
 
 export type PlaybackStatus = {

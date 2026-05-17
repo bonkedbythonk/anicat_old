@@ -79,7 +79,7 @@ status_map = {
 }
 
 
-def _to_generic_date(date: AnilistDateObject) -> Optional[datetime]:
+def _to_generic_date(date: Optional[AnilistDateObject]) -> Optional[datetime]:
     if not date:
         return
     year = date["year"]
@@ -198,63 +198,71 @@ def _to_generic_streaming_episodes(
 
 def _to_generic_user_status(
     anilist_media: AnilistBaseMediaDataSchema,
-    anilist_list_entry: Optional[AnilistMediaList],
+    anilist_list_entry: Optional[AnilistMediaList] = None,
 ) -> Optional[UserListItem]:
     """Maps an AniList mediaListEntry to a generic UserListStatus."""
-    # FIX: investigate the inconsistency between mediaList entry status `and the main status
-    if anilist_list_entry:
-        return UserListItem(
-            status=user_list_status_map[anilist_media["mediaListEntry"]["status"]],  # type:ignore
-            progress=anilist_list_entry["progress"],
-            score=anilist_list_entry["score"],
-            repeat=anilist_list_entry["repeat"],
-            notes=anilist_list_entry["notes"],
-            start_date=_to_generic_date(anilist_list_entry.get("startDate")),
-            completed_at=_to_generic_date(anilist_list_entry.get("completedAt")),
-            # TODO: should this be a datetime if so what is the raw values type
-            created_at=str(anilist_list_entry["createdAt"]),
-        )
-    else:
-        if not anilist_media["mediaListEntry"]:
-            return
+    entry = anilist_list_entry or anilist_media.get("mediaListEntry")
+    if not entry:
+        return None
 
-        return UserListItem(
-            id=anilist_media["mediaListEntry"]["id"],
-            status=user_list_status_map[anilist_media["mediaListEntry"]["status"]]
-            if anilist_media["mediaListEntry"]["status"]
-            else None,
-            progress=anilist_media["mediaListEntry"]["progress"],
-            score=anilist_media["mediaListEntry"].get("score"),
-        )
+    status_raw = entry.get("status")
+    status = user_list_status_map.get(status_raw) if status_raw else None
+
+    return UserListItem(
+        id=entry.get("id"),
+        status=status,
+        progress=entry.get("progress", 0),
+        score=entry.get("score"),
+        repeat=entry.get("repeat", 0),
+        notes=entry.get("notes"),
+        start_date=_to_generic_date(entry.get("startDate")) if entry.get("startDate") else None,
+        completed_at=_to_generic_date(entry.get("completedAt")) if entry.get("completedAt") else None,
+        created_at=str(entry.get("createdAt")) if entry.get("createdAt") else None,
+    )
 
 
 def _to_generic_media_item(
     data: AnilistBaseMediaDataSchema, media_list: AnilistMediaList | None = None
 ) -> MediaItem:
     """Maps a single AniList media schema to a generic MediaItem."""
+    format_val = None
+    if data.get("format"):
+        try:
+            format_val = MediaFormat(data["format"])
+        except ValueError:
+            pass
+
+    genres = []
+    if data.get("genres"):
+        for genre in data["genres"]:
+            try:
+                genres.append(MediaGenre(genre))
+            except ValueError:
+                pass
+
     return MediaItem(
         id=data["id"],
         id_mal=data.get("idMal"),
         type=data.get("type", "ANIME"),
         title=_to_generic_media_title(data["title"]),
-        status=status_map[data["status"]],
-        format=MediaFormat(data["format"]) if data["format"] else None,
+        status=status_map.get(data.get("status"), MediaStatus.UNKNOWN),
+        format=format_val,
         cover_image=_to_generic_media_image(data["coverImage"]),
         banner_image=data.get("bannerImage"),
-        trailer=_to_generic_media_trailer(data["trailer"]),
+        trailer=_to_generic_media_trailer(data.get("trailer")),
         description=data.get("description"),
         episodes=data.get("episodes"),
         chapters=data.get("chapters"),
         duration=data.get("duration"),
-        genres=[MediaGenre(genre) for genre in data["genres"]],
+        genres=genres,
         tags=_to_generic_tags(data.get("tags")),
         studios=_to_generic_studios(data.get("studios")),
         synonymns=data.get("synonyms", []),
         average_score=data.get("averageScore"),
         popularity=data.get("popularity"),
         favourites=data.get("favourites"),
-        start_date=_to_generic_date(data["startDate"]),
-        end_date=_to_generic_date(data["endDate"]),
+        start_date=_to_generic_date(data.get("startDate")),
+        end_date=_to_generic_date(data.get("endDate")),
         season=data.get("season"),
         seasonYear=data.get("seasonYear"),
         next_airing=_to_generic_airing_schedule(data.get("nextAiringEpisode")),
@@ -336,11 +344,40 @@ def to_generic_user_profile(data: AnilistViewerData) -> Optional[UserProfile]:
     if not viewer_data:
         return None
 
+    stats = viewer_data.get("statistics", {}) or {}
+    anime_stats = stats.get("anime", {}) or {}
+    manga_stats = stats.get("manga", {}) or {}
+
+    genres = []
+    if "genres" in anime_stats and anime_stats["genres"]:
+        # Sort by count desc and limit to 5
+        sorted_genres = sorted(anime_stats["genres"], key=lambda x: x.get("count", 0), reverse=True)
+        genres = [{"genre": g.get("genre"), "count": g.get("count"), "meanScore": g.get("meanScore")} for g in sorted_genres if g]
+
+    favs = viewer_data.get("favourites", {}) or {}
+    fav_anime = []
+    if favs and favs.get("anime") and favs["anime"].get("nodes"):
+        fav_anime = [_to_generic_media_item(node) for node in favs["anime"]["nodes"] if node]
+
+    fav_manga = []
+    if favs and favs.get("manga") and favs["manga"].get("nodes"):
+        fav_manga = [_to_generic_media_item(node) for node in favs["manga"]["nodes"] if node]
+
     return UserProfile(
         id=viewer_data["id"],
         name=viewer_data["name"],
-        avatar_url=viewer_data["avatar"]["large"],
-        banner_url=viewer_data["bannerImage"],
+        avatar_url=viewer_data["avatar"]["large"] if viewer_data.get("avatar") else None,
+        banner_url=viewer_data.get("bannerImage"),
+        about=viewer_data.get("about"),
+        anime_count=anime_stats.get("count", 0),
+        minutes_watched=anime_stats.get("minutesWatched", 0),
+        episodes_watched=anime_stats.get("episodesWatched", 0),
+        manga_count=manga_stats.get("count", 0),
+        chapters_read=manga_stats.get("chaptersRead", 0),
+        volumes_read=manga_stats.get("volumesRead", 0),
+        genres=genres[:5],
+        favorite_anime=fav_anime,
+        favorite_manga=fav_manga,
     )
 
 

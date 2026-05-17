@@ -274,6 +274,16 @@ class UserProfile(BaseMediaApiModel):
     name: str
     avatar_url: Optional[str] = None
     banner_url: Optional[str] = None
+    about: Optional[str] = None
+    anime_count: Optional[int] = 0
+    minutes_watched: Optional[int] = 0
+    episodes_watched: Optional[int] = 0
+    manga_count: Optional[int] = 0
+    chapters_read: Optional[int] = 0
+    volumes_read: Optional[int] = 0
+    genres: Optional[List[dict]] = None
+    favorite_anime: Optional[List[MediaItem]] = None
+    favorite_manga: Optional[List[MediaItem]] = None
 
 
 class Reviewer(BaseMediaApiModel):

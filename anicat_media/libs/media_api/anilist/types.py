@@ -26,6 +26,9 @@ class AnilistCurrentlyLoggedInUser(TypedDict):
     bannerImage: Optional[str]
     avatar: AnilistImage
     token: str
+    about: Optional[str]
+    statistics: Optional[dict]
+    favourites: Optional[dict]
 
 
 class AnilistViewer(TypedDict):
