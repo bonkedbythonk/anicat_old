@@ -19,7 +19,9 @@ export async function fetchFromApi(endpoint: string, options: RequestInit = {}) 
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    const message = errorData.message || `API error: ${response.status} ${response.statusText}`;
+    // Prefer structured detail (FastAPI uses `detail`) then `message`, else fallback
+    const detail = errorData.detail ?? errorData.message ?? errorData ?? null;
+    const message = detail ? (typeof detail === 'string' ? detail : JSON.stringify(detail)) : `API error: ${response.status} ${response.statusText}`;
     if (isBrowser) {
       console.error('API ERROR', { endpoint, status: response.status, statusText: response.statusText, errorData });
     }

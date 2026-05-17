@@ -88,7 +88,9 @@ export default function App() {
   useEffect(() => {
     // Only show onboarding if user hasn't seen it yet
     const hasSeenOnboarding = localStorage.getItem("anicat_onboarding_seen");
-    if (!hasSeenOnboarding && healthStatus) {
+    // Show onboarding if user hasn't seen it yet regardless of healthStatus.
+    // Health checks may be slow or fail on first startup; onboarding should still appear.
+    if (!hasSeenOnboarding) {
       setShowOnboarding(true);
     } else {
       setShowOnboarding(false);

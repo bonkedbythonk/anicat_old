@@ -80,7 +80,9 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
       setTimeout(() => setSaved(false), 2000);
     } catch (err: any) {
       console.error("Save failed:", err);
-      alert("Save failed: " + (err.message || "Unknown error"));
+      // Attempt to show structured server errors if present
+      const msg = err?.message || "Unknown error";
+      alert("Save failed: " + msg);
     } finally {
       setSaving(false);
     }
