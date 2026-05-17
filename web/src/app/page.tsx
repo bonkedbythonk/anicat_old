@@ -11,7 +11,7 @@ import useKeyboardShortcuts from "@/lib/useKeyboardShortcuts";
 import { mediaApi, type MediaItem, type HealthStatus, API_BASE_ORIGIN } from "@/lib/api";
 import { dispatchRefresh } from "@/lib/events";
 import Onboarding from "@/components/layout/Onboarding";
-import { X, WifiOff, RotateCcw } from "lucide-react";
+import { X, WifiOff, RotateCw } from "lucide-react";
 
 // View Components
 import HomeView from "@/components/views/HomeView";
@@ -346,14 +346,14 @@ export default function App() {
               <div className="relative flex justify-center">
                 <div className="absolute -inset-4 bg-accent/20 rounded-full blur-xl animate-pulse" />
                 <div className="relative p-6 bg-white/[0.02] border border-white/[0.08] rounded-full shadow-2xl">
-                  <RotateCcw size={48} className="text-accent animate-spin-slow" />
+                  <RotateCw size={48} className="text-accent animate-spin-slow" />
                 </div>
               </div>
 
               {/* Title & Description */}
               <div className="space-y-3">
                 <h2 className="text-2xl font-black tracking-tight text-white animate-pulse">
-                  {activeUpdateOverlay.isNative ? "Installing Native Update" : "Updating Local Environment"}
+                  {activeUpdateOverlay.isNative ? "Installing Application Update" : "Updating Local Environment"}
                 </h2>
                 <p className="text-sm text-gray-400 leading-relaxed px-4">
                   {activeUpdateOverlay.message}
