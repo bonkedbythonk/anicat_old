@@ -431,16 +431,15 @@ async def proxy_manga_image(url: str):
     # 1. Check if we already have it in the local cache
     if cache_path.exists():
         try:
-            return Response(
-                content=cache_path.read_bytes(),
+            from fastapi.responses import FileResponse
+
+            return FileResponse(
+                path=str(cache_path),
                 media_type=f"image/{ext.replace('.', '')}",
-                headers={
-                    "Cache-Control": "public, max-age=31536000",
-                    "X-Cache-Status": "HIT"
-                }
+                headers={"Cache-Control": "public, max-age=31536000", "X-Cache-Status": "HIT"},
             )
         except Exception:
-            pass # Fallback to fetching if read fails
+            pass  # Fallback to fetching if read fails
 
     # 2. Not in cache, fetch it
     headers = {
@@ -455,14 +454,13 @@ async def proxy_manga_image(url: str):
             if response.status_code == 200:
                 # Save to cache for next time
                 cache_path.write_bytes(response.content)
-                
-                return Response(
-                    content=response.content,
+
+                from fastapi.responses import FileResponse
+
+                return FileResponse(
+                    path=str(cache_path),
                     media_type=response.headers.get("Content-Type", "image/jpeg"),
-                    headers={
-                        "Cache-Control": "public, max-age=31536000",
-                        "X-Cache-Status": "MISS"
-                    }
+                    headers={"Cache-Control": "public, max-age=31536000", "X-Cache-Status": "MISS"},
                 )
             else:
                 logger.error(f"[MANGA PROXY] Source failed: {url} ({response.status_code})")

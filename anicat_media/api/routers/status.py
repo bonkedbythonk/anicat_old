@@ -152,11 +152,12 @@ async def get_health():
             _last_update_check = now
             _cached_update_available = False
             try:
-                # Check if we are behind origin/main
-                # We use --quiet to avoid spamming logs
-                subprocess.run(["git", "fetch", "--quiet"], capture_output=True, timeout=5)
-                status = subprocess.check_output(["git", "status", "-uno"], encoding="utf-8")
-                if "Your branch is behind" in status:
+                # Check if we are behind origin/main using a safer wrapper
+                from anicat_media.utils.subprocess import run_cmd
+
+                rc, _, _ = run_cmd(["git", "fetch", "--quiet"], timeout=8, cwd=repo_root)
+                rc, stdout, _ = run_cmd(["git", "status", "-uno"], timeout=5, cwd=repo_root)
+                if stdout and "behind" in stdout:
                     _cached_update_available = True
             except Exception:
                 pass
@@ -166,9 +167,12 @@ async def get_health():
             # Run a quiet fetch in the background
             try:
                 repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-                subprocess.Popen(["git", "fetch", "--quiet"], cwd=repo_root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                # We don't wait for it here to keep the health check fast, 
-                # but we'll see the results in the NEXT health check.
+                # Fire-and-forget background fetch (best-effort)
+                try:
+                    subprocess.Popen(["git", "fetch", "--quiet"], cwd=repo_root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except Exception:
+                    pass
+                # We don't wait for it here to keep the health check fast, but we'll see results in the next health check.
                 _last_update_check = datetime.now()
             except Exception:
                 pass
@@ -244,17 +248,19 @@ async def check_for_updates():
 
     _last_update_check = datetime.now()
     _cached_update_available = False
-    try:
-        # Get the root of the repository
-        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-        
-        # Run fetch and status with explicit CWD
-        subprocess.run(["git", "fetch", "--quiet"], capture_output=True, timeout=10, cwd=repo_root)
-        status = subprocess.check_output(["git", "status", "-uno"], encoding="utf-8", cwd=repo_root)
-        
-        if "Your branch is behind" in status:
-            _cached_update_available = True
-            return {"status": "success", "update_available": True, "message": "A new version of Anicat is available!"}
+        try:
+            # Get the root of the repository
+            repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+            from anicat_media.utils.subprocess import run_cmd
+
+            # Run fetch and status with explicit CWD
+            run_cmd(["git", "fetch", "--quiet"], timeout=10, cwd=repo_root)
+            rc, stdout, _ = run_cmd(["git", "status", "-uno"], timeout=8, cwd=repo_root)
+
+            if stdout and "behind" in stdout:
+                _cached_update_available = True
+                return {"status": "success", "update_available": True, "message": "A new version of Anicat is available!"}
         return {"status": "success", "update_available": False, "message": "You are running the latest version."}
     except Exception as e:
         logger.error(f"[UPDATE CHECK] Error: {str(e)}")
