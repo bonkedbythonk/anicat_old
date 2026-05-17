@@ -40,17 +40,33 @@ def process_logo_to_tray(input_path, output_path):
         new_img = new_img.crop(bbox)
         print("Cropped image to active bounding box.")
         
-    # Resize to standard high-res tray icon sizes:
-    # macOS tray icon is ideally 22x22 points. 32x32 or 64x64 PNG works perfectly.
-    # Let's save a 64x64 version to support high-DPI (Retina) screens.
-    size = (32, 32)
-    final_img = new_img.resize(size, Image.Resampling.LANCZOS)
+    # Resize the cropped image to fit within a 22x22 box (leaving beautiful padding)
+    target_size = 22
+    w, h = new_img.size
+    if w > h:
+        new_w = target_size
+        new_h = int(h * (target_size / w))
+    else:
+        new_h = target_size
+        new_w = int(w * (target_size / h))
+        
+    resized_img = new_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+    
+    # Create the final 32x32 canvas with transparent background
+    canvas_size = 32
+    final_canvas = Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0))
+    
+    # Calculate offset to paste it right in the center
+    offset_x = (canvas_size - new_w) // 2
+    offset_y = (canvas_size - new_h) // 2
+    
+    final_canvas.paste(resized_img, (offset_x, offset_y), resized_img)
     
     # Ensure parent directory exists
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     
-    final_img.save(output_path, "PNG")
-    print(f"Successfully processed and saved tray icon to {output_path}!")
+    final_canvas.save(output_path, "PNG")
+    print(f"Successfully processed, padded, and saved tray icon to {output_path}!")
 
 if __name__ == "__main__":
     process_logo_to_tray(
