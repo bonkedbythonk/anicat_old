@@ -36,17 +36,17 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   const [isPlayingNext, setIsPlayingNext] = useState(false);
   const [activeTab, setActiveTab] = useState<"episodes" | "characters" | "reviews" | "recommendations">("episodes");
   const [config, setConfig] = useState<DetailConfig | null>(null);
-  const [ambientColor, setAmbientColor] = useState<string>("rgba(236, 72, 153, 0.12)");
+  const [ambientColor, setAmbientColor] = useState<string>("rgba(236, 72, 153, 0.18)");
 
   const isManga = item.type === "MANGA" || !!(item.format && ["MANGA", "ONE_SHOT", "NOVEL"].includes(item.format));
   const banner = fullItem.banner_image || fullItem.cover_image.large;
 
-  // Premium ambient color extractor from cover/banner artwork
+  // Upgraded premium ambient color extractor with average pixel extraction & brightness boosting
   useEffect(() => {
     if (!banner) return;
     
     // Set fallback immediately
-    setAmbientColor("rgba(236, 72, 153, 0.12)");
+    setAmbientColor("rgba(236, 72, 153, 0.18)");
 
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -61,10 +61,54 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
         canvas.height = 10;
         ctx.drawImage(img, 0, 0, 10, 10);
         
-        const pixel = ctx.getImageData(5, 5, 1, 1).data;
-        const [r, g, b] = pixel;
+        const imgData = ctx.getImageData(0, 0, 10, 10).data;
+        let r = 0, g = 0, b = 0, count = 0;
         
-        setAmbientColor(`rgba(${r}, ${g}, ${b}, 0.12)`);
+        // 1. Extract non-dark vibrant pixels
+        for (let i = 0; i < imgData.length; i += 4) {
+          const pr = imgData[i];
+          const pg = imgData[i+1];
+          const pb = imgData[i+2];
+          
+          if (pr + pg + pb > 120) {
+            r += pr;
+            g += pg;
+            b += pb;
+            count++;
+          }
+        }
+        
+        if (count > 0) {
+          r = Math.round(r / count);
+          g = Math.round(g / count);
+          b = Math.round(b / count);
+        } else {
+          // Fallback to absolute average
+          for (let i = 0; i < imgData.length; i += 4) {
+            r += imgData[i];
+            g += imgData[i+1];
+            b += imgData[i+2];
+          }
+          r = Math.round(r / (imgData.length / 4));
+          g = Math.round(g / (imgData.length / 4));
+          b = Math.round(b / (imgData.length / 4));
+        }
+
+        // 2. Brightness boosting if the artwork is too dark to glow
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        if (brightness < 60) {
+          const scale = 60 / (brightness || 1);
+          r = Math.min(255, Math.round(r * scale));
+          g = Math.min(255, Math.round(g * scale));
+          b = Math.min(255, Math.round(b * scale));
+        }
+        
+        // Minimum color threshold
+        if (r < 30 && g < 30 && b < 30) {
+          r = 236; g = 72; b = 153;
+        }
+        
+        setAmbientColor(`rgba(${r}, ${g}, ${b}, 0.18)`);
       } catch (err) {
         console.warn("[MediaDetail] Artwork color extraction blocked by CORS:", err);
       }
@@ -259,17 +303,19 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
         {/* Ambient Glow Backdrop Lighting */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
           <div 
-            className="absolute -top-32 -left-32 w-[450px] h-[450px] rounded-full blur-[130px] transition-all duration-1000 ease-out animate-pulse" 
+            className="absolute -top-32 -left-32 w-[480px] h-[480px] rounded-full blur-[130px] transition-all duration-[1.5s] ease-out animate-pulse" 
             style={{ 
               backgroundColor: ambientColor,
-              animationDuration: '9s'
+              animationDuration: '9s',
+              transition: 'background-color 1.2s ease-in-out, transform 1.2s ease-out'
             }} 
           />
           <div 
-            className="absolute top-96 -right-32 w-[350px] h-[350px] rounded-full blur-[110px] transition-all duration-1000 ease-out animate-pulse" 
+            className="absolute top-96 -right-32 w-[380px] h-[380px] rounded-full blur-[110px] transition-all duration-[1.5s] ease-out animate-pulse" 
             style={{ 
-              backgroundColor: ambientColor.replace("0.12", "0.06"),
-              animationDuration: '13s'
+              backgroundColor: ambientColor.replace("0.18", "0.08"),
+              animationDuration: '13s',
+              transition: 'background-color 1.2s ease-in-out, transform 1.2s ease-out'
             }} 
           />
         </div>
