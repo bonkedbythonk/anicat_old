@@ -18,7 +18,7 @@ export default function HelpModal({ onClose }: HelpModalProps) {
   ];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in" onClick={onClose}>
       <div className="bg-surface border border-white/[0.08] rounded-3xl p-8 max-w-md w-full shadow-2xl relative" onClick={e => e.stopPropagation()}>
         <button onClick={onClose} className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors">
           <X size={20} />

@@ -169,7 +169,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose} 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm will-change-opacity transform-gpu" 
+        className="absolute inset-0 bg-black/60 will-change-opacity transform-gpu" 
       />
       
       {/* Sidebar Drawer */}
