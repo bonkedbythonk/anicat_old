@@ -22,6 +22,12 @@ curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/main/scripts/i
 ```
 *   **Updates:** Simply click "Install Update" in the `Settings > Maintenance` tab within the app. No more terminal commands needed after the first install!
 
+##### Want the unstable Nightly/Beta release instead?
+To download, install, and configure all Gatekeeper permissions for the rolling **Nightly Build** automatically, run this command in your Terminal:
+```bash
+curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/main/scripts/install_macos.sh | sed 's/releases\/latest/releases\/tags\/nightly/g' | bash
+```
+
 #### Manual Installation (Alternative)
 If you prefer to download the `.dmg` manually from the GitHub Releases page:
 1. Download the latest `.dmg` and double-click to mount it.
