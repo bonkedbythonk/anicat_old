@@ -93,5 +93,6 @@ async def get_config_options():
             "manga_provider": ["mangakatana"],
             "media_api": ["anilist", "jikan"],
             "time_format": ["12h", "24h"],
+            "update_branch": ["stable", "nightly"],
         },
     }

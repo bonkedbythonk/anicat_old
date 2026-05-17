@@ -233,6 +233,20 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <option value="24h">24-hour</option>
                 </select>
               </SettingField>
+
+              <SettingField
+                label="Update Branch"
+                description="Choose whether to fetch updates from the stable or nightly development branch."
+              >
+                <select
+                  value={String(config.general?.update_branch || "stable")}
+                  onChange={(e) => updateField("general", "update_branch", e.target.value)}
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="stable">Stable (main branch)</option>
+                  <option value="nightly">Nightly (nightly branch)</option>
+                </select>
+              </SettingField>
             </div>
           )}
 

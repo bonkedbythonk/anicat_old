@@ -35,6 +35,7 @@ GENERAL_DISCORD = "Enable Discord Rich Presence to show your current activity."
 GENERAL_RECENT = "Number of recently watched anime to keep in history."
 GENERAL_HIDDEN_CATEGORIES = "List of category names to hide from the main menu (e.g., 'Planned', 'Dropped')."
 GENERAL_CHECK_FOR_UPDATES = "Whether to automatically check for updates on startup."
+GENERAL_UPDATE_BRANCH = "The update branch to track (stable or nightly)."
 GENERAL_TIME_FORMAT = "The time format to use for dates and times (12h or 24h)."
 
 # StreamConfig

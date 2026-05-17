@@ -12,7 +12,20 @@ echo "Starting Anicat installation..."
 
 # 1. Get latest release version and download URL
 echo "Finding latest release..."
-LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases/latest")
+UPDATE_BRANCH="stable"
+if [ -f "$HOME/.config/anicat/config.toml" ]; then
+    if grep -q 'update_branch = "nightly"' "$HOME/.config/anicat/config.toml"; then
+        UPDATE_BRANCH="nightly"
+    fi
+fi
+
+if [ "$UPDATE_BRANCH" = "nightly" ]; then
+    echo "Tracking nightly branch update..."
+    LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases" | python3 -c "import sys, json; data=json.load(sys.stdin); print(json.dumps(data[0]) if data else '')" 2>/dev/null || curl -s "https://api.github.com/repos/$REPO/releases/latest")
+else
+    LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases/latest")
+fi
+
 DOWNLOAD_URL=$(echo "$LATEST_RELEASE" | grep -o "https://github.com/bonkedbythonk/anicat/releases/download/[^\"]*\.dmg" | head -n 1)
 
 if [ -z "$DOWNLOAD_URL" ]; then

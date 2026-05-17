@@ -226,7 +226,7 @@ class Context:
         if not self._updater:
             from ..service.updater.service import UpdaterService
 
-            self._updater = UpdaterService()
+            self._updater = UpdaterService(self.config)
         return self._updater
 
 

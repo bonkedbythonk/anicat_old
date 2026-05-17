@@ -5,10 +5,18 @@ from anicat_media.core.constants import VERSION, UPDATE_STATUS_FILE, LAST_COMMIT
 logger = logging.getLogger(__name__)
 
 class UpdaterService:
-    def __init__(self):
+    def __init__(self, config=None):
+        self.config = config
         self.remote_version: str | None = None
         self.remote_hash: str | None = None
         self.local_hash: str | None = "Unknown"
+        
+        if not self.config:
+            try:
+                from anicat_media.cli.config import ConfigLoader
+                self.config = ConfigLoader().load(allow_setup=False)
+            except Exception:
+                pass
         
         if LAST_COMMIT_FILE.exists():
             try:
@@ -33,8 +41,23 @@ class UpdaterService:
         If force is True, bypasses cache and performs fresh requests.
         """
         try:
+            # Determine target branch
+            branch = "main"
+            if self.config:
+                branch_setting = getattr(self.config.general, "update_branch", "stable")
+                if branch_setting == "nightly":
+                    try:
+                        from anicat_media.utils.subprocess import run_cmd
+                        rc, stdout, _ = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=2)
+                        if rc == 0 and stdout and stdout.strip() == "testbranch":
+                            branch = "testbranch"
+                        else:
+                            branch = "nightly"
+                    except Exception:
+                        branch = "nightly"
+
             # 1. Fetch latest commit hash from GitHub
-            commit_url = "https://api.github.com/repos/bonkedbythonk/anicat/commits/main"
+            commit_url = f"https://api.github.com/repos/bonkedbythonk/anicat/commits/{branch}"
             commit_resp = httpx.get(commit_url, timeout=5.0)
             if commit_resp.status_code == 200:
                 self.remote_hash = commit_resp.json().get("sha", "")
@@ -47,7 +70,7 @@ class UpdaterService:
                 is_baseline = True
 
             # 2. Fetch latest version from pyproject.toml
-            repo_pyproject_url = "https://raw.githubusercontent.com/bonkedbythonk/anicat/main/pyproject.toml"
+            repo_pyproject_url = f"https://raw.githubusercontent.com/bonkedbythonk/anicat/{branch}/pyproject.toml"
             pyproject_resp = httpx.get(repo_pyproject_url, timeout=5.0)
             
             if pyproject_resp.status_code == 200:

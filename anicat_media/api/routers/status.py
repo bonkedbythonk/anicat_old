@@ -172,26 +172,55 @@ async def get_health():
             _last_update_check = now
             _cached_update_available = False
             try:
+                try:
+                    loader = ConfigLoader()
+                    current_config = loader.load(allow_setup=False)
+                    update_branch = getattr(current_config.general, "update_branch", "stable")
+                except Exception:
+                    update_branch = "stable"
+
                 if os.path.exists(os.path.join(repo_root, ".git")):
-                    # Check if we are behind origin/main using a safer wrapper
                     from anicat_media.utils.subprocess import run_cmd
-                    rc, _, _ = run_cmd(["git", "fetch", "--quiet"], timeout=8, cwd=repo_root)
-                    rc, stdout, _ = run_cmd(["git", "status", "-uno"], timeout=5, cwd=repo_root)
-                    if stdout and "behind" in stdout:
-                        _cached_update_available = True
+                    rc, stdout, _ = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=2, cwd=repo_root)
+                    current_branch = stdout.strip() if (rc == 0 and stdout) else "main"
+                    
+                    if update_branch == "nightly":
+                        target_branch = "testbranch" if current_branch == "testbranch" else "nightly"
+                    else:
+                        target_branch = "main"
+
+                    try:
+                        run_cmd(["git", "fetch", "origin", target_branch, "--quiet"], timeout=8, cwd=repo_root)
+                        rc, stdout, _ = run_cmd(["git", "rev-list", "--count", f"HEAD..origin/{target_branch}"], timeout=5, cwd=repo_root)
+                        if rc == 0 and stdout:
+                            count = int(stdout.strip())
+                            if count > 0:
+                                _cached_update_available = True
+                    except Exception:
+                        pass
                 else:
                     # Query GitHub Releases API for production installs
                     import urllib.request
                     import json
                     import ssl
+                    
+                    if update_branch == "nightly":
+                        url = "https://api.github.com/repos/bonkedbythonk/anicat/releases"
+                    else:
+                        url = "https://api.github.com/repos/bonkedbythonk/anicat/releases/latest"
+
                     req = urllib.request.Request(
-                        "https://api.github.com/repos/bonkedbythonk/anicat/releases/latest",
+                        url,
                         headers={"User-Agent": "Anicat-App"}
                     )
-                    ctx = ssl._create_unverified_context()
-                    with urllib.request.urlopen(req, timeout=5, context=ctx) as response:
-                        data = json.loads(response.read().decode())
-                        latest_tag = data.get("tag_name", "")
+                    ctx_ssl = ssl._create_unverified_context()
+                    with urllib.request.urlopen(req, timeout=5, context=ctx_ssl) as response:
+                        res_data = json.loads(response.read().decode())
+                        if isinstance(res_data, list):
+                            latest_tag = res_data[0].get("tag_name", "") if res_data else ""
+                        else:
+                            latest_tag = res_data.get("tag_name", "")
+                            
                     current_version = _current_version_tag()
                     if latest_tag and not _version_tag_matches(latest_tag, current_version):
                         _cached_update_available = True
@@ -269,35 +298,55 @@ async def check_for_updates():
         current_config = loader.load(allow_setup=False)
         if not getattr(current_config.general, "check_for_updates", True):
             return {"status": "error", "update_available": False, "message": "Auto-updates disabled in configuration"}
+        update_branch = getattr(current_config.general, "update_branch", "stable")
     except Exception:
         # If config can't be read, fall back to env-only opt-out
-        pass
+        update_branch = "stable"
 
     try:
         repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
         if os.path.exists(os.path.join(repo_root, ".git")):
             from anicat_media.utils.subprocess import run_cmd
-            run_cmd(["git", "fetch", "--quiet"], timeout=10, cwd=repo_root)
-            rc, stdout, _ = run_cmd(["git", "status", "-uno"], timeout=8, cwd=repo_root)
+            rc, stdout, _ = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=5, cwd=repo_root)
+            current_branch = stdout.strip() if (rc == 0 and stdout) else "main"
+            
+            if update_branch == "nightly":
+                target_branch = "testbranch" if current_branch == "testbranch" else "nightly"
+            else:
+                target_branch = "main"
+
+            run_cmd(["git", "fetch", "origin", target_branch, "--quiet"], timeout=10, cwd=repo_root)
+            rc, stdout, _ = run_cmd(["git", "rev-list", "--count", f"HEAD..origin/{target_branch}"], timeout=8, cwd=repo_root)
             _last_update_check = datetime.now()
-            if stdout and "behind" in stdout:
-                _cached_update_available = True
-                return {"status": "success", "update_available": True, "message": "A new version of Anicat is available!"}
+            if rc == 0 and stdout:
+                count = int(stdout.strip())
+                if count > 0:
+                    _cached_update_available = True
+                    return {"status": "success", "update_available": True, "message": f"A new version of Anicat is available on {target_branch}!"}
             _cached_update_available = False
-            return {"status": "success", "update_available": False, "message": "You are running the latest version."}
+            return {"status": "success", "update_available": False, "message": f"You are running the latest version of the {target_branch} branch."}
         else:
             # Query GitHub Releases API for production installs
             import urllib.request
             import json
             import ssl
+            
+            if update_branch == "nightly":
+                url = "https://api.github.com/repos/bonkedbythonk/anicat/releases"
+            else:
+                url = "https://api.github.com/repos/bonkedbythonk/anicat/releases/latest"
+
             req = urllib.request.Request(
-                "https://api.github.com/repos/bonkedbythonk/anicat/releases/latest",
+                url,
                 headers={"User-Agent": "Anicat-App"}
             )
-            ctx = ssl._create_unverified_context()
-            with urllib.request.urlopen(req, timeout=5, context=ctx) as response:
-                data = json.loads(response.read().decode())
-                latest_tag = data.get("tag_name", "")
+            ctx_ssl = ssl._create_unverified_context()
+            with urllib.request.urlopen(req, timeout=5, context=ctx_ssl) as response:
+                res_data = json.loads(response.read().decode())
+                if isinstance(res_data, list):
+                    latest_tag = res_data[0].get("tag_name", "") if res_data else ""
+                else:
+                    latest_tag = res_data.get("tag_name", "")
             current_version = _current_version_tag()
             _last_update_check = datetime.now()
             if latest_tag and not _version_tag_matches(latest_tag, current_version):
@@ -324,9 +373,11 @@ async def trigger_update():
             current_config = loader.load(allow_setup=False)
             if not getattr(current_config.general, "check_for_updates", True):
                 return {"status": "error", "message": "Auto-updates disabled in configuration"}
+            update_branch = getattr(current_config.general, "update_branch", "stable")
         except Exception:
             # If config can't be read, continue with env-only check
-            pass
+            update_branch = "stable"
+
         # For macOS, the most reliable way to update the native app is via the installer script
         # which downloads the latest release and replaces the binary.
         import platform
@@ -335,6 +386,9 @@ async def trigger_update():
             # If we are running in local dev and the local installer script exists, run it directly!
             repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
             local_script = os.path.join(repo_root, "scripts", "install_macos.sh")
+            
+            branch_name = "nightly" if update_branch == "nightly" else "main"
+            
             if os.path.exists(local_script):
                 logger.info(f"[UPDATE] Running local installer script: {local_script}")
                 subprocess.Popen(
@@ -345,7 +399,7 @@ async def trigger_update():
                 )
             else:
                 subprocess.Popen(
-                    "curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/main/scripts/install_macos.sh | bash",
+                    f"curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/{branch_name}/scripts/install_macos.sh | bash",
                     shell=True,
                     start_new_session=True,
                     stdout=subprocess.DEVNULL,
@@ -358,8 +412,19 @@ async def trigger_update():
         # Fallback for dev/git-based installations
         repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
         if os.path.exists(os.path.join(repo_root, ".git")):
+            from anicat_media.utils.subprocess import run_cmd
+            rc, stdout, _ = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=5, cwd=repo_root)
+            current_branch = stdout.strip() if (rc == 0 and stdout) else "main"
+            
+            if update_branch == "nightly":
+                target_branch = "testbranch" if current_branch == "testbranch" else "nightly"
+            else:
+                target_branch = "main"
+
             subprocess.run(["git", "stash"], cwd=repo_root, capture_output=True)
-            result = subprocess.run(["git", "pull"], cwd=repo_root, capture_output=True, text=True, timeout=60)
+            if current_branch != target_branch:
+                subprocess.run(["git", "checkout", target_branch], cwd=repo_root, capture_output=True)
+            result = subprocess.run(["git", "pull", "origin", target_branch], cwd=repo_root, capture_output=True, text=True, timeout=60)
             subprocess.run(["git", "stash", "pop"], cwd=repo_root, capture_output=True)
             
             if result.returncode == 0:
@@ -368,10 +433,10 @@ async def trigger_update():
                     subprocess.Popen(["bash", install_script, "--no-launch"], cwd=repo_root, start_new_session=True)
                     _last_update_check = datetime.now()
                     _cached_update_available = False
-                    return {"status": "success", "message": "Update in progress (Git). Rebuilding frontend..."}
+                    return {"status": "success", "message": f"Update in progress (Git branch {target_branch}). Rebuilding frontend..."}
                 _last_update_check = datetime.now()
                 _cached_update_available = False
-                return {"status": "success", "message": "Updated successfully (Git code only)."}
+                return {"status": "success", "message": f"Updated successfully (Git branch {target_branch} code only)."}
         
         return {"status": "error", "message": "Could not determine update method for this platform."}
         
