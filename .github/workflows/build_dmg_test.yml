@@ -1,0 +1,62 @@
+name: Build DMG (Test)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ testbranch ]
+
+jobs:
+  build_dmg:
+    runs-on: macos-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv (astral)
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install python deps (uv sync)
+        run: uv sync
+
+      - name: Build frontend
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build sidecar (PyInstaller)
+        run: |
+          uv run pyinstaller --noconfirm build_sidecar/sidecar.spec
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Tauri app (DMG)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT_TELEMETRY_DISABLED: 1
+        with:
+          projectPath: web
+          args: "--target aarch64-apple-darwin"
+
+      - name: List produced artifacts
+        run: |
+          echo "Looking for generated DMG files:"
+          find . -type f -name "*.dmg" -print || true
+
+      - name: Upload DMG artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: anicat-dmg
+          path: '**/*.dmg'
