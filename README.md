@@ -47,12 +47,19 @@ Anicat features two ways to watch anime, fitting both casual viewers and quality
 * Plays streams directly inside the Anicat window without installing any extra software.
 
 #### B. The Native MPV Player (Unlock Premium 4K Upscaling & Skins)
-To play high-performance upscaled anime via **Anime4K** shaders or use advanced skins (ModernX), you need the native **MPV** player. You can install it easily:
-*   **No Terminal (Easiest)**: Download the precompiled macOS app bundle from the official [mpv.io/installation](https://mpv.io/installation/) page (or direct community builds like [stolendata's macOS builds](https://stolendata.no/export/mpv/)) and drag the `mpv.app` file directly into your `/Applications` folder. Anicat will automatically detect it!
-*   **Via Terminal (Homebrew)**: If you have Homebrew installed, simply open your Terminal and run:
-    ```bash
-    brew install mpv
-    ```
+To play high-performance upscaled anime via **Anime4K** shaders or use advanced skins (ModernX), you need the native **MPV** player. 
+
+We highly recommend installing it via **Homebrew** (this handles all media decoders and updates automatically):
+
+1. **Install Homebrew** (if you don't have it already):
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
+2. **Install MPV**:
+   ```bash
+   brew install mpv
+   ```
+Anicat will automatically detect the installation and seamlessly route your upscaled playback!
 
 ---
 
