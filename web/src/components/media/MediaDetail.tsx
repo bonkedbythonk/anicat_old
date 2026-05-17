@@ -36,8 +36,40 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   const [isPlayingNext, setIsPlayingNext] = useState(false);
   const [activeTab, setActiveTab] = useState<"episodes" | "characters" | "reviews" | "recommendations">("episodes");
   const [config, setConfig] = useState<DetailConfig | null>(null);
+  const [ambientColor, setAmbientColor] = useState<string>("rgba(236, 72, 153, 0.12)");
 
   const isManga = item.type === "MANGA" || !!(item.format && ["MANGA", "ONE_SHOT", "NOVEL"].includes(item.format));
+  const banner = fullItem.banner_image || fullItem.cover_image.large;
+
+  // Premium ambient color extractor from cover/banner artwork
+  useEffect(() => {
+    if (!banner) return;
+    
+    // Set fallback immediately
+    setAmbientColor("rgba(236, 72, 153, 0.12)");
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = banner;
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        
+        canvas.width = 10;
+        canvas.height = 10;
+        ctx.drawImage(img, 0, 0, 10, 10);
+        
+        const pixel = ctx.getImageData(5, 5, 1, 1).data;
+        const [r, g, b] = pixel;
+        
+        setAmbientColor(`rgba(${r}, ${g}, ${b}, 0.12)`);
+      } catch (err) {
+        console.warn("[MediaDetail] Artwork color extraction blocked by CORS:", err);
+      }
+    };
+  }, [banner]);
   const normalizedUserStatus = fullItem.user_status?.status?.toLowerCase();
   const isPlanning = normalizedUserStatus === "planning";
 
@@ -203,7 +235,6 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   };
 
   const title = fullItem.title.english || fullItem.title.romaji;
-  const banner = fullItem.banner_image || fullItem.cover_image.large;
 
   return (
     <div className="fixed inset-0 z-[150] flex justify-end overflow-hidden">
@@ -223,8 +254,26 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
         exit={{ x: "100%" }}
         transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
         style={{ willChange: "transform" }}
-        className="relative w-full max-w-2xl h-full bg-[#0c0c0c] border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col transform-gpu"
+        className="relative w-full max-w-2xl h-full bg-[#0c0c0c] border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col transform-gpu overflow-hidden"
       >
+        {/* Ambient Glow Backdrop Lighting */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          <div 
+            className="absolute -top-32 -left-32 w-[450px] h-[450px] rounded-full blur-[130px] transition-all duration-1000 ease-out animate-pulse" 
+            style={{ 
+              backgroundColor: ambientColor,
+              animationDuration: '9s'
+            }} 
+          />
+          <div 
+            className="absolute top-96 -right-32 w-[350px] h-[350px] rounded-full blur-[110px] transition-all duration-1000 ease-out animate-pulse" 
+            style={{ 
+              backgroundColor: ambientColor.replace("0.12", "0.06"),
+              animationDuration: '13s'
+            }} 
+          />
+        </div>
+
         {/* Close Button */}
         <button 
           onClick={onClose} 
@@ -234,7 +283,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
         </button>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide">
+        <div className="flex-1 overflow-y-auto scrollbar-hide z-10 relative bg-transparent">
           {/* Header Banner */}
           <div className="relative h-72 w-full flex-shrink-0">
              <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0c] via-transparent to-transparent z-[1]" />
