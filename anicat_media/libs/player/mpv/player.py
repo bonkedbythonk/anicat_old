@@ -51,6 +51,8 @@ class MpvPlayer(BasePlayer):
                 os.path.abspath(os.path.join(app_dir, "..", "Resources", "resources", "mpv")),
                 # Directly in Resources folder
                 os.path.abspath(os.path.join(app_dir, "..", "Resources", "mpv")),
+                # Development fallback inside repository workspace
+                os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "..", "web", "src-tauri", "resources", "mpv")),
             ]
             for path in bundled_paths:
                 if os.path.exists(path):
@@ -317,6 +319,14 @@ class MpvPlayer(BasePlayer):
             list[str]: List of MPV CLI arguments.
         """
         mpv_args = []
+
+        # Inject isolated config directory if using the bundled companion player
+        if self.executable and ("Resources/resources/mpv" in self.executable or "Resources/mpv" in self.executable or "web/src-tauri/resources/mpv" in self.executable):
+            bundled_config = os.path.abspath(os.path.join(os.path.dirname(self.executable), "mpv_config"))
+            if os.path.exists(bundled_config):
+                mpv_args.append(f"--config-dir={bundled_config}")
+                logger.info(f"Using isolated premium bundled MPV configuration from: {bundled_config}")
+
         if params.headers:
             # mpv prefers no spaces after commas and colons in http-header-fields
             headers_list = []

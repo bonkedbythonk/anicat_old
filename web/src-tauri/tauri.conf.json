@@ -37,6 +37,9 @@
     "externalBin": [
         "binaries/anicat-server"
     ],
+    "resources": [
+      "resources/*"
+    ],
     "macOS": {
       "entitlements": "entitlements.mac.plist"
     }
