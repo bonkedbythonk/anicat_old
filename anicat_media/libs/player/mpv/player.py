@@ -346,6 +346,10 @@ class MpvPlayer(BasePlayer):
         if sys.platform == "darwin":
             mpv_args.append("--vo=gpu")
 
+        if getattr(params, "fullscreen", False):
+            mpv_args.append("--fs")
+            logger.info("AniCat is in fullscreen. Requesting MPV to launch in fullscreen mode (--fs).")
+
         # Dynamically locate isolated configs and shaders from resources, regardless of whether system or bundled MPV is used
         resources_dir = self._find_resources_dir()
         if resources_dir:

@@ -35,3 +35,4 @@ class PlayerParams:
     start_time: str | None = None
     shader_profile: str | None = None
     skip_times: list[dict] | None = None
+    fullscreen: bool = False

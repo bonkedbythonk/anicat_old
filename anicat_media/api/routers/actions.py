@@ -133,7 +133,12 @@ async def _resolve_episode_stream(media_id: int, episode: Optional[str] = None):
     }
 
 @router.post("/play/{media_id}")
-async def play_media(media_id: int, background_tasks: BackgroundTasks, episode: Optional[str] = None):
+async def play_media(
+    media_id: int, 
+    background_tasks: BackgroundTasks, 
+    episode: Optional[str] = None,
+    fullscreen: bool = False
+):
     """
     Smart Play: Finds the next episode and triggers playback in MPV.
     """
@@ -226,7 +231,8 @@ async def play_media(media_id: int, background_tasks: BackgroundTasks, episode: 
                 episode=resolved_episode,
                 title=local_title,
                 headers={},
-                start_time=start_time
+                start_time=start_time,
+                fullscreen=fullscreen
             )
             # Attempt to fetch AniSkip skip times for this media/episode
             try:
@@ -262,7 +268,8 @@ async def play_media(media_id: int, background_tasks: BackgroundTasks, episode: 
             episode=resolved["episode"],
             title=resolved["title"],
             headers=resolved["headers"],
-            start_time=resolved["start_time"]
+            start_time=resolved["start_time"],
+            fullscreen=fullscreen
         )
         # Try to fetch AniSkip skip times for better experience in external MPV
         try:

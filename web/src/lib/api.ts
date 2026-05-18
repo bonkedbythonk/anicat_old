@@ -247,8 +247,23 @@ export const mediaApi = {
     fetchFromApi(`/media/${mediaId}/chapter/${chapterNumber}/pages`),
 
   // ─── Playback ───────────────────────────────────────
-  play: (mediaId: number, episode?: string) =>
-    fetchFromApi(`/actions/play/${mediaId}${episode ? `?episode=${episode}` : ''}`, { method: 'POST' }),
+  play: async (mediaId: number, episode?: string) => {
+    let isFullscreen = false;
+    if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const currentWindow = getCurrentWindow();
+        isFullscreen = await currentWindow.isFullscreen();
+      } catch (e) {
+        console.error('Failed to detect fullscreen state', e);
+      }
+    }
+    const params = new URLSearchParams();
+    if (episode) params.append('episode', episode);
+    if (isFullscreen) params.append('fullscreen', 'true');
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    return fetchFromApi(`/actions/play/${mediaId}${queryString}`, { method: 'POST' });
+  },
 
   resolveStream: (mediaId: number, episode?: string): Promise<{
     stream_url: string;
@@ -271,8 +286,20 @@ export const mediaApi = {
       body: JSON.stringify({ media_id: mediaId, episode, current_time: currentTime, total_time: totalTime })
     }),
 
-  playNext: (mediaId: number) =>
-    fetchFromApi(`/actions/play/${mediaId}`, { method: 'POST' }),
+  playNext: async (mediaId: number) => {
+    let isFullscreen = false;
+    if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const currentWindow = getCurrentWindow();
+        isFullscreen = await currentWindow.isFullscreen();
+      } catch (e) {
+        console.error('Failed to detect fullscreen state', e);
+      }
+    }
+    const queryString = isFullscreen ? '?fullscreen=true' : '';
+    return fetchFromApi(`/actions/play/${mediaId}${queryString}`, { method: 'POST' });
+  },
 
   getPlaybackStatus: (): Promise<PlaybackStatus> =>
     fetchFromApi('/status/playback'),
