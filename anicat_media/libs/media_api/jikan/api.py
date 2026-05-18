@@ -15,11 +15,15 @@ from ..params import (
 from ..types import (
     AiringScheduleResult,
     CharacterSearchResult,
+    MediaFormat,
+    MediaGenre,
     MediaImage,
     MediaItem,
     MediaReview,
     MediaSearchResult,
     MediaTitle,
+    MediaStatus,
+    MediaType,
     Notification,
     UserProfile,
 )
@@ -31,6 +35,50 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 JIKAN_ENDPOINT = "https://api.jikan.moe/v4"
+
+JIKAN_GENRE_ID_MAP = {
+    MediaGenre.ACTION: 1,
+    MediaGenre.ADVENTURE: 2,
+    MediaGenre.COMEDY: 4,
+    MediaGenre.DRAMA: 8,
+    MediaGenre.FANTASY: 10,
+    MediaGenre.HORROR: 14,
+    MediaGenre.MYSTERY: 7,
+    MediaGenre.ROMANCE: 22,
+    MediaGenre.SCI_FI: 24,
+    MediaGenre.SLICE_OF_LIFE: 36,
+    MediaGenre.SPORTS: 30,
+    MediaGenre.SUPERNATURAL: 37,
+    MediaGenre.THRILLER: 41,
+}
+
+JIKAN_ANIME_STATUS_MAP = {
+    MediaStatus.FINISHED: "complete",
+    MediaStatus.RELEASING: "airing",
+    MediaStatus.NOT_YET_RELEASED: "upcoming",
+}
+
+JIKAN_MANGA_STATUS_MAP = {
+    MediaStatus.FINISHED: "complete",
+    MediaStatus.RELEASING: "publishing",
+    MediaStatus.NOT_YET_RELEASED: "upcoming",
+}
+
+JIKAN_ANIME_FORMAT_MAP = {
+    MediaFormat.TV: "tv",
+    MediaFormat.TV_SHORT: "tv_short",
+    MediaFormat.MOVIE: "movie",
+    MediaFormat.SPECIAL: "special",
+    MediaFormat.OVA: "ova",
+    MediaFormat.ONA: "ona",
+    MediaFormat.MUSIC: "music",
+}
+
+JIKAN_MANGA_FORMAT_MAP = {
+    MediaFormat.MANGA: "manga",
+    MediaFormat.NOVEL: "novel",
+    MediaFormat.ONE_SHOT: "one_shot",
+}
 
 
 class JikanApi(BaseApiClient):
@@ -58,12 +106,37 @@ class JikanApi(BaseApiClient):
 
     def search_media(self, params: MediaSearchParams) -> Optional[MediaSearchResult]:
         """Searches for anime on MyAnimeList via Jikan."""
-        jikan_params = {
+        endpoint = "/manga" if params.type == MediaType.MANGA else "/anime"
+        jikan_params: dict[str, Any] = {
             "q": params.query,
             "page": params.page,
             "limit": params.per_page,
         }
-        raw_data = self._execute_request("/anime", params=jikan_params)
+
+        if params.genre_in:
+            genre_ids = [JIKAN_GENRE_ID_MAP[g] for g in params.genre_in if g in JIKAN_GENRE_ID_MAP]
+            if genre_ids:
+                jikan_params["genres"] = ",".join(str(genre_id) for genre_id in genre_ids)
+
+        if params.seasonYear:
+            jikan_params["start_date"] = f"{params.seasonYear}-01-01"
+            jikan_params["end_date"] = f"{params.seasonYear}-12-31"
+
+        if params.averageScore_greater is not None:
+            jikan_params["min_score"] = params.averageScore_greater
+
+        status_map = JIKAN_MANGA_STATUS_MAP if params.type == MediaType.MANGA else JIKAN_ANIME_STATUS_MAP
+        if params.status in status_map:
+            jikan_params["status"] = status_map[params.status]
+
+        if params.format_in:
+            format_map = JIKAN_MANGA_FORMAT_MAP if params.type == MediaType.MANGA else JIKAN_ANIME_FORMAT_MAP
+            for media_format in params.format_in:
+                if media_format in format_map:
+                    jikan_params["type"] = format_map[media_format]
+                    break
+
+        raw_data = self._execute_request(endpoint, params=jikan_params)
         return mapper.to_generic_search_result(raw_data) if raw_data else None
     
     def get_media_item(self, media_id: int) -> Optional[MediaItem]:
