@@ -137,7 +137,7 @@ class JikanApi(BaseApiClient):
                     break
 
         raw_data = self._execute_request(endpoint, params=jikan_params)
-        return mapper.to_generic_search_result(raw_data) if raw_data else None
+        return mapper.to_generic_search_result(raw_data, original_query=params.query) if raw_data else None
     
     def get_media_item(self, media_id: int) -> Optional[MediaItem]:
         """Fetch a single media item by ID via Jikan."""

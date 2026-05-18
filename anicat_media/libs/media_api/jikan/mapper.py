@@ -136,12 +136,77 @@ def _to_generic_media_item(data: dict) -> MediaItem:
     )
 
 
-def to_generic_search_result(api_response: dict) -> Optional[MediaSearchResult]:
-    """Top-level mapper for Jikan search results."""
+def to_generic_search_result(api_response: dict, original_query: Optional[str] = None) -> Optional[MediaSearchResult]:
+    """Top-level mapper for Jikan search results.
+
+    If `original_query` is provided, perform a lightweight fuzzy re-ranking
+    of results so strong matches for long/natural-language queries are
+    promoted higher in the returned list. Uses stdlib `difflib` to avoid
+    new dependencies and applies reordering conservatively.
+    """
     if not api_response or "data" not in api_response:
         return None
 
     media_items = [_to_generic_media_item(item) for item in api_response["data"]]
+
+    # Attempt conservative fuzzy promotion when an explicit query is supplied
+    try:
+        if original_query and isinstance(original_query, str):
+            import difflib
+
+            # Normalize query: lowercase, remove non-alphanumerics, collapse spaces
+            q = re.sub(r"[^a-z0-9 ]+", " ", original_query.lower()).strip()
+            # Remove common stopwords to improve matching on long natural-language queries
+            STOPWORDS = {
+                "the",
+                "a",
+                "an",
+                "what",
+                "was",
+                "that",
+                "is",
+                "are",
+                "was",
+                "were",
+                "it",
+                "of",
+                "for",
+                "in",
+                "on",
+                "at",
+                "by",
+                "with",
+                "about",
+                "again",
+                "release",
+                "blu",
+                "ray",
+            }
+            tokens = [t for t in q.split() if t and t not in STOPWORDS and not t.isdigit()]
+            q = " ".join(tokens)
+            if len(q) >= 3:
+                scores: list[float] = []
+                for mi in media_items:
+                    # Build a searchable candidate string from title fields
+                    parts = [mi.title.english or "", mi.title.romaji or "", mi.title.native or ""]
+                    cand = " ".join(parts).lower()
+                    cand = re.sub(r"[^a-z0-9 ]+", " ", cand).strip()
+                    # Compute similarity ratio
+                    ratio = difflib.SequenceMatcher(None, q, cand).ratio()
+                    scores.append(ratio)
+
+                max_score = max(scores) if scores else 0.0
+                # Only reorder if there's a reasonably strong match. Use a conservative
+                # but permissive threshold so long noisy queries can still promote exact
+                # title matches.
+                if max_score >= 0.4:
+                    indexed = list(enumerate(media_items))
+                    # Sort by score desc, then original index asc to remain stable
+                    indexed.sort(key=lambda x: (-scores[x[0]], x[0]))
+                    media_items = [it for (_, it) in indexed]
+    except Exception:
+        # Be conservative: if our post-processing fails, fall back to original order
+        pass
 
     pagination = api_response.get("pagination", {})
     page_info = PageInfo(

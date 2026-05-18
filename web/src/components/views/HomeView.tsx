@@ -54,6 +54,11 @@ export default function HomeView({ onSelect }: HomeViewProps) {
     queryFn: () => mediaApi.getSeasonal("ANIME"),
   });
 
+  const newlyReleasingQuery = useQuery({
+    queryKey: ["home-newly-releasing"],
+    queryFn: () => mediaApi.search('', 'ANIME', 1, { status: 'RELEASING' }),
+  });
+
   // 4. Secondary Query for Missed/Recent Releases
   const watchingMedia = watchingQuery.data?.media || [];
   const watchingIds = useMemo(() => watchingMedia.map((m) => m.id), [watchingMedia]);
@@ -162,6 +167,14 @@ export default function HomeView({ onSelect }: HomeViewProps) {
       ) : (
         trendingQuery.data?.media && trendingQuery.data.media.length > 0 && (
           <MediaRow title="Trending Now" items={trendingQuery.data.media} onSelect={onSelect} />
+        )
+      )}
+      
+      {newlyReleasingQuery.isLoading ? (
+        <MediaRowSkeleton title="Newly Releasing" />
+      ) : (
+        newlyReleasingQuery.data?.media && newlyReleasingQuery.data.media.length > 0 && (
+          <MediaRow title="Newly Releasing" items={newlyReleasingQuery.data.media} onSelect={onSelect} />
         )
       )}
       
