@@ -32,7 +32,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
     if (typeof window !== "undefined") {
       const savedAutoSkip = localStorage.getItem("anicat_auto_skip");
       setAutoSkip(savedAutoSkip === "true");
-      
+
       const savedTheme = localStorage.getItem("anicat_theme") as "system" | "dark" | "light" | null;
       if (savedTheme) {
         setTheme(savedTheme);
@@ -46,7 +46,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
 
     setTheme(newTheme);
     localStorage.setItem("anicat_theme", newTheme);
-    
+
     const isDarkSystem = window.matchMedia('(prefers-color-scheme: dark)').matches;
     document.documentElement.classList.remove('light', 'dark', 'system');
     document.documentElement.classList.add(newTheme);
@@ -69,7 +69,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
       .catch(console.error)
       .finally(() => setLoading(false));
     // Fetch server-supported option lists for UI selects
-    mediaApi.getConfigOptions().then(setOptions).catch(() => {/* ignore */});
+    mediaApi.getConfigOptions().then(setOptions).catch(() => {/* ignore */ });
   }, []);
 
   const handleOpenLogs = async () => {
@@ -202,11 +202,10 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
         <button
           onClick={handleSave}
           disabled={saving}
-          className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 ${
-            saved
-              ? "bg-green-500 text-white"
-              : "bg-accent text-white hover:bg-accent-light shadow-lg shadow-accent/20"
-          }`}
+          className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 ${saved
+            ? "bg-green-500 text-white"
+            : "bg-accent text-white hover:bg-accent-light shadow-lg shadow-accent/20"
+            }`}
         >
           {saving ? <Loader2 size={16} className="animate-spin" /> : saved ? <CheckCircle2 size={16} /> : <Save size={16} />}
           <span>{saved ? "Saved!" : "Save"}</span>
@@ -220,11 +219,10 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${
-                activeTab === tab.id
-                  ? "bg-accent text-white shadow-lg"
-                  : "text-gray-500 hover:text-white hover:bg-white/[0.04]"
-              }`}
+              className={`flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${activeTab === tab.id
+                ? "bg-accent text-white shadow-lg"
+                : "text-gray-500 hover:text-white hover:bg-white/[0.04]"
+                }`}
             >
               <tab.icon size={17} />
               <span>{tab.label}</span>
@@ -263,15 +261,16 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
               </SettingField>
 
               <SettingField
-                label="Media Tracker"
-                description="The source for your list and metadata (AniList is currently the only supported tracking client)."
+                label="Media Searcher & Tracker"
+                description="The source for anime search, lists, and metadata (Use Jikan if AniList is currently down)."
               >
                 <select
                   value={String(config.general?.media_api || "anilist")}
                   onChange={(e) => updateField("general", "media_api", e.target.value)}
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                 >
-                  <option value="anilist">AniList</option>
+                  <option value="anilist">AniList (Default / Tracker Sync)</option>
+                  <option value="jikan">Jikan (MyAnimeList - Anonymous Search / Outage Fallback)</option>
                 </select>
               </SettingField>
 
@@ -299,8 +298,8 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                 >
                   <option value="system">System Default (Sync macOS settings)</option>
-                  <option value="dark">Dark Theme (Deep Slate)</option>
-                  <option value="light">Light Theme (Warm Indigo)</option>
+                  <option value="dark">Dark Theme</option>
+                  <option value="light">Light Theme</option>
                 </select>
               </SettingField>
 
@@ -356,18 +355,18 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
                 >
                   <option value="false">Manual (Show 'Skip Intro' button)</option>
-                  <option value="true">Automatic (Seamless Hands-Free Binging)</option>
+                  <option value="true">Automatic (Seamless Watching)</option>
                 </select>
               </SettingField>
 
-              <SettingField label="GPU Upscaling Quality (MPV)" description="Toggle real-time high-fidelity neural upscaling for your companion video player.">
+              <SettingField label="GPU Upscaling Quality (MPV)" description="Toggle real-time upscaling for your companion video player.">
                 <select
                   value={String(config.stream?.shader_profile || "balanced")}
                   onChange={(e) => updateField("stream", "shader_profile", e.target.value)}
                   className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
                 >
-                  <option value="balanced">✨ Standard Quality (Neural Upscaling Enabled)</option>
-                  <option value="off">🔋 Battery Saver (Upscaling Off / Normal Scale)</option>
+                  <option value="balanced">Standard Quality (Upscaling Enabled)</option>
+                  <option value="off">Battery Saver (Upscaling Off)</option>
                 </select>
               </SettingField>
             </div>
@@ -459,11 +458,10 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <button
                     onClick={handleUpdate}
                     disabled={checkingUpdate}
-                    className={`w-full flex items-center justify-center space-x-2 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 ${
-                      hasUpdate
-                        ? "bg-green-600 hover:bg-green-500 text-white shadow-green-500/20"
-                        : "bg-accent text-white hover:bg-accent-light shadow-accent/20"
-                    }`}
+                    className={`w-full flex items-center justify-center space-x-2 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 ${hasUpdate
+                      ? "bg-green-600 hover:bg-green-500 text-white shadow-green-500/20"
+                      : "bg-accent text-white hover:bg-accent-light shadow-accent/20"
+                      }`}
                   >
                     {checkingUpdate ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -476,17 +474,16 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                       {checkingUpdate
                         ? (hasUpdate ? "Updating..." : "Checking...")
                         : hasUpdate
-                        ? "Install Update"
-                        : "Check for Updates"}
+                          ? "Install Update"
+                          : "Check for Updates"}
                     </span>
                   </button>
 
                   {updateMessage.text && (
-                    <div className={`p-4 rounded-xl text-xs font-semibold flex items-start space-x-3 animate-fade-in ${
-                      updateMessage.type === "success"
-                        ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                        : "bg-red-500/10 text-red-400 border border-red-500/20"
-                    }`}>
+                    <div className={`p-4 rounded-xl text-xs font-semibold flex items-start space-x-3 animate-fade-in ${updateMessage.type === "success"
+                      ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                      : "bg-red-500/10 text-red-400 border border-red-500/20"
+                      }`}>
                       {updateMessage.type === "success" ? (
                         <CheckCircle2 size={15} className="mt-0.5 shrink-0" />
                       ) : (
@@ -503,7 +500,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
               <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-white">Technical Diagnostics</h3>
-                  <button 
+                  <button
                     onClick={async () => {
                       try {
                         const logs = await mediaApi.getLogs(50);
@@ -535,7 +532,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                 </div>
 
                 <div className="space-y-3">
-                  <button 
+                  <button
                     onClick={handleOpenLogs}
                     className="w-full py-2.5 bg-white/[0.04] hover:bg-white/[0.07] text-white/70 rounded-xl text-xs font-bold transition-all border border-white/5 flex items-center justify-center space-x-2"
                   >
@@ -554,8 +551,6 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
 
               {/* Danger Zone */}
               <div className="p-6 rounded-2xl bg-red-500/5 border border-red-500/10 space-y-4">
-                <h3 className="text-lg font-bold text-red-400/80">Danger Zone</h3>
-                
                 <button
                   id="clear-registry-btn"
                   data-confirmed="false"
@@ -585,7 +580,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
 
               {/* Reset Setup */}
               <div className="pt-4 border-t border-white/[0.06]">
-                <button 
+                <button
                   onClick={() => {
                     const btn = document.getElementById('reset-onboarding-btn');
                     if (btn?.getAttribute('data-confirmed') === 'true') {

@@ -61,10 +61,18 @@ async def update_config(updates: dict):
         else:
             logger.info("No active context to refresh; updated config written to disk only.")
 
-        # If the token was updated, reset the media_api instance and force online status
-        if "anilist" in updates and "token" in updates["anilist"] and ctx is not None:
-            ctx._media_api = None
-            ctx.is_offline = False
+        # If the token or the media search api was updated, reset the media_api instance and force online status
+        if ctx is not None:
+            should_reset = False
+            if "anilist" in updates and "token" in updates["anilist"]:
+                should_reset = True
+            if "general" in updates and "media_api" in updates["general"]:
+                should_reset = True
+            
+            if should_reset:
+                ctx._media_api = None
+                ctx.is_offline = False
+                logger.info("Resetting media_api instance following config update.")
         
         logger.info("Config updated successfully")
         # Return the new config so frontend can refresh state immediately
