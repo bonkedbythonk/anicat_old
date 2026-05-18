@@ -46,15 +46,7 @@ class UpdaterService:
             if self.config:
                 branch_setting = getattr(self.config.general, "update_branch", "stable")
                 if branch_setting == "nightly":
-                    try:
-                        from anicat_media.utils.subprocess import run_cmd
-                        rc, stdout, _ = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=2)
-                        if rc == 0 and stdout and stdout.strip() == "testbranch":
-                            branch = "testbranch"
-                        else:
-                            branch = "nightly"
-                    except Exception:
-                        branch = "nightly"
+                    branch = "testbranch"
 
             # 1. Fetch latest commit hash from GitHub
             commit_url = f"https://api.github.com/repos/bonkedbythonk/anicat/commits/{branch}"

@@ -128,7 +128,7 @@ def _check_github_update(update_branch: str) -> bool:
             # For nightly, query commit hash to be precise
             remote_sha = ""
             try:
-                commit_url = "https://api.github.com/repos/bonkedbythonk/anicat/commits/nightly"
+                commit_url = "https://api.github.com/repos/bonkedbythonk/anicat/commits/testbranch"
                 commit_req = urllib.request.Request(commit_url, headers={"User-Agent": "Anicat-App"})
                 with urllib.request.urlopen(commit_req, timeout=5, context=ctx_ssl) as commit_resp:
                     commit_data = json.loads(commit_resp.read().decode())
@@ -289,7 +289,7 @@ async def get_health():
                     current_branch = stdout.strip() if (rc == 0 and stdout) else "main"
                     
                     if update_branch == "nightly":
-                        target_branch = "testbranch" if current_branch == "testbranch" else "nightly"
+                        target_branch = "testbranch"
                     else:
                         target_branch = "main"
 
@@ -391,7 +391,7 @@ async def check_for_updates():
             current_branch = stdout.strip() if (rc == 0 and stdout) else "main"
             
             if update_branch == "nightly":
-                target_branch = "testbranch" if current_branch == "testbranch" else "nightly"
+                target_branch = "testbranch"
             else:
                 target_branch = "main"
 
@@ -448,7 +448,7 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
             repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
             local_script = os.path.join(repo_root, "scripts", "install_macos.sh")
             
-            branch_name = "nightly" if update_branch == "nightly" else "main"
+            branch_name = "testbranch" if update_branch == "nightly" else "main"
             
             if os.path.exists(local_script):
                 logger.info(f"[UPDATE] Running local installer script: {local_script}")
@@ -478,7 +478,7 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
             current_branch = stdout.strip() if (rc == 0 and stdout) else "main"
             
             if update_branch == "nightly":
-                target_branch = "testbranch" if current_branch == "testbranch" else "nightly"
+                target_branch = "testbranch"
             else:
                 target_branch = "main"
 
