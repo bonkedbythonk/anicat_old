@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Sparkles, 
   ArrowRight, 
@@ -29,6 +29,51 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
   const [token, setToken] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Playback customization states
+  const [config, setConfig] = useState<any>(null);
+  const [playerType, setPlayerType] = useState("embedded");
+  const [shaderProfile, setShaderProfile] = useState("balanced");
+  const [translationType, setTranslationType] = useState("sub");
+  const [localAutoSkip, setLocalAutoSkip] = useState(false);
+
+  useEffect(() => {
+    mediaApi.getConfig()
+      .then((cfg) => {
+        setConfig(cfg);
+        if (cfg?.stream) {
+          setPlayerType(cfg.stream.player_type || "embedded");
+          setShaderProfile(cfg.stream.shader_profile || "balanced");
+          setTranslationType(cfg.stream.translation_type || "sub");
+        }
+      })
+      .catch(console.error);
+
+    if (typeof window !== "undefined") {
+      const savedAutoSkip = localStorage.getItem("anicat_auto_skip");
+      setLocalAutoSkip(savedAutoSkip === "true");
+    }
+  }, []);
+
+  const handleSavePlaybackSettings = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await mediaApi.updateConfig({
+        stream: {
+          player_type: playerType,
+          shader_profile: shaderProfile,
+          translation_type: translationType,
+        }
+      });
+      localStorage.setItem("anicat_auto_skip", String(localAutoSkip));
+      setStep(3); // Advance to AniList connection step
+    } catch (err: any) {
+      setError("Failed to save playback preferences.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleConnectAnilist = async () => {
     if (!token.trim()) {
@@ -103,6 +148,91 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
     },
     {
       id: 2,
+      title: "Personalize Playback",
+      subtitle: "Choose how you want to watch and read",
+      content: (
+        <div className="space-y-5 text-left animate-fade-in">
+          <div className="space-y-4 bg-white/[0.01] border border-white/[0.04] p-5 rounded-[24px]">
+            {/* Player Type Selection */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Player Engine</label>
+              <select
+                value={playerType}
+                onChange={(e) => setPlayerType(e.target.value)}
+                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+              >
+                <option value="embedded" className="bg-surface">Embedded Cinematic HLS Player (In-App)</option>
+                <option value="external" className="bg-surface">Bundled MPV Companion Player (Upscaling)</option>
+              </select>
+            </div>
+
+            {/* Shaders Quality (Show only if MPV is selected or as a general tier pre-config) */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">GPU Upscaling (MPV)</label>
+              <select
+                value={shaderProfile}
+                onChange={(e) => setShaderProfile(e.target.value)}
+                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+              >
+                <option value="off" className="bg-surface">🔋 Battery Saver (Upscaling Off)</option>
+                <option value="balanced" className="bg-surface">💻 Balanced (MacBook Air / Efficient)</option>
+                <option value="high" className="bg-surface">✨ High Quality (MacBook Pro)</option>
+                <option value="ultra" className="bg-surface">🌌 Ultra Fidelity (Maximum GPU / Desktop)</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Auto Skip Selection */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Auto-Skip Credits</label>
+                <select
+                  value={localAutoSkip ? "true" : "false"}
+                  onChange={(e) => setLocalAutoSkip(e.target.value === "true")}
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                >
+                  <option value="false" className="bg-surface">Manual skip</option>
+                  <option value="true" className="bg-surface">Auto-skip OP/ED</option>
+                </select>
+              </div>
+
+              {/* Translation Selection */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Preferred Language</label>
+                <select
+                  value={translationType}
+                  onChange={(e) => setTranslationType(e.target.value)}
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                >
+                  <option value="sub" className="bg-surface">Subbed (Japanese)</option>
+                  <option value="dub" className="bg-surface">Dubbed (English)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {error && (
+            <p className="text-red-400 text-xs font-semibold animate-shake">{error}</p>
+          )}
+
+          <div className="flex flex-col space-y-3 pt-2">
+            <button 
+              onClick={handleSavePlaybackSettings}
+              disabled={saving}
+              className="w-full bg-accent hover:bg-accent-light text-white font-bold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-accent/20 active:scale-95 disabled:opacity-50"
+            >
+              {saving ? <Loader2 size={20} className="animate-spin" /> : (
+                <>
+                  <span>Save & Continue</span>
+                  <ArrowRight size={18} />
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 3,
       title: "Connect Your Account",
       subtitle: "Sync your library and track your progress",
       content: (

@@ -235,7 +235,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
 
               <SettingField
                 label="Media Tracker"
-                description="The source for your list and metadata."
+                description="The source for your list and metadata (AniList is currently the only supported tracking client)."
               >
                 <select
                   value={String(config.general?.media_api || "anilist")}
@@ -243,7 +243,6 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
                 >
                   <option value="anilist">AniList</option>
-                  <option value="jikan">Jikan / MyAnimeList</option>
                 </select>
               </SettingField>
 
