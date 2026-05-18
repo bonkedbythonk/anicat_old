@@ -42,9 +42,14 @@ mkdir -p "$CONFIG_DIR/scripts/anicat_ui"
 mkdir -p "$CONFIG_DIR/script-opts"
 mkdir -p "$CONFIG_DIR/shaders"
 
-echo "=== 4. Fetching Universal OSC (uosc) modern skin ==="
-curl -L -o /tmp/uosc.zip https://github.com/tomasklaen/uosc/releases/latest/download/uosc.zip
-unzip -q -o /tmp/uosc.zip -d "$CONFIG_DIR/"
+echo "=== 4. Fetching ModernZ On-Screen Controller ==="
+# Clone the repository locally to get modernz.lua and modernz-icons.ttf
+mkdir -p /tmp/modernz_repo
+git clone --depth 1 https://github.com/Samillion/ModernZ.git /tmp/modernz_repo
+cp /tmp/modernz_repo/modernz.lua "$CONFIG_DIR/scripts/modernz.lua"
+mkdir -p "$CONFIG_DIR/fonts"
+cp /tmp/modernz_repo/modernz-icons.ttf "$CONFIG_DIR/fonts/modernz-icons.ttf"
+rm -rf /tmp/modernz_repo
 
 echo "=== 5. Fetching Anime4K real-time upscaling shaders ==="
 curl -L -o /tmp/anime4k.zip https://github.com/bloc97/Anime4K/releases/download/v4.0.1/Anime4K_v4.0.zip
@@ -72,46 +77,11 @@ EOF
 [ -f "$CONFIG_DIR/scripts/anicat_ui/main.lua" ] || cp web/src-tauri/resources/mpv_config/scripts/anicat_ui/main.lua "$CONFIG_DIR/scripts/anicat_ui/main.lua" 2>/dev/null || true
 [ -f "$CONFIG_DIR/input.conf" ] || cp web/src-tauri/resources/mpv_config/input.conf "$CONFIG_DIR/input.conf" 2>/dev/null || true
 
-echo "=== 8. Generating customized uosc.conf styled with AniCat accents ==="
-cat << 'EOF' > "$CONFIG_DIR/script-opts/uosc.conf"
-# AniCat Vector-based Glassmorphism Theme for uosc
-# Matching web UI cyan accents and deep charcoal backgrounds
-foreground=00f2fe
-foreground_text=ffffff
-background=0d0e12
-background_text=e4e4e7
-active=00f2fe
-
-# Typography and Sleek Timeline
-font=Outfit
-timeline_style=bar
-timeline_size=32
-timeline_border=1
-timeline_cache=yes
-
-# Smooth animations & layouts
-volume_size=32
-EOF
-
-echo "=== 9. Generating AniCat Right-Click Context Menu ==="
-cat << 'EOF' > "$CONFIG_DIR/contextmenu.json"
-[
-  { "type": "menu", "title": "AniCat Actions", "items": [
-    { "command": "script-message anicat-next-episode", "title": "⏭️ Next Episode" },
-    { "command": "script-message anicat-previous-episode", "title": "⏮️ Previous Episode" },
-    { "command": "script-message anicat-toggle-auto-next", "title": "🔄 Toggle Auto-Play" },
-    { "command": "script-message anicat-toggle-translation", "title": "💬 Toggle Dub / Sub" },
-    { "command": "script-message anicat-reload-episode", "title": "🔄 Reload Episode" }
-  ]},
-  { "type": "divider" },
-  { "command": "cycle pause", "title": "Play / Pause" },
-  { "command": "cycle fullscreen", "title": "Toggle Fullscreen" }
-]
-EOF
+echo "=== 8. Deploying customized modernz.conf styled with AniCat accents ==="
+[ -f "$CONFIG_DIR/script-opts/modernz.conf" ] || cp web/src-tauri/resources/mpv_config/script-opts/modernz.conf "$CONFIG_DIR/script-opts/modernz.conf" 2>/dev/null || true
 
 echo "=== Cleaning up temporary files ==="
 rm -rf "$TMP_EXTRACT"
-rm -f /tmp/uosc.zip
 rm -f /tmp/anime4k.zip
 
 echo ""
