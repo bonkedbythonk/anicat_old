@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
 
 from ..base import BaseApiClient
 from ..params import (
@@ -7,6 +7,7 @@ from ..params import (
     MediaCharactersParams,
     MediaRecommendationParams,
     MediaRelationsParams,
+    MediaReviewsParams,
     MediaSearchParams,
     UpdateUserMediaListEntryParams,
     UserMediaListSearchParams,
@@ -16,6 +17,7 @@ from ..types import (
     CharacterSearchResult,
     MediaImage,
     MediaItem,
+    MediaReview,
     MediaSearchResult,
     MediaTitle,
     Notification,
@@ -203,3 +205,22 @@ class JikanApi(BaseApiClient):
             "Jikan API does not support fetching airing schedules for individual anime."
         )
         return None
+
+    def get_global_airing_schedule(
+        self, airingAt_greater: int, airingAt_lesser: int, page: int = 1, per_page: int = 50
+    ) -> Optional[Any]:
+        logger.warning("Jikan API does not support global airing schedules.")
+        return None
+
+    def get_reviews_for(
+        self, params: MediaReviewsParams
+    ) -> Optional[List[MediaReview]]:
+        logger.warning("Jikan API does not support reviews.")
+        return None
+
+    def mark_notifications_as_read(self) -> bool:
+        logger.warning("Jikan API does not support marking notifications.")
+        return False
+
+    def transform_raw_search_data(self, raw_data: dict) -> Optional[MediaSearchResult]:
+        return mapper.to_generic_search_result(raw_data) if raw_data else None
