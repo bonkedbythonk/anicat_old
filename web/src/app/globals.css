@@ -1,19 +1,65 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #050505;
-  --color-foreground: #ffffff;
-  --color-accent: #6366f1;
-  --color-accent-light: #818cf8;
-  --color-secondary: #a78bfa;
-  --color-card: #0c0c0f;
-  --color-surface: #111116;
-  --color-border: rgba(255, 255, 255, 0.06);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--accent-color);
+  --color-accent-light: var(--accent-light);
+  --color-secondary: var(--secondary-color);
+  --color-card: var(--card-color);
+  --color-surface: var(--surface-color);
+  --color-border: var(--border-color);
+  --color-white: var(--dynamic-white);
+  --color-black: var(--dynamic-black);
 }
 
 :root {
   --background: #050505;
   --foreground: #ffffff;
+  --accent-color: #6366f1;
+  --accent-light: #818cf8;
+  --secondary-color: #a78bfa;
+  --card-color: #0c0c0f;
+  --surface-color: #111116;
+  --border-color: rgba(255, 255, 255, 0.06);
+  --dynamic-white: #ffffff;
+  --dynamic-black: #000000;
+  --glass-bg: rgba(10, 10, 15, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.06);
+}
+
+/* Light mode overrides */
+html.light,
+html.system:not(.dark) {
+  @media (prefers-color-scheme: light) {
+    --background: #f8fafc;
+    --foreground: #0f172a;
+    --accent-color: #4f46e5;
+    --accent-light: #6366f1;
+    --secondary-color: #7c3aed;
+    --card-color: #ffffff;
+    --surface-color: #f1f5f9;
+    --border-color: rgba(15, 23, 42, 0.08);
+    --dynamic-white: #0f172a;
+    --dynamic-black: #ffffff;
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(15, 23, 42, 0.08);
+  }
+}
+
+html.light {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --accent-color: #4f46e5;
+  --accent-light: #6366f1;
+  --secondary-color: #7c3aed;
+  --card-color: #ffffff;
+  --surface-color: #f1f5f9;
+  --border-color: rgba(15, 23, 42, 0.08);
+  --dynamic-white: #0f172a;
+  --dynamic-black: #ffffff;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(15, 23, 42, 0.08);
 }
 
 @layer base {
@@ -23,14 +69,21 @@
     transform: translateZ(0);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  }
+  
+  /* Add smooth transition to all container backgrounds and text colors */
+  body, aside, nav, button, input, select, textarea, div {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease;
   }
 }
 
 /* Glassmorphism */
 .glass {
-  background: rgba(10, 10, 15, 0.85);
+  background: var(--glass-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  border-color: var(--glass-border);
   transform: translateZ(0);
   will-change: backdrop-filter, transform;
 }
@@ -111,8 +164,8 @@ select {
   background-position: right 16px center;
 }
 select option {
-  background: #111116;
-  color: #fff;
+  background: var(--surface-color);
+  color: var(--foreground);
 }
 
 /* Slide up animation (Now Playing bar) */

@@ -113,6 +113,50 @@ export default function App() {
     };
   }, []);
 
+  // Listen to system theme changes and manual settings overrides in real-time
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    
+    const applyTheme = () => {
+      const theme = localStorage.getItem("anicat_theme") || "system";
+      const isDarkSystem = mediaQuery.matches;
+      
+      document.documentElement.classList.remove("light", "dark", "system");
+      document.documentElement.classList.add(theme);
+      
+      if (theme === "light" || (theme === "system" && !isDarkSystem)) {
+        document.documentElement.classList.add("light");
+      } else {
+        document.documentElement.classList.add("dark");
+      }
+    };
+
+    applyTheme();
+
+    const listener = () => {
+      const theme = localStorage.getItem("anicat_theme") || "system";
+      if (theme === "system") {
+        applyTheme();
+      }
+    };
+
+    mediaQuery.addEventListener("change", listener);
+    
+    const storageListener = (e: StorageEvent) => {
+      if (e.key === "anicat_theme") {
+        applyTheme();
+      }
+    };
+    window.addEventListener("storage", storageListener);
+
+    return () => {
+      mediaQuery.removeEventListener("change", listener);
+      window.removeEventListener("storage", storageListener);
+    };
+  }, []);
+
   const [activeView, setActiveView] = useState<ViewName>("home");
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const [initialAction, setInitialAction] = useState<"play" | null>(null);

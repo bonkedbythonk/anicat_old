@@ -25,14 +25,35 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
   const [options, setOptions] = useState<Record<string, any> | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [autoSkip, setAutoSkip] = useState(false);
+  const [theme, setTheme] = useState<"system" | "dark" | "light">("system");
   const hasUpdate = Boolean(health?.update_available || stagedHasUpdate);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedAutoSkip = localStorage.getItem("anicat_auto_skip");
       setAutoSkip(savedAutoSkip === "true");
+      
+      const savedTheme = localStorage.getItem("anicat_theme") as "system" | "dark" | "light" | null;
+      if (savedTheme) {
+        setTheme(savedTheme);
+      }
     }
   }, []);
+
+  const handleThemeChange = (newTheme: "system" | "dark" | "light") => {
+    setTheme(newTheme);
+    localStorage.setItem("anicat_theme", newTheme);
+    
+    const isDarkSystem = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.classList.remove('light', 'dark', 'system');
+    document.documentElement.classList.add(newTheme);
+    if (newTheme === 'light' || (newTheme === 'system' && !isDarkSystem)) {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.add('dark');
+    }
+    window.dispatchEvent(new StorageEvent('storage', { key: 'anicat_theme', newValue: newTheme }));
+  };
 
   useEffect(() => {
     mediaApi.getConfig()
@@ -257,6 +278,21 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                 >
                   <option value="12h">12-hour (AM/PM)</option>
                   <option value="24h">24-hour</option>
+                </select>
+              </SettingField>
+
+              <SettingField
+                label="App Appearance"
+                description="Choose your preferred visual theme for the application."
+              >
+                <select
+                  value={theme}
+                  onChange={(e) => handleThemeChange(e.target.value as "system" | "dark" | "light")}
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                >
+                  <option value="system">System Default (Sync macOS settings)</option>
+                  <option value="dark">Dark Theme (Deep Slate)</option>
+                  <option value="light">Light Theme (Warm Indigo)</option>
                 </select>
               </SettingField>
 

@@ -20,6 +20,16 @@ export default function RootLayout({
           (function() {
             const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             document.write('<link rel="manifest" href="/manifest.json?v=4">');
+            
+            // Fast theme injection to prevent light/dark flash on load
+            const theme = localStorage.getItem('anicat_theme') || 'system';
+            document.documentElement.classList.remove('light', 'dark', 'system');
+            document.documentElement.classList.add(theme);
+            if (theme === 'light' || (theme === 'system' && !isDark)) {
+              document.documentElement.classList.add('light');
+            } else {
+              document.documentElement.classList.add('dark');
+            }
           })();
         ` }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
