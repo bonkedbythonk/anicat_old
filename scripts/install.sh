@@ -148,7 +148,7 @@ cd "$PROJECT_DIR/web"
 echo "   - Installing frontend dependencies..."
 npm install --quiet
 echo "   - Building static export..."
-if npm run build && npm run export; then
+if npm run build; then
     echo "   - Syncing static files to backend..."
     STATIC_DIR="$PROJECT_DIR/anicat_media/api/static"
     rm -rf "$STATIC_DIR"/*

@@ -62,12 +62,54 @@ def _to_generic_image(jikan_images: dict) -> MediaImage:
     )
 
 
+import re
+from ..types import MediaGenre
+
+def _parse_duration(duration_str: Optional[str]) -> Optional[int]:
+    """Parses a Jikan duration string (e.g. '24 min per ep' or '1 hr 45 min') into minutes (int)."""
+    if not duration_str:
+        return None
+    try:
+        s = duration_str.lower().strip()
+        total_minutes = 0
+        hr_match = re.search(r'(\d+)\s*(?:hr|hour|h)', s)
+        min_match = re.search(r'(\d+)\s*(?:min|minute|m)', s)
+        
+        if hr_match:
+            total_minutes += int(hr_match.group(1)) * 60
+        if min_match:
+            total_minutes += int(min_match.group(1))
+            
+        if not hr_match and not min_match:
+            # Fallback to extracting the first integer sequence if no units match
+            num_match = re.search(r'\d+', s)
+            if num_match:
+                return int(num_match.group(0))
+            return None
+            
+        return total_minutes
+    except Exception:
+        return None
+
+
 def _to_generic_media_item(data: dict) -> MediaItem:
     """Maps a single Jikan anime entry to our generic MediaItem."""
 
     # Jikan score is 0-10, our generic model is 0-10, so we can use it directly.
     # AniList was 0-100, so its mapper had to divide by 10.
     score = data.get("score")
+
+    # Clean and filter genres to match the exact MediaGenre Enum values
+    genres = []
+    for g in data.get("genres", []):
+        name = g.get("name")
+        if not name:
+            continue
+        # Check against available MediaGenre enums (case-insensitive)
+        for genre_enum in MediaGenre:
+            if genre_enum.value.lower() == name.lower():
+                genres.append(genre_enum)
+                break
 
     return MediaItem(
         id=data["mal_id"],
@@ -76,12 +118,12 @@ def _to_generic_media_item(data: dict) -> MediaItem:
         cover_image=_to_generic_image(data.get("images", {})),
         status=JIKAN_STATUS_MAP.get(data.get("status", ""), MediaStatus.UNKNOWN),
         episodes=data.get("episodes"),
-        duration=data.get("duration"),
+        duration=_parse_duration(data.get("duration")),
         average_score=score,
         popularity=data.get("popularity"),
         favourites=data.get("favorites"),
         description=data.get("synopsis"),
-        genres=[g["name"] for g in data.get("genres", [])],
+        genres=genres,
         studios=[
             Studio(id=s["mal_id"], name=s["name"]) for s in data.get("studios", [])
         ],
