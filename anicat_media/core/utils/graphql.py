@@ -149,10 +149,10 @@ def execute_graphql(
         response.raise_for_status()
         return response
         
-    except (httpx.RequestError, httpx.HTTPStatusError) as e:
+    except httpx.RequestError as e:
         logger.warning(f"GraphQL request failed for {graphql_file.name}: {e}")
-        
-        # Offline Fallback: try to fetch from cache ignoring TTL (ttl = float('inf'))
+
+        # Offline fallback is only for network-level failures.
         cached_data = _cache.get(url, query, variables, ttl=float("inf"))
         if cached_data:
             logger.info(f"Returning expired cached response for {graphql_file.name} as offline fallback.")
@@ -161,8 +161,24 @@ def execute_graphql(
                 content=json.dumps(cached_data).encode("utf-8"),
                 headers={"Content-Type": "application/json", "X-Offline-Fallback": "true"},
             )
-            
-        # If no cache is available, re-raise the exception so callers can handle the offline state
+
+        raise
+    except httpx.HTTPStatusError as e:
+        logger.warning(f"GraphQL request failed for {graphql_file.name}: {e}")
+
+        # Treat only server-side errors as potentially offline/transient.
+        status_code = e.response.status_code if e.response is not None else 0
+        if status_code >= 500:
+            cached_data = _cache.get(url, query, variables, ttl=float("inf"))
+            if cached_data:
+                logger.info(f"Returning expired cached response for {graphql_file.name} as offline fallback.")
+                return Response(
+                    status_code=200,
+                    content=json.dumps(cached_data).encode("utf-8"),
+                    headers={"Content-Type": "application/json", "X-Offline-Fallback": "true"},
+                )
+
+        # 4xx (e.g. invalid token) should not be treated as offline fallback.
         raise
 
 

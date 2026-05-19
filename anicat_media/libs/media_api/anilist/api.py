@@ -107,9 +107,26 @@ class AniListApi(BaseApiClient):
                     if "Authorization" in self.http_client.headers:
                         del self.http_client.headers["Authorization"]
                 return None
-        except (httpx.RequestError, httpx.HTTPStatusError) as e:
+        except httpx.RequestError as e:
             logger.warning(f"Failed to fetch viewer profile during auth due to network error: {e}")
-            # Keep the token on connection errors!
+            # Keep the token on connection errors.
+            raise
+        except httpx.HTTPStatusError as e:
+            status_code = e.response.status_code if e.response is not None else 0
+            # Invalid/expired token should be handled as auth failure, not offline.
+            if status_code in (400, 401, 403):
+                logger.warning(
+                    f"Failed to fetch viewer profile during auth due to invalid token response ({status_code})."
+                )
+                self.token = original_token
+                if original_token:
+                    self.http_client.headers["Authorization"] = f"Bearer {original_token}"
+                else:
+                    if "Authorization" in self.http_client.headers:
+                        del self.http_client.headers["Authorization"]
+                return None
+
+            logger.warning(f"Failed to fetch viewer profile during auth due to HTTP error: {e}")
             raise
         except Exception as e:
             logger.warning(f"Failed to fetch viewer profile during auth: {e}")
