@@ -14,6 +14,11 @@ export default function ScheduleView({ onSelect }: ScheduleViewProps) {
   const [loading, setLoading] = useState(true);
   const [watchingOnly, setWatchingOnly] = useState(false);
 
+  const parseAiringAt = (airingAt?: string) => {
+    if (!airingAt) return 0;
+    return new Date(airingAt.endsWith("Z") ? airingAt : `${airingAt}Z`).getTime();
+  };
+
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -48,14 +53,29 @@ export default function ScheduleView({ onSelect }: ScheduleViewProps) {
     );
   }
 
-  // Group by day
-  const groups: { [key: string]: MediaItem[] } = {};
-  items.forEach(item => {
-    if (!item.next_airing?.airing_at) return;
-    const date = new Date(item.next_airing.airing_at);
-    const dateStr = date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-    if (!groups[dateStr]) groups[dateStr] = [];
-    groups[dateStr].push(item);
+  // Sort globally by nearest airing first, then group by day in that order.
+  const sortedItems = items
+    .filter((item) => item.next_airing?.airing_at)
+    .sort(
+      (a, b) =>
+        parseAiringAt(a.next_airing?.airing_at) -
+        parseAiringAt(b.next_airing?.airing_at)
+    );
+
+  const groups = new Map<string, MediaItem[]>();
+  sortedItems.forEach((item) => {
+    const date = new Date(
+      item.next_airing?.airing_at?.endsWith("Z")
+        ? item.next_airing.airing_at
+        : `${item.next_airing?.airing_at}Z`
+    );
+    const dateStr = date.toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
+    if (!groups.has(dateStr)) groups.set(dateStr, []);
+    groups.get(dateStr)!.push(item);
   });
 
   return (
@@ -88,14 +108,14 @@ export default function ScheduleView({ onSelect }: ScheduleViewProps) {
         </div>
       </div>
 
-      {Object.entries(groups).map(([date, dayItems]) => (
+      {Array.from(groups.entries()).map(([date, dayItems]) => (
         <div key={date} className="space-y-6">
           <div className="flex items-center space-x-4">
             <h2 className="text-xl font-bold text-white px-4 py-2 bg-white/[0.03] border border-white/[0.06] rounded-xl inline-block">{date}</h2>
             <div className="h-px flex-1 bg-gradient-to-r from-white/[0.06] to-transparent" />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-            {dayItems.sort((a, b) => new Date(a.next_airing!.airing_at!).getTime() - new Date(b.next_airing!.airing_at!).getTime()).map(item => (
+            {dayItems.map(item => (
               <div key={item.id} className="space-y-2">
                 <MediaCard item={item} onSelect={onSelect} />
                 <div className="flex items-center justify-between px-1">
@@ -106,7 +126,11 @@ export default function ScheduleView({ onSelect }: ScheduleViewProps) {
                   <div className="flex items-center space-x-1.5 text-gray-500">
                     <Clock size={12} />
                     <span className="text-[11px] font-bold">
-                      {new Date(item.next_airing!.airing_at!).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
+                      {new Date(
+                        item.next_airing!.airing_at!.endsWith("Z")
+                          ? item.next_airing!.airing_at!
+                          : `${item.next_airing!.airing_at!}Z`
+                      ).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}
                     </span>
                   </div>
                 </div>

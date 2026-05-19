@@ -174,10 +174,8 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                 onChange={(e) => setShaderProfile(e.target.value)}
                 className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
               >
-                <option value="off" className="bg-surface">🔋 Battery Saver (Upscaling Off)</option>
-                <option value="balanced" className="bg-surface">💻 Balanced (MacBook Air / Efficient)</option>
-                <option value="high" className="bg-surface">✨ High Quality (MacBook Pro)</option>
-                <option value="ultra" className="bg-surface">🌌 Ultra Fidelity (Maximum GPU / Desktop)</option>
+                <option value="off" className="bg-surface">Off (Battery saver)</option>
+                <option value="balanced" className="bg-surface">On (Anime4K enabled)</option>
               </select>
             </div>
 
@@ -294,7 +292,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                      if (health.api_authenticated) {
                        onComplete();
                      } else {
-                       setError("Still no token detected. Did you log in via CLI?");
+                       setError("Still no token detected. Open AniList authorization and paste the token above.");
                      }
                    } finally {
                      setSaving(false);

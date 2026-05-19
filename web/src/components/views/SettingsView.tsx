@@ -359,14 +359,14 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                 </select>
               </SettingField>
 
-              <SettingField label="GPU Upscaling Quality (MPV)" description="Toggle real-time upscaling for your companion video player.">
+              <SettingField label="GPU Upscaling (MPV)" description="Enable or disable Anime4K upscaling for your companion video player.">
                 <select
                   value={String(config.stream?.shader_profile || "balanced")}
                   onChange={(e) => updateField("stream", "shader_profile", e.target.value)}
                   className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
                 >
-                  <option value="balanced">Standard Quality (Upscaling Enabled)</option>
-                  <option value="off">Battery Saver (Upscaling Off)</option>
+                  <option value="balanced">On (Anime4K enabled)</option>
+                  <option value="off">Off (Battery saver)</option>
                 </select>
               </SettingField>
             </div>
@@ -390,6 +390,16 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
 
           {activeTab === "anilist" && (
             <div className="space-y-6 animate-fade-in">
+              <SettingField label="Login with AniList" description="Open AniList authorization in your browser, then paste the token below.">
+                <button
+                  onClick={() => mediaApi.openUrl("https://anilist.co/api/v2/oauth/authorize?client_id=20148&response_type=token")}
+                  className="w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-xl bg-accent/10 border border-accent/20 hover:bg-accent/20 text-accent font-semibold text-sm transition-all"
+                >
+                  <Globe size={16} />
+                  <span>Open Authorization</span>
+                </button>
+              </SettingField>
+
               <SettingField label="AniList Token" description="Your AniList API token for authentication.">
                 <input
                   type="password"

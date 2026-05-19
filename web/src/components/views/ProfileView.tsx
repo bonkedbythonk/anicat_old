@@ -43,7 +43,7 @@ export default function ProfileView({ onSelect }: ProfileViewProps) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
         <User size={48} className="text-gray-600" />
-        <p className="text-gray-400 font-medium">Please login via the CLI to view your profile.</p>
+        <p className="text-gray-400 font-medium">Please connect AniList in {"Settings > AniList"} to view your profile.</p>
       </div>
     );
   }
