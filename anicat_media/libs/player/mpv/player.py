@@ -33,7 +33,7 @@ class MpvPlayer(BasePlayer):
     Provides playback functionality using the MPV media player, supporting desktop, mobile, torrents, and syncplay.
     """
 
-    def __init__(self, config: MpvConfig):
+    def __init__(self, config: MpvConfig, player_type: str = "external"):
         """
         Initialize the MpvPlayer with the given MPV configuration.
 
@@ -43,51 +43,63 @@ class MpvPlayer(BasePlayer):
         self.config = config
         self.executable = None
 
-        # macOS: 1. Prioritize system-installed MPV for native graphics API / OS compatibility
-        if sys.platform == "darwin":
-            self.executable = shutil.which("mpv")
-            if not self.executable:
-                common_paths = [
-                    "/opt/homebrew/bin/mpv",
-                    "/usr/local/bin/mpv",
-                    "/Applications/mpv.app/Contents/MacOS/mpv",
-                    os.path.expanduser("~/Applications/mpv.app/Contents/MacOS/mpv")
-                ]
-                for path in common_paths:
-                    if os.path.exists(path):
-                        self.executable = path
-                        break
-            if self.executable:
-                logger.info(f"System-installed MPV discovered at: {self.executable}")
+        # Decide preference based on requested player_type:
+        # - "embedded": prefer bundled MPV to ensure AniCat UI/shaders are used
+        # - "external": prefer system-installed MPV so user's mpv config is respected
+        prefer_bundled = player_type == "embedded"
 
-        # macOS: 2. Fall back to bundled MPV inside app resources only if no system MPV is installed
-        if not self.executable and sys.platform == "darwin":
-            app_dir = os.path.dirname(sys.executable)
-            bundled_paths = [
-                os.path.abspath(os.path.join(app_dir, "..", "Resources", "resources", "mpv")),
-                os.path.abspath(os.path.join(app_dir, "..", "Resources", "mpv")),
-                os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "web", "src-tauri", "resources", "mpv")),
-            ]
-            for path in bundled_paths:
-                if os.path.exists(path):
+        # Prefer bundled MPV shipped with AniCat when requested to ensure consistent UX (ModernZ UI, shaders, args)
+        app_dir = os.path.dirname(sys.executable)
+        bundled_paths = [
+            os.path.abspath(os.path.join(app_dir, "..", "Resources", "resources", "mpv")),
+            os.path.abspath(os.path.join(app_dir, "..", "Resources", "mpv")),
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "web", "src-tauri", "resources", "mpv")),
+        ]
+        for path in bundled_paths:
+            if os.path.exists(path):
+                if prefer_bundled:
                     self.executable = path
-                    logger.info(f"Bundled MPV fallback discovered inside app resources at: {self.executable}")
-                    # Dynamically de-quarantine the bundled resources folder to avoid macOS untrusted executable blocker
+                    logger.info(f"Bundled MPV selected at: {self.executable}")
+                    # Try to remove macOS quarantine flag on the bundled resources if present
                     try:
                         resources_dir = os.path.dirname(self.executable)
-                        subprocess.run(
-                            ["xattr", "-r", "-d", "com.apple.quarantine", resources_dir],
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL
-                        )
-                        logger.info("Successfully cleared macOS quarantine on bundled resources.")
+                        if sys.platform == "darwin":
+                            subprocess.run(
+                                ["xattr", "-r", "-d", "com.apple.quarantine", resources_dir],
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL,
+                            )
+                            logger.info("Cleared macOS quarantine on bundled resources.")
                     except Exception as e:
                         logger.warning(f"Could not clear macOS quarantine dynamically: {e}")
                     break
+                else:
+                    # If user prefers external/system MPV, skip bundled paths here
+                    logger.debug(f"Bundled MPV found at {path} but user prefers external MPV; skipping.")
+                    continue
+                
 
-        # Non-macOS standard PATH lookup
+        # If no bundled MPV found, fall back to system-installed MPV for compatibility
         if not self.executable:
-            self.executable = shutil.which("mpv")
+            # macOS: allow common Homebrew/App bundle locations to be found if present
+            if sys.platform == "darwin":
+                self.executable = shutil.which("mpv")
+                if not self.executable:
+                    common_paths = [
+                        "/opt/homebrew/bin/mpv",
+                        "/usr/local/bin/mpv",
+                        "/Applications/mpv.app/Contents/MacOS/mpv",
+                        os.path.expanduser("~/Applications/mpv.app/Contents/MacOS/mpv"),
+                    ]
+                    for path in common_paths:
+                        if os.path.exists(path):
+                            self.executable = path
+                            break
+                if self.executable:
+                    logger.info(f"System-installed MPV discovered at: {self.executable}")
+            else:
+                # Non-macOS standard PATH lookup
+                self.executable = shutil.which("mpv")
         
         if self.executable:
             logger.info(f"MPV executable resolved to: {self.executable}")

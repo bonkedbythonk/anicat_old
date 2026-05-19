@@ -18,7 +18,12 @@ export async function fetchFromApi(endpoint: string, options: RequestInit = {}) 
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    let errorData: any = {};
+    try {
+      errorData = await response.json();
+    } catch (e) {
+      // Ignored
+    }
     // Prefer structured detail (FastAPI uses `detail`) then `message`, else fallback
     const detail = errorData.detail ?? errorData.message ?? errorData ?? null;
     const message = detail ? (typeof detail === 'string' ? detail : JSON.stringify(detail)) : `API error: ${response.status} ${response.statusText}`;
@@ -28,7 +33,11 @@ export async function fetchFromApi(endpoint: string, options: RequestInit = {}) 
     throw new Error(`${endpoint} - ${message}`);
   }
 
-  return response.json();
+  try {
+    return await response.json();
+  } catch (e) {
+    return {};
+  }
 }
 
 // ─── Types ────────────────────────────────────────────

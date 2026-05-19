@@ -39,7 +39,9 @@ class PlayerFactory:
         if player_name == "mpv":
             from .mpv.player import MpvPlayer
 
-            return MpvPlayer(config.mpv)
+            # Pass through the configured player_type so MpvPlayer can decide
+            # whether to prefer the bundled MPV (embedded) or respect system MPV (external).
+            return MpvPlayer(config.mpv, player_type=config.stream.player_type)
         raise NotImplementedError(
             f"Configuration logic for player '{player_name}' not implemented in factory."
         )

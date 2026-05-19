@@ -106,8 +106,20 @@ class AnimePahe(BaseAnimeProvider):
 
         search_result = self._get_search_result(params)
         if not search_result:
-            logger.error(f"No search result found for ID {params.id}")
-            return None
+            logger.warning(f"No search result found for ID {params.id} using query '{params.query}'. Creating fallback SearchResult.")
+            from ..types import AnimeEpisodes
+            search_result = SearchResult(
+                id=params.id,
+                title=params.query,
+                episodes=AnimeEpisodes(sub=[], dub=[]),
+                other_titles=[],
+                media_type="Anime",
+                score=0.0,
+                status="Releasing",
+                season="Unknown",
+                poster="",
+                year="Unknown"
+            )
 
         anime: Optional[AnimePaheAnimePage] = None
 
@@ -142,13 +154,35 @@ class AnimePahe(BaseAnimeProvider):
 
     @lru_cache()
     def _get_search_result(self, params: AnimeParams) -> Optional[SearchResult]:
+        from ....core.utils.normalizer import normalize_title
+        
+        # Try 1: Normalized query
+        normalized_query = normalize_title(params.query, "animepahe", True)
+        search_results = self._search(SearchParams(query=normalized_query))
+        if search_results and search_results.results:
+            for search_result in search_results.results:
+                if search_result.id == params.id:
+                    return search_result
+
+        # Try 2: Simplified query (first 4 words)
+        words = params.query.split()
+        if len(words) > 4:
+            simplified_query = " ".join(words[:4])
+            search_results = self._search(SearchParams(query=simplified_query))
+            if search_results and search_results.results:
+                for search_result in search_results.results:
+                    if search_result.id == params.id:
+                        return search_result
+
+        # Try 3: Original raw query
         search_results = self._search(SearchParams(query=params.query))
-        if not search_results or not search_results.results:
-            logger.error(f"No search results found for ID {params.id}")
-            return None
-        for search_result in search_results.results:
-            if search_result.id == params.id:
-                return search_result
+        if search_results and search_results.results:
+            for search_result in search_results.results:
+                if search_result.id == params.id:
+                    return search_result
+
+        logger.error(f"No search results matched ID {params.id} for query '{params.query}'")
+        return None
 
     @lru_cache()
     def _anime_page_loader(self, m, id, sort, page) -> AnimePaheAnimePage:
