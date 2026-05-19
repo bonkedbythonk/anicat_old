@@ -79,7 +79,7 @@ class MpvPlayer(BasePlayer):
                     continue
                 
 
-        # If no bundled MPV found, fall back to system-installed MPV for compatibility
+        # If no bundled MPV selected, fall back to system-installed MPV for compatibility
         if not self.executable:
             # macOS: allow common Homebrew/App bundle locations to be found if present
             if sys.platform == "darwin":
@@ -100,6 +100,26 @@ class MpvPlayer(BasePlayer):
             else:
                 # Non-macOS standard PATH lookup
                 self.executable = shutil.which("mpv")
+
+        # Final fallback to bundled MPV if still not found (e.g. user chose external but has no system MPV installed)
+        if not self.executable:
+            for path in bundled_paths:
+                if os.path.exists(path):
+                    self.executable = path
+                    logger.info(f"System MPV not found. Falling back to bundled MPV at: {self.executable}")
+                    # Try to remove macOS quarantine flag
+                    try:
+                        resources_dir = os.path.dirname(self.executable)
+                        if sys.platform == "darwin":
+                            subprocess.run(
+                                ["xattr", "-r", "-d", "com.apple.quarantine", resources_dir],
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL,
+                            )
+                            logger.info("Cleared macOS quarantine on fallback bundled resources.")
+                    except Exception as e:
+                        logger.warning(f"Could not clear macOS quarantine dynamically: {e}")
+                    break
         
         if self.executable:
             logger.info(f"MPV executable resolved to: {self.executable}")
