@@ -120,4 +120,31 @@ def get_clean_env() -> dict[str, str]:
                 current_paths.append(p)
         env["PATH"] = os.pathsep.join(current_paths)
         
+        # 3. Handle macOS Vulkan ICD resolution for MoltenVK out-of-the-box compatibility
+        if not env.get("VK_ICD_FILENAMES") and not env.get("VK_DRIVER_FILES"):
+            candidate_icds = [
+                "/opt/homebrew/share/vulkan/icd.d/MoltenVK_icd.json",
+                "/opt/homebrew/etc/vulkan/icd.d/MoltenVK_icd.json",
+                "/usr/local/share/vulkan/icd.d/MoltenVK_icd.json",
+                "/usr/local/etc/vulkan/icd.d/MoltenVK_icd.json",
+                os.path.expanduser("~/.homebrew/share/vulkan/icd.d/MoltenVK_icd.json"),
+                os.path.expanduser("~/.homebrew/etc/vulkan/icd.d/MoltenVK_icd.json"),
+            ]
+            
+            # Check bundled locations as fallback/priority if they exist
+            app_dir = os.path.dirname(sys.executable)
+            bundled_icd = os.path.abspath(os.path.join(app_dir, "..", "Resources", "resources", "lib", "vk_icd.json"))
+            if os.path.exists(bundled_icd):
+                candidate_icds.insert(0, bundled_icd)
+            else:
+                bundled_icd_alt = os.path.abspath(os.path.join(app_dir, "..", "Resources", "lib", "vk_icd.json"))
+                if os.path.exists(bundled_icd_alt):
+                    candidate_icds.insert(0, bundled_icd_alt)
+
+            for icd_path in candidate_icds:
+                if os.path.exists(icd_path):
+                    env["VK_ICD_FILENAMES"] = icd_path
+                    env["VK_DRIVER_FILES"] = icd_path
+                    break
+        
     return env

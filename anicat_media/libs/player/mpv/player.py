@@ -262,13 +262,19 @@ class MpvPlayer(BasePlayer):
         
         # Isolated standalone Vulkan ICD resolution for Mac out-of-the-box compatibility
         process_env = detect.get_clean_env().copy()
-        resources_dir = self._find_resources_dir()
-        if resources_dir:
-            icd_path = os.path.abspath(os.path.join(resources_dir, "lib", "vk_icd.json"))
-            if os.path.exists(icd_path):
-                process_env["VK_ICD_FILENAMES"] = icd_path
-                process_env["VK_DRIVER_FILES"] = icd_path
-                logger.info(f"Vulkan ICD dynamic loader isolation active: {icd_path}")
+        
+        # In development mode, prioritize the dynamically located resources_dir over sys.executable paths if vk_icd.json exists there
+        if sys.platform == "darwin":
+            resources_dir = self._find_resources_dir()
+            if resources_dir:
+                dev_icd = os.path.abspath(os.path.join(resources_dir, "lib", "vk_icd.json"))
+                if os.path.exists(dev_icd):
+                    process_env["VK_ICD_FILENAMES"] = dev_icd
+                    process_env["VK_DRIVER_FILES"] = dev_icd
+
+            if process_env.get("VK_ICD_FILENAMES"):
+                logger.info(f"Vulkan ICD dynamic loader isolation active: {process_env.get('VK_ICD_FILENAMES')}")
+
 
         logger.info(f"Starting MPV with IPC socket: {socket_path}")
         logger.info(f"MPV Command: {' '.join(full_cmd)}")
