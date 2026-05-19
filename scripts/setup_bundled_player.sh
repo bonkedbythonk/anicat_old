@@ -36,6 +36,28 @@ echo "Copying MPV standalone binary and dynamic libraries..."
 cp -R "$APP_DIR/Contents/MacOS/mpv" "$RESOURCES_DIR/"
 cp -R "$APP_DIR/Contents/MacOS/lib" "$RESOURCES_DIR/"
 
+echo "=== 2b. Bundling MoltenVK Vulkan driver for macOS GPU acceleration ==="
+MOLTEN_VK_PREFIX=$(brew --prefix molten-vk 2>/dev/null || true)
+if [ -n "$MOLTEN_VK_PREFIX" ] && [ -f "$MOLTEN_VK_PREFIX/lib/libMoltenVK.dylib" ]; then
+    echo "Found MoltenVK in Homebrew. Copying Vulkan driver..."
+    cp "$MOLTEN_VK_PREFIX/lib/libMoltenVK.dylib" "$RESOURCES_DIR/lib/"
+    
+    # Generate isolated vk_icd.json pointing to the bundled dylib
+    cat << 'EOF' > "$RESOURCES_DIR/lib/vk_icd.json"
+{
+    "file_format_version": "1.0.0",
+    "ICD": {
+        "library_path": "./libMoltenVK.dylib",
+        "api_version": "1.4.0",
+        "is_portability_driver": true
+    }
+}
+EOF
+    echo "Created vk_icd.json inside $RESOURCES_DIR/lib/"
+else
+    echo "Warning: molten-vk not found in Homebrew. GPU window initialization may fail."
+fi
+
 echo "=== 3. Setting up isolated themed configuration directories ==="
 mkdir -p "$CONFIG_DIR/scripts"
 mkdir -p "$CONFIG_DIR/scripts/anicat_ui"
