@@ -154,7 +154,7 @@ class AnimePahe(BaseAnimeProvider):
 
     @lru_cache()
     def _get_search_result(self, params: AnimeParams) -> Optional[SearchResult]:
-        from ....core.utils.normalizer import normalize_title
+        from anicat_media.core.utils.normalizer import normalize_title
         
         # Try 1: Normalized query
         normalized_query = normalize_title(params.query, "animepahe", True)
