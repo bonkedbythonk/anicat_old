@@ -94,7 +94,7 @@ This script automatically:
 ---
 
 ## Power User Guide
-Anicat uses **mpv** for high-quality playback. To unlock features like Anime4K upscaling, custom skins (ModernX), and advanced keyboard shortcuts, see our:
+Anicat uses **mpv** for high-quality playback. To unlock features like Anime4K upscaling, custom skins (ModernZ), and advanced keyboard shortcuts, see our:
 - [MPV Customization Guide](MPV_GUIDE.md)
 
 ---
