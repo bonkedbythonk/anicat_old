@@ -20,7 +20,12 @@ if getattr(sys, 'frozen', False):
 else:
     _version_file = Path(__file__).resolve().parent.parent.parent / "version.txt"
 try:
-    __version__ = _version_file.read_text().strip()
+    if _version_file.is_file():
+        __version__ = _version_file.read_text().strip()
+    else:
+        # PyInstaller sometimes bundles version.txt as version.txt/version.txt
+        _nested = _version_file / "version.txt"
+        __version__ = _nested.read_text().strip()
 except Exception:
     __version__ = "0.0.0"
 VERSION = __version__
