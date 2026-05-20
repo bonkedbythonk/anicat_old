@@ -284,7 +284,7 @@ register_script_messages()
 local ok, err = pcall(function()
   mp.add_forced_key_binding('MBTN_LEFT', 'anicat-left-click', on_left_click)
   mp.add_forced_key_binding('ctrl+g', 'anicat-toggle-shaders-ctrl', toggle_shaders)
-  mp.add_forced_key_binding('g', 'anicat-toggle-shaders-g', toggle_shaders)
+  mp.add_forced_key_binding('ctrl+u', 'anicat-toggle-shaders-alt', toggle_shaders)
 end)
 if not ok then
   msg.warn('Could not register forced keybindings: ' .. tostring(err))
