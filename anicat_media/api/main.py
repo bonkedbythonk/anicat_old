@@ -103,6 +103,31 @@ def setup_logging():
     
     logger.info(f"Logging initialized at {LOG_FILE}")
 
+def _cleanup_stale_resources():
+    """Remove stale resources left by force-closed previous runs.
+
+    - Orphaned MPV IPC sockets in /tmp
+    - Stale playback status from the status router module
+    """
+    import glob
+
+    # Clean up stale MPV IPC sockets
+    for sock in glob.glob("/tmp/anicat-mpv-*.sock"):
+        try:
+            os.unlink(sock)
+            logger.info(f"Cleaned up stale MPV socket: {sock}")
+        except OSError:
+            pass
+
+    # Reset stale playback status so the NowPlaying bar doesn't show
+    # a phantom episode from a previous session.
+    try:
+        from .routers.status import _clear_playback
+        _clear_playback()
+    except Exception:
+        pass
+
+
 def create_app(config: AppConfig | None = None) -> FastAPI:
     setup_logging()
     if config is None:
@@ -110,6 +135,9 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
         config = loader.load()
 
     ctx.set(Context(config))
+
+    # --- Startup cleanup: remove stale resources from previous runs ---
+    _cleanup_stale_resources()
 
     app = FastAPI(title="Anicat API", version=VERSION)
 

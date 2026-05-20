@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { X, Play, Pause, RotateCcw, Volume2, VolumeX, Maximize, Minimize, Loader2, ArrowRight, Video } from "lucide-react";
+import { X, Play, Pause, RotateCcw, Volume2, VolumeX, Maximize, Minimize, Loader2, ArrowRight, Video, PictureInPicture2 } from "lucide-react";
 import { API_BASE_ORIGIN, mediaApi } from "@/lib/api";
 
 interface AnimePlayerProps {
@@ -39,29 +39,35 @@ export default function AnimePlayer({
   const [ratingSuccess, setRatingSuccess] = useState(false);
   const [autoplayCountdown, setAutoplayCountdown] = useState<number | null>(null);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("anicat_player_volume");
+      return saved !== null ? parseFloat(saved) : 1;
+    }
+    return 1;
+  });
+  const [isMuted, setIsMuted] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("anicat_player_muted") === "true";
+    }
+    return false;
+  });
   const [showControls, setShowControls] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [isHoveredControls, setIsHoveredControls] = useState(false);
   const [autoSkipEnabled, setAutoSkipEnabled] = useState(false);
   
+  // Resume position persistence — save/restore playback position per episode
+  const resumeKey = `anicat_resume_${mediaId}_${episodeNumber}`;
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load volume and auto-skip preference
+  // Load volume, auto-skip, mute from localStorage on mount
   useEffect(() => {
-    const savedVol = localStorage.getItem("anicat_player_volume");
-    if (savedVol !== null) {
-      setVolume(parseFloat(savedVol));
-    }
-    const savedMuted = localStorage.getItem("anicat_player_muted");
-    if (savedMuted !== null) {
-      setIsMuted(savedMuted === "true");
-    }
     const savedAutoSkip = localStorage.getItem("anicat_auto_skip");
     if (savedAutoSkip !== null) {
       setAutoSkipEnabled(savedAutoSkip === "true");
@@ -166,8 +172,14 @@ export default function AnimePlayer({
         
         const handleLoadedMetadata = () => {
           console.log("[Player] Native WebKit metadata loaded. Starting playback...");
+          // Apply saved volume immediately
+          video.volume = isMuted ? 0 : volume;
+          // Restore resume position, preferring server-provided start_time over local
+          const savedPos = sessionStorage.getItem(resumeKey);
           if (resolved.start_time) {
             video.currentTime = resolved.start_time;
+          } else if (savedPos) {
+            video.currentTime = parseFloat(savedPos);
           }
           video.play()
             .then(() => setIsPlaying(true))
@@ -270,8 +282,12 @@ export default function AnimePlayer({
         console.log("[Player] Loading native fallback HLS stream:", streamUrl);
         video.src = streamUrl;
         const handleGenericLoadedMetadata = () => {
+          video.volume = isMuted ? 0 : volume;
+          const savedPos = sessionStorage.getItem(resumeKey);
           if (resolved.start_time) {
             video.currentTime = resolved.start_time;
+          } else if (savedPos) {
+            video.currentTime = parseFloat(savedPos);
           }
           video.play()
             .then(() => setIsPlaying(true))
@@ -386,6 +402,13 @@ export default function AnimePlayer({
         setDuration(video.duration);
       }
 
+      // Save resume position every 5 seconds
+      if (Math.floor(time) % 5 === 0 && time > 1) {
+        try {
+          localStorage.setItem(resumeKey, String(time));
+        } catch {}
+      }
+
       // Check active skip times
       if (skipTimes.length > 0) {
         const matchingSkip = skipTimes.find(s => time >= s.start && time < s.end);
@@ -471,6 +494,21 @@ export default function AnimePlayer({
     }
     resetControlsTimeout();
   }, [resetControlsTimeout]);
+
+  const handleTogglePip = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    try {
+      if (document.pictureInPictureElement) {
+        document.exitPictureInPicture();
+      } else if (document.pictureInPictureEnabled) {
+        video.requestPictureInPicture();
+      }
+    } catch (e) {
+      console.warn("[Player] Picture-in-Picture not supported:", e);
+    }
+  }, []);
 
   const handleClose = useCallback(() => {
     const video = videoRef.current;
@@ -811,6 +849,14 @@ export default function AnimePlayer({
                 <ArrowRight size={14} />
               </button>
             )}
+
+            <button
+              onClick={handleTogglePip}
+              className="text-white/60 hover:text-white transition-colors"
+              title="Picture in Picture"
+            >
+              <PictureInPicture2 size={18} />
+            </button>
 
             <button
               onClick={handleToggleFullscreen}

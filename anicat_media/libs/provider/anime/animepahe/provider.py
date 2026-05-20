@@ -27,10 +27,32 @@ class AnimePahe(BaseAnimeProvider):
 
     def __init__(self, client):
         super().__init__(client)
-        self._solve_ddos_guard()
+        self._available = True
+        self._last_error: Optional[str] = None
+        try:
+            self._solve_ddos_guard()
+        except Exception as e:
+            self._available = False
+            self._last_error = f"AnimePahe is unavailable — {e}"
+            logger.error(self._last_error)
+
+    @property
+    def is_available(self) -> bool:
+        """Whether the provider is currently reachable."""
+        return self._available
+
+    @property
+    def status_message(self) -> Optional[str]:
+        """Human-readable status, or None if operating normally."""
+        if self._available:
+            return None
+        return self._last_error or "AnimePahe is unavailable"
 
     def _solve_ddos_guard(self):
-        """Solve DDoS-Guard challenge to get required session cookies."""
+        """Solve DDoS-Guard challenge to get required session cookies.
+
+        Raises RuntimeError on total failure so callers get a clear message.
+        """
         import time
         max_retries = 3
         for attempt in range(max_retries):
@@ -59,7 +81,10 @@ class AnimePahe(BaseAnimeProvider):
                 if attempt < max_retries - 1:
                     time.sleep(1)
                 else:
-                    logger.error("Failed to solve DDoS-Guard challenge after all retries")
+                    raise RuntimeError(
+                        "AnimePahe DDoS-Guard bypass failed after 3 attempts. "
+                        "The provider may be temporarily blocking automated access."
+                    )
 
     @debug_provider
     def search(self, params: SearchParams) -> SearchResults | None:

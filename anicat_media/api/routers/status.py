@@ -72,6 +72,7 @@ class HealthInfo(BaseModel):
     unread_notifications: int = 0
     data_version: int = 0
     current_version: str = "unknown"
+    provider_status: Optional[str] = None
 
 # Module-level storage for last playback event
 _last_playback: Optional[PlaybackInfo] = None
@@ -161,6 +162,9 @@ def _check_github_update(update_branch: str) -> bool:
 _last_notifications_check: Optional[datetime] = None
 _cached_unread_notifications: int = 0
 
+# AniList activity timestamp for cross-device sync detection
+_last_anilist_activity: Optional[int] = None
+
 def set_playback(media_id: int, media_title: str, episode: str):
     """Called by the actions router when playback starts."""
     global _last_playback, _playback_expiry
@@ -186,6 +190,14 @@ def set_playback(media_id: int, media_title: str, episode: str):
             ))
     except Exception as e:
         logger.debug(f"Failed to schedule Discord RPC update: {e}")
+
+
+def _clear_playback():
+    """Clear in-memory playback state. Called on startup to reset stale state."""
+    global _last_playback, _playback_expiry
+    _last_playback = None
+    _playback_expiry = None
+
 
 @router.get("/playback", response_model=Optional[PlaybackInfo])
 async def get_playback_status():
@@ -339,8 +351,27 @@ async def get_health():
                     if hasattr(profile, 'unread_notifications'):
                         _cached_unread_notifications = getattr(profile, 'unread_notifications') or 0
                         unread_notifications = _cached_unread_notifications
+                    # Detect external AniList changes by checking the last activity timestamp.
+                    # If AniList has newer activity than our last known state, bump data_version
+                    # so the frontend re-fetches all views.
+                    last_activity = getattr(profile, 'updated_at', None)
+                    if last_activity is not None:
+                        anilist_unix = int(last_activity)
+                        global _last_anilist_activity
+                        if _last_anilist_activity is not None and anilist_unix > _last_anilist_activity:
+                            ctx.data_version += 1
+                        _last_anilist_activity = anilist_unix
             except Exception:
                 pass
+
+        # Report provider status so the frontend can show a meaningful message
+        provider_status: Optional[str] = None
+        try:
+            provider = ctx.provider if ctx._provider is not None else None
+            if provider and hasattr(provider, 'status_message'):
+                provider_status = provider.status_message
+        except Exception:
+            pass
 
         return HealthInfo(
             api_connected=api_connected,
@@ -350,7 +381,8 @@ async def get_health():
             update_available=update_available,
             unread_notifications=unread_notifications,
             data_version=ctx.data_version,
-            current_version=VERSION
+            current_version=VERSION,
+            provider_status=provider_status,
         )
     except Exception:
         return HealthInfo(
@@ -359,7 +391,7 @@ async def get_health():
             worker_running=False,
             is_offline=True,
             update_available=False,
-            current_version="unknown"
+            current_version="unknown",
         )
 
 @router.post("/check-update")

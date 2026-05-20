@@ -161,6 +161,7 @@ export type HealthStatus = {
   unread_notifications?: number;
   current_version?: string;
   data_version?: number;
+  provider_status?: string | null;
 };
 
 export type SearchFilters = {

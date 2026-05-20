@@ -1,7 +1,9 @@
 "use client";
 
+import { useCallback, useRef } from "react";
 import { Play, BookOpen } from "lucide-react";
-import { type MediaItem } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { type MediaItem, mediaApi } from "@/lib/api";
 
 interface MediaCardProps {
   item: MediaItem;
@@ -9,6 +11,8 @@ interface MediaCardProps {
 }
 
 export default function MediaCard({ item, onSelect }: MediaCardProps) {
+  const queryClient = useQueryClient();
+
   const handlePlay = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -16,6 +20,32 @@ export default function MediaCard({ item, onSelect }: MediaCardProps) {
       onSelect(item, "play");
     }
   };
+
+  // Smart pre-fetch: when user hovers for 300ms+, pre-load the detail
+  // and episode list so the detail drawer opens instantly.
+  const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseEnter = useCallback(() => {
+    prefetchTimerRef.current = setTimeout(() => {
+      queryClient.prefetchQuery({
+        queryKey: ["media-detail", item.id],
+        queryFn: () => mediaApi.getDetails(item.id),
+        staleTime: 60_000,
+      });
+      queryClient.prefetchQuery({
+        queryKey: ["media-episodes", item.id],
+        queryFn: () => mediaApi.getEpisodes(item.id),
+        staleTime: 60_000,
+      });
+    }, 300);
+  }, [item.id, queryClient]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (prefetchTimerRef.current) {
+      clearTimeout(prefetchTimerRef.current);
+      prefetchTimerRef.current = null;
+    }
+  }, []);
 
   const title = item.title.english || item.title.romaji || "Media";
   const isManga = item.type === 'MANGA';
@@ -47,6 +77,8 @@ export default function MediaCard({ item, onSelect }: MediaCardProps) {
   return (
     <div 
       onClick={() => onSelect?.(item)} 
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className="group cursor-pointer flex flex-col space-y-2.5 w-full text-left"
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-surface card-glow">

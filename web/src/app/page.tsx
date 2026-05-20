@@ -295,17 +295,21 @@ export default function App() {
 
       {/* Main content */}
       <main className="flex-1 ml-[72px] lg:ml-60 overflow-y-auto scrollbar-hide relative">
-        {/* Offline Banner */}
+        {/* Offline / Provider-Status Banner */}
         {isOffline && !dismissedOffline && (
           <div className="absolute top-0 left-0 right-0 z-[300] animate-slide-down">
-            <div className="mx-6 mt-6 lg:mx-10 bg-red-500/10 border border-red-500/20 backdrop-blur-md rounded-2xl p-4 flex items-center justify-between shadow-xl">
-              <div className="flex items-center space-x-3 text-red-400">
-                <WifiOff size={18} />
-                <span className="text-sm font-bold">
-                  AniList API unreachable. Browsing local library mode.
-                </span>
+            <div className="mx-6 mt-6 lg:mx-10 bg-amber-500/10 border border-amber-500/20 backdrop-blur-md rounded-2xl p-4 flex items-center justify-between shadow-xl">
+              <div className="flex items-center space-x-3 text-amber-400 min-w-0">
+                <WifiOff size={18} className="shrink-0" />
+                <div className="min-w-0">
+                  <span className="text-sm font-bold block truncate">
+                    {healthStatus?.provider_status
+                      ? healthStatus.provider_status
+                      : "AniList API unreachable. Browsing local library mode."}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4 shrink-0">
                 <button 
                   onClick={async () => {
                     try {
@@ -315,7 +319,7 @@ export default function App() {
                       console.error("Reconnection failed:", err);
                     }
                   }}
-                  className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-bold transition-all border border-red-500/20"
+                  className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs font-bold transition-all border border-amber-500/20"
                 >
                   Retry Connection
                 </button>
