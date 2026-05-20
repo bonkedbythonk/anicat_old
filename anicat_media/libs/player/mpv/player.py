@@ -405,6 +405,10 @@ class MpvPlayer(BasePlayer):
             if os.path.exists(bundled_config):
                 # Enforce native OSC disable explicitly to override any global/fallback settings
                 mpv_args.append("--osc=no")
+                # Suppress the built-in MPV OSD progress bar that appears mid-screen on seek
+                mpv_args.append("--osd-level=1")
+                mpv_args.append("--osd-on-seek=no")
+                mpv_args.append("--osd-bar=no")
                 # Point config-dir to our isolated, custom-themed settings to load mpv.conf, input.conf, and modernz.lua
                 mpv_args.append(f"--config-dir={bundled_config}")
                 logger.info(

@@ -87,6 +87,9 @@ hwdec=auto-safe
 # Complete Borderless Minimalism
 border=no
 osc=no
+osd-level=1
+osd-on-seek=no
+osd-bar=no
 
 # Subtitles
 sub-auto=fuzzy
