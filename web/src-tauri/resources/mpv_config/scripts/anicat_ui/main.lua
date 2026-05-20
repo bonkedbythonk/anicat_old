@@ -127,21 +127,21 @@ local function skip_current_segment()
   end
 end
 
-local function toggle_shaders()
+local function enable_shaders()
+  local shader_paths = {
+    "~~/shaders/Anime4K_Clamp_Highlights.glsl",
+    "~~/shaders/Anime4K_Restore_CNN_VL.glsl",
+    "~~/shaders/Anime4K_Upscale_CNN_x2_VL.glsl",
+    "~~/shaders/Anime4K_AutoDownscalePre_x2.glsl",
+    "~~/shaders/Anime4K_AutoDownscalePre_x4.glsl"
+  }
+  local path_str = table.concat(shader_paths, ":")
+  mp.commandv("change-list", "glsl-shaders", "set", path_str)
   refresh_shaders_state()
-  if not state.shaders_on then
-    local shader_paths = {
-      "~~/shaders/Anime4K_Clamp_Highlights.glsl",
-      "~~/shaders/Anime4K_Restore_CNN_VL.glsl",
-      "~~/shaders/Anime4K_Upscale_CNN_x2_VL.glsl",
-      "~~/shaders/Anime4K_AutoDownscalePre_x2.glsl",
-      "~~/shaders/Anime4K_AutoDownscalePre_x4.glsl"
-    }
-    local path_str = table.concat(shader_paths, ":")
-    mp.commandv("change-list", "glsl-shaders", "set", path_str)
-  else
-    mp.commandv("set", "glsl-shaders", "")
-  end
+end
+
+local function disable_shaders()
+  mp.commandv("set", "glsl-shaders", "")
   refresh_shaders_state()
 end
 
@@ -230,7 +230,8 @@ local function register_script_messages()
     return
   end
   mp.register_script_message('anicat-skip-intro', skip_current_segment)
-  mp.register_script_message('anicat-toggle-upscale', toggle_shaders)
+  mp.register_script_message('anicat-toggle-upscale', enable_shaders)
+  mp.register_script_message('anicat-disable-upscale', disable_shaders)
 end
 
 mp.observe_property('time-pos', 'number', render)
@@ -257,11 +258,11 @@ register_script_messages()
 
 local ok, err = pcall(function()
   mp.add_forced_key_binding('MBTN_LEFT', 'anicat-left-click', on_left_click)
-  mp.add_forced_key_binding('ctrl+g', 'anicat-toggle-shaders-ctrl', toggle_shaders)
-  mp.add_forced_key_binding('ctrl+u', 'anicat-toggle-shaders-alt', toggle_shaders)
+  mp.add_forced_key_binding('ctrl+1', 'anicat-enable-shaders', enable_shaders)
+  mp.add_forced_key_binding('ctrl+2', 'anicat-disable-shaders', disable_shaders)
 end)
 if not ok then
   msg.warn('Could not register forced keybindings: ' .. tostring(err))
 end
 
-msg.info('AniCat overlay loaded (skip helper + upscaling toggle)')
+msg.info('Anicat overlay loaded: ctrl+1 = Upscaling Enable, ctrl+2 = Upscaling Disable')
