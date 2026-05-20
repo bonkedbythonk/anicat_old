@@ -13,7 +13,12 @@ USER_NAME = os.environ.get("USERNAME", os.environ.get("USER", "User"))
 
 
 # Single source of truth: version.txt at project root
-_version_file = Path(__file__).resolve().parent.parent.parent / "version.txt"
+# In PyInstaller bundles, use sys._MEIPASS (the extraction directory).
+# In normal Python, resolve relative to this file's location.
+if getattr(sys, 'frozen', False):
+    _version_file = Path(sys._MEIPASS) / "version.txt"
+else:
+    _version_file = Path(__file__).resolve().parent.parent.parent / "version.txt"
 try:
     __version__ = _version_file.read_text().strip()
 except Exception:
