@@ -311,6 +311,10 @@ async def get_health():
                             count = int(stdout.strip())
                             if count > 0:
                                 _cached_update_available = True
+                            else:
+                                # No new git commits, but fall through to GitHub releases check
+                                # in case a CI-built DMG is newer than the current checkout
+                                _cached_update_available = _check_github_update(update_branch)
                     except Exception:
                         pass
                 else:
@@ -450,8 +454,13 @@ async def check_for_updates():
                 if count > 0:
                     _cached_update_available = True
                     return {"status": "success", "update_available": True, "message": f"A new version of Anicat is available on {target_branch}!"}
-            _cached_update_available = False
-            return {"status": "success", "update_available": False, "message": f"You are running the latest version of the {target_branch} branch."}
+            # No new git commits. Fall through to GitHub releases SHA comparison
+            # so we can still detect newer CI-built DMG releases.
+            has_update = _check_github_update(update_branch)
+            _cached_update_available = has_update
+            if has_update:
+                return {"status": "success", "update_available": True, "message": f"A new version is available on the {update_branch} branch!"}
+            return {"status": "success", "update_available": False, "message": f"You are running the latest version of the {update_branch} branch."}
         else:
             _last_update_check = datetime.now()
             has_update = _check_github_update(update_branch)
