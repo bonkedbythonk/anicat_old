@@ -33,6 +33,11 @@ if [ -z "$DOWNLOAD_URL" ]; then
     exit 1
 fi
 
+# Auto-detect nightly: if the download URL points to a nightly release, set the branch
+if echo "$DOWNLOAD_URL" | grep -q "nightly"; then
+    UPDATE_BRANCH="nightly"
+fi
+
 # 2. Download the DMG
 TMP_DMG="/tmp/anicat_latest.dmg"
 echo "Downloading Anicat from $DOWNLOAD_URL..."
@@ -69,7 +74,28 @@ rm -f "$TMP_DMG"
 echo "Configuring security permissions..."
 xattr -d com.apple.quarantine "$INSTALL_PATH" 2>/dev/null || true
 
-# 7. Automatically Restart the Application
+# 7. Write update branch to config so the app knows where to check for updates
+if [ "$UPDATE_BRANCH" = "nightly" ]; then
+    CONFIG_DIR="$HOME/Library/Application Support/anicat"
+    CONFIG_FILE="$CONFIG_DIR/config.toml"
+    mkdir -p "$CONFIG_DIR"
+    if [ -f "$CONFIG_FILE" ]; then
+        # Update existing config: replace or append update_branch setting
+        if grep -q '^update_branch' "$CONFIG_FILE"; then
+            sed -i '' 's/^update_branch = .*/update_branch = "nightly"/' "$CONFIG_FILE"
+        else
+            echo 'update_branch = "nightly"' >> "$CONFIG_FILE"
+        fi
+    else
+        cat > "$CONFIG_FILE" <<'TOML'
+[general]
+update_branch = "nightly"
+TOML
+    fi
+    echo "Configured update branch: nightly"
+fi
+
+# 8. Automatically Restart the Application
 echo "Relaunching Anicat..."
 
 # Kill the old running instances first to unblock a clean relaunch
