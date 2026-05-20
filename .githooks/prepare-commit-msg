@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# prepare-commit-msg — Auto-bump version based on conventional commit message.
+#
+# Parses the first line of the commit message and bumps the project version
+# accordingly using scripts/bump-version.sh.
+#
+#   fix:    →  PATCH bump (4.0.0 → 4.0.1)
+#   feat:   →  MINOR bump (4.0.0 → 4.1.0)
+#   BREAKING CHANGE / ! → MAJOR bump (4.0.0 → 5.0.0)
+#
+# Install: git config core.hooksPath .githooks
+
+set -euo pipefail
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(head -1 "$COMMIT_MSG_FILE")
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+BUMP_SCRIPT="$PROJECT_ROOT/scripts/bump-version.sh"
+
+CURRENT_VERSION=$(cat "$PROJECT_ROOT/version.txt")
+
+# Strip leading "v" if present
+CURRENT_VERSION="${CURRENT_VERSION#v}"
+
+IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+
+bump_and_stage() {
+    local new_version="$1"
+    bash "$BUMP_SCRIPT" "$new_version"
+    # Re-stage all version files so they're included in the commit
+    git add "$PROJECT_ROOT/version.txt" \
+            "$PROJECT_ROOT/pyproject.toml" \
+            "$PROJECT_ROOT/web/package.json" \
+            "$PROJECT_ROOT/web/src-tauri/tauri.conf.json" \
+            "$PROJECT_ROOT/flake.nix"
+}
+
+if echo "$COMMIT_MSG" | grep -qiE '^(breaking change|feat!|fix!)\b|!:\s'; then
+    # MAJOR bump
+    new_major=$((MAJOR + 1))
+    bump_and_stage "${new_major}.0.0"
+
+elif echo "$COMMIT_MSG" | grep -qiE '^feat(\([^)]*\))?!?\s*:'; then
+    # MINOR bump
+    new_minor=$((MINOR + 1))
+    bump_and_stage "${MAJOR}.${new_minor}.0"
+
+elif echo "$COMMIT_MSG" | grep -qiE '^fix(\([^)]*\))?!?\s*:'; then
+    # PATCH bump
+    new_patch=$((PATCH + 1))
+    bump_and_stage "${MAJOR}.${MINOR}.${new_patch}"
+fi
+
+# If none of the patterns matched, no bump happens — commit as-is.
