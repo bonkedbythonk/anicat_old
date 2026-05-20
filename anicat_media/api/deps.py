@@ -18,7 +18,7 @@ def get_ctx():
 
     Uses a lazy import to avoid circular dependencies during module loading.
     """
-    from ..main import ctx  # noqa: PLC0415
+    from .main import ctx  # noqa: PLC0415
 
     return ctx
 
