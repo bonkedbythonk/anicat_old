@@ -2,8 +2,7 @@
   "productName": "Anicat Dev",
   "identifier": "com.bonkedbythonk.anicat.dev",
   "bundle": {
-    "externalBin": [],
-    "resources": []
+    "externalBin": []
   }
 }
 

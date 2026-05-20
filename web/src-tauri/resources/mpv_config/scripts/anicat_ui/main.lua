@@ -138,13 +138,13 @@ local function enable_shaders()
   local path_str = table.concat(shader_paths, ":")
   mp.commandv("change-list", "glsl-shaders", "set", path_str)
   refresh_shaders_state()
-  mp.osd_message("Upscaling: Mode A (Balanced)", 1.5)
+  mp.osd_message("Upscaling Enabled", 1.5)
 end
 
 local function disable_shaders()
   mp.commandv("set", "glsl-shaders", "")
   refresh_shaders_state()
-  mp.osd_message("Upscaling: OFF", 1.5)
+  mp.osd_message("Upscaling Disabled", 1.5)
 end
 
 -- Draw a rounded pill button and return the label width
@@ -265,4 +265,4 @@ if not ok then
   msg.warn('Could not register forced keybindings: ' .. tostring(err))
 end
 
-msg.info('Anicat overlay loaded: ctrl+1..4 = Upscaling presets, ctrl+0 = OFF')
+msg.info('Anicat overlay loaded: ctrl+1 = Upscaling On, ctrl+2 = Upscaling Off')
