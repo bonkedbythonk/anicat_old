@@ -19,6 +19,7 @@
 | Python format/lint | `uv run ruff format . && uv run ruff check .` |
 | Python tests | `uv run pytest` (add `-m "not integration"` to skip network tests) |
 | Frontend dev server | `cd web && npm run dev` (→ localhost:3000) |
+| Bump version | Auto-bumps on `git commit` via `.githooks/prepare-commit-msg` (see below) |
 | Frontend build | `cd web && npm run build` |
 | Frontend lint | `cd web && npm run lint` |
 
@@ -65,7 +66,39 @@ See [README.md](README.md) for user-facing docs.
 
 ---
 
+---
+
+## Versioning (Auto-Bump via Git Hook)
+
+A `prepare-commit-msg` hook at `.githooks/prepare-commit-msg` auto-bumps the version
+when you commit with [conventional commits](https://www.conventionalcommits.org/):
+
+| Commit prefix | Bump | Example |
+|---------------|------|---------|
+| `fix:` | PATCH (4.0.0 → 4.0.1) | `git commit -m "fix: typo in search"` |
+| `feat:` | MINOR (4.0.0 → 4.1.0) | `git commit -m "feat: add mal sync"` |
+| `feat!:`, `fix!:`, `BREAKING CHANGE:` | MAJOR (4.0.0 → 5.0.0) | `git commit -m "feat!: rewrite player"` |
+
+Hook updates 5 files: `version.txt`, `pyproject.toml`, `web/package.json`,
+`web/src-tauri/tauri.conf.json`, `flake.nix`. The hook is activated by
+`git config core.hooksPath .githooks` (already set). If no prefix matches,
+no bump occurs.
+
 ## Critical Rules
+
+### 0. Always use conventional commits (auto-bump hook)
+
+Every `git commit` message **must** use the conventional commits format.
+The `.githooks/prepare-commit-msg` hook reads the first line to auto-bump
+the version — if you use a generic message like `"updated stuff"`, no bump
+happens and the version stays stale.
+
+| Change type | Commit message | Bump |
+|---|---|---|
+| Bug fix | `git commit -m "fix: correct continue watching filter"` | PATCH (4.0.0 -> 4.0.1) |
+| New feature | `git commit -m "feat: add mal sync"` | MINOR (4.0.0 -> 4.1.0) |
+| Breaking change | `git commit -m "feat!: rewrite player in rust"` | MAJOR (4.0.0 -> 5.0.0) |
+| Refactor/docs/chore | `git commit -m "refactor: clean up imports"` | No bump |
 
 ### 1. Backend: Context access via `get_ctx()`
 
