@@ -153,6 +153,22 @@ async def play_media(
         if not media_item:
             raise HTTPException(status_code=404, detail="Media not found")
 
+        # Auto-add to user's watching list if not already tracked
+        if not media_item.user_status:
+            try:
+                from ...libs.media_api.params import UpdateUserMediaListEntryParams
+                from ...libs.media_api.types import UserMediaListStatus
+                ctx.media_api.update_list_entry(
+                    UpdateUserMediaListEntryParams(
+                        media_id=media_id,
+                        status=UserMediaListStatus.WATCHING,
+                    )
+                )
+                # Re-fetch media_item so user_status is populated downstream
+                media_item = ctx.media_api.get_media_item(media_id) or media_item
+            except Exception as e:
+                logger.warning(f"Failed to auto-add media {media_id} to watching list: {e}")
+
         # 2. Check if Manga
         from ...libs.media_api.types import MediaType, MediaFormat
         is_manga = media_item.type == MediaType.MANGA or media_item.format in (
@@ -234,7 +250,7 @@ async def play_media(
             )
             # Attempt to fetch AniSkip skip times for this media/episode
             try:
-                query_id = media_item.id_mal or media_id
+                query_id = media_item.id_mal if media_item.id_mal not in (None, 0) else media_id
                 ep_num = int(resolved_episode)
                 aniskip_url = f"https://api.aniskip.com/v2/skip-times/{query_id}/{ep_num}?types[]=op&types[]=ed&episodeLength=0"
                 r = httpx.get(aniskip_url, timeout=5.0)
@@ -271,7 +287,7 @@ async def play_media(
         )
         # Try to fetch AniSkip skip times for better experience in external MPV
         try:
-            query_id = media_item.id_mal or media_id
+            query_id = media_item.id_mal if media_item.id_mal not in (None, 0) else media_id
             ep_num = int(resolved["episode"])
             aniskip_url = f"https://api.aniskip.com/v2/skip-times/{query_id}/{ep_num}?types[]=op&types[]=ed&episodeLength=0"
             r = httpx.get(aniskip_url, timeout=5.0)
@@ -313,6 +329,21 @@ async def resolve_media_stream(media_id: int, episode: Optional[str] = None):
         media_item = ctx.media_api.get_media_item(media_id)
         if not media_item:
             raise HTTPException(status_code=404, detail="Media not found")
+
+        # Auto-add to user's watching list if not already tracked
+        if not media_item.user_status:
+            try:
+                from ...libs.media_api.params import UpdateUserMediaListEntryParams
+                from ...libs.media_api.types import UserMediaListStatus
+                ctx.media_api.update_list_entry(
+                    UpdateUserMediaListEntryParams(
+                        media_id=media_id,
+                        status=UserMediaListStatus.WATCHING,
+                    )
+                )
+                media_item = ctx.media_api.get_media_item(media_id) or media_item
+            except Exception as e:
+                logger.warning(f"Failed to auto-add media {media_id} to watching list: {e}")
 
         resolved_episode = episode
         start_time = None

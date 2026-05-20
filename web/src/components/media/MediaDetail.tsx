@@ -55,8 +55,8 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
 
   // Derived values (computed from state/props, must precede hooks that consume them)
   const isManga = item.type === "MANGA" || !!(item.format && ["MANGA", "ONE_SHOT", "NOVEL"].includes(item.format));
-  const banner = fullItem.banner_image || fullItem.cover_image.large;
-  const normalizedUserStatus = fullItem.user_status?.status?.toLowerCase();
+  const banner = fullItem.banner_image || fullItem.cover_image?.large || item.banner_image || item.cover_image?.large;
+  const normalizedUserStatus = fullItem.user_status?.status?.toLowerCase() || item.user_status?.status?.toLowerCase();
   const isPlanning = normalizedUserStatus === "planning";
 
   // Extracted hooks

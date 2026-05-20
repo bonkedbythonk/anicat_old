@@ -86,8 +86,9 @@ export default function MediaCard({ item, onSelect }: MediaCardProps) {
         <img 
           src={item.cover_image.large} 
           alt={title} 
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          style={{ transform: 'translateZ(0)' }}
         />
         
         {/* Play overlay */}
@@ -126,7 +127,7 @@ export default function MediaCard({ item, onSelect }: MediaCardProps) {
         {hasNewEpisodes && (
           <div 
             className="absolute top-2 left-2 bg-accent text-white px-1.5 py-0.5 rounded text-[9px] font-black z-50 shadow-lg"
-            style={{ transform: 'translateZ(10px)', pointerEvents: 'none' }}
+            style={{ pointerEvents: 'none' }}
           >
             NEW
           </div>

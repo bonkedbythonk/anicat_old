@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Search, Loader2, SlidersHorizontal, Activity } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import MediaCard from "@/components/media/MediaCard";
+import LazyCard from "@/components/media/LazyCard";
 import InfiniteScroll from "@/components/shared/InfiniteScroll";
 import MediaTypeToggle from "@/components/shared/MediaTypeToggle";
 import { usePaginatedList } from "@/lib/usePaginatedList";
@@ -296,7 +296,7 @@ export default function SearchView({ onSelect }: SearchViewProps) {
                       </div>
                       <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                         {discovery.map((item) => (
-                          <MediaCard key={item.id} item={item} onSelect={onSelect} />
+                          <LazyCard key={item.id} item={item} onSelect={onSelect} />
                         ))}
                       </div>
                     </div>
@@ -319,7 +319,7 @@ export default function SearchView({ onSelect }: SearchViewProps) {
                       </div>
                       <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                         {randomList.map((item) => (
-                          <MediaCard key={item.id} item={item} onSelect={onSelect} />
+                          <LazyCard key={item.id} item={item} onSelect={onSelect} />
                         ))}
                       </div>
                     </div>
@@ -347,7 +347,7 @@ export default function SearchView({ onSelect }: SearchViewProps) {
           return (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
               {results.map((item) => (
-                <MediaCard key={item.id} item={item} onSelect={onSelect} />
+                <LazyCard key={item.id} item={item} onSelect={onSelect} />
               ))}
             </div>
           );

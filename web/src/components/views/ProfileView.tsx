@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, User, Clock, Tv, BookOpen, Bookmark, Heart, Sparkles } from "lucide-react";
 import { mediaApi, type UserProfile, type MediaItem } from "@/lib/api";
-import MediaCard from "@/components/media/MediaCard";
+import LazyCard from "@/components/media/LazyCard";
 
 interface ProfileViewProps {
   onSelect?: (item: MediaItem) => void;
@@ -248,7 +248,7 @@ export default function ProfileView({ onSelect }: ProfileViewProps) {
         {favorites.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
             {favorites.map((item) => (
-              <MediaCard key={item.id} item={item} onSelect={onSelect} />
+              <LazyCard key={item.id} item={item} onSelect={onSelect} />
             ))}
           </div>
         ) : (

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, Library } from "lucide-react";
-import MediaCard from "@/components/media/MediaCard";
+import LazyCard from "@/components/media/LazyCard";
 import InfiniteScroll from "@/components/shared/InfiniteScroll";
 import MediaTypeToggle from "@/components/shared/MediaTypeToggle";
 import { usePaginatedList } from "@/lib/usePaginatedList";
@@ -44,7 +44,7 @@ export default function LibraryView({ onSelect }: LibraryViewProps) {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
             {items.map((item) => (
-              <MediaCard key={item.id} item={item} onSelect={onSelect} />
+              <LazyCard key={item.id} item={item} onSelect={onSelect} />
             ))}
           </div>
           <InfiniteScroll hasMore={hasMore} loading={loadingMore} onLoadMore={loadMore} />

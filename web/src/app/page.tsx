@@ -312,7 +312,7 @@ export default function App() {
       <Sidebar activeView={activeView} onNavigate={setActiveView} notificationCount={notificationCount} health={healthStatus} />
 
       {/* Main content */}
-      <main className="flex-1 ml-[72px] lg:ml-60 overflow-y-auto scrollbar-hide relative">
+      <main className="flex-1 ml-[72px] lg:ml-60 overflow-y-auto scrollbar-hide scroll-container relative">
         {/* Offline / Provider-Status Banner */}
         {isOffline && !dismissedOffline && (
           <div className="absolute top-0 left-0 right-0 z-[300] animate-slide-down">
@@ -407,7 +407,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className={`p-6 lg:p-10 max-w-[1600px] transform-gpu will-change-[transform,opacity] ${isOffline && !dismissedOffline ? 'pt-24 lg:pt-28' : ''}`}
+            className={`p-6 lg:p-10 max-w-[1600px] ${isOffline && !dismissedOffline ? 'pt-24 lg:pt-28' : ''}`}
           >
             {renderView()}
           </motion.div>

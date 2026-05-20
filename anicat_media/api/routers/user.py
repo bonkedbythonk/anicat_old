@@ -1,6 +1,6 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
-from ...libs.media_api.types import MediaSearchResult, MediaType, UserMediaListStatus, UserProfile
+from ...libs.media_api.types import MediaSearchResult, MediaType, UserMediaListStatus, UserMediaListSort, UserProfile
 from ...libs.media_api.params import UserMediaListSearchParams
 from pydantic import BaseModel
 
@@ -40,7 +40,12 @@ async def get_user_list(
                 media=[]
             )
             
-        params = UserMediaListSearchParams(status=status or UserMediaListStatus.WATCHING, type=type, page=page)
+        params = UserMediaListSearchParams(
+            status=status or UserMediaListStatus.WATCHING,
+            type=type,
+            page=page,
+            sort=UserMediaListSort.UPDATED_TIME_DESC
+        )
         result = api.search_media_list(params)
         if not result:
             from ...libs.media_api.types import PageInfo

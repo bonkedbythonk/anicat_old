@@ -38,10 +38,12 @@ export default function Hero({ item, onSelect }: HeroProps) {
         <img 
           src={item.banner_image || item.cover_image.large} 
           alt={title} 
-          className="absolute inset-0 w-full h-full object-cover brightness-[0.3] scale-105 transition-all duration-[2s] group-hover:scale-100 group-hover:brightness-[0.4]"
+          className="absolute inset-0 w-full h-full object-cover brightness-[0.25] scale-105 will-change-[transform,filter] transition-[transform,filter] duration-[2s] group-hover:scale-100 group-hover:brightness-[0.35]"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent" />
+        {/* Vignette: darker at edges, lighter toward center */}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-transparent to-background/60" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-transparent to-transparent" />
       </div>
 
       <div className="relative h-full flex flex-col justify-end pb-10 lg:pb-14 px-6 lg:px-12 space-y-5 max-w-3xl z-10">

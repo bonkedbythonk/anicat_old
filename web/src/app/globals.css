@@ -63,10 +63,14 @@ html.light {
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    overscroll-behavior: none;
+  }
+  
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    transform: translateZ(0);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -89,8 +93,26 @@ html.light {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-color: var(--glass-border);
-  transform: translateZ(0);
-  will-change: backdrop-filter, transform;
+}
+
+/* Glass variant for fixed-position elements (sidebar, etc.).
+   backdrop-filter on fixed elements is extremely expensive at 120Hz because
+   the browser must recapture + blur background content on every scroll frame.
+   This variant uses a darker solid background instead. */
+.glass-fixed {
+  background: rgb(10, 10, 15);
+  border-color: var(--glass-border);
+}
+
+html.light .glass-fixed,
+html.system:not(.dark) .glass-fixed {
+  background: rgb(248, 250, 252);
+}
+
+/* Scroll container — apply to the main scrollable area for 120Hz performance */
+.scroll-container {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Card hover glow */

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Loader2, Globe, Monitor, Activity, Clock, Calendar } from "lucide-react";
-import MediaCard from "@/components/media/MediaCard";
+import LazyCard from "@/components/media/LazyCard";
 import { mediaApi, type MediaItem } from "@/lib/api";
 
 interface ScheduleViewProps {
@@ -127,7 +127,7 @@ export default function ScheduleView({ onSelect }: ScheduleViewProps) {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
             {dayItems.map(item => (
               <div key={item.id} className="space-y-2">
-                <MediaCard item={item} onSelect={onSelect} />
+                <LazyCard item={item} onSelect={onSelect} />
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center space-x-1.5 text-accent">
                     <Activity size={12} className="animate-pulse" />

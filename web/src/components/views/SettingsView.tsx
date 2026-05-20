@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Loader2, CheckCircle2, Save, Cpu, PlayCircle, HardDrive, Globe, Activity, RotateCcw, XCircle, AlertCircle, Download } from "lucide-react";
 import { mediaApi, type HealthStatus, API_BASE_ORIGIN } from "@/lib/api";
 import ErrorBanner from "@/components/ErrorBanner";
@@ -15,7 +15,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState<"general" | "stream" | "downloads" | "anilist" | "registry" | "maintenance">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "player" | "downloads" | "account" | "maintenance">("general");
   const [registryStats, setRegistryStats] = useState<any>(null);
   const [backingUp, setBackingUp] = useState(false);
   const [backupUrl, setBackupUrl] = useState<string | null>(null);
@@ -156,15 +156,58 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
     }
   };
 
+  // Auto-save with debounce — saves 800ms after the last change
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSave = useCallback((updatedConfig: Record<string, Record<string, unknown>>) => {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(async () => {
+      setSaving(true);
+      try {
+        await mediaApi.updateConfig(updatedConfig);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      } catch (err: any) {
+        console.error("Auto-save failed:", err);
+        setErrorMessage("Failed to save. Try again.");
+        setTimeout(() => setErrorMessage(null), 4000);
+      } finally {
+        setSaving(false);
+      }
+    }, 800);
+  }, []);
+
   const updateField = (section: string, field: string, value: unknown) => {
-    setConfig(prev => prev ? {
-      ...prev,
-      [section]: { ...prev[section], [field]: value }
-    } : null);
+    setConfig(prev => {
+      if (!prev) return null;
+      const updated = {
+        ...prev,
+        [section]: { ...prev[section], [field]: value }
+      };
+      autoSave(updated);
+      return updated;
+    });
+  };
+
+  // Save button (manual trigger) still works for bulk/initial saves
+  const handleManualSave = async () => {
+    if (!config) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    setSaving(true);
+    setErrorMessage(null);
+    try {
+      await mediaApi.updateConfig(config);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err: any) {
+      console.error("Save failed:", err);
+      setErrorMessage("Could not save settings. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   useEffect(() => {
-    if (activeTab === "registry" && !registryStats) {
+    if (activeTab === "maintenance" && !registryStats) {
       mediaApi.getRegistryStats().then(setRegistryStats).catch(console.error);
     }
   }, [activeTab, registryStats]);
@@ -189,16 +232,15 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
   }
 
   const tabs = [
-    { id: "general", label: "Core", icon: Cpu },
-    { id: "stream", label: "Streaming", icon: PlayCircle },
+    { id: "general", label: "General", icon: Cpu },
+    { id: "player", label: "Player", icon: PlayCircle },
     { id: "downloads", label: "Downloads", icon: HardDrive },
-    { id: "anilist", label: "AniList", icon: Globe },
-    { id: "registry", label: "Registry", icon: Activity },
+    { id: "account", label: "Account", icon: Globe },
     { id: "maintenance", label: "Maintenance", icon: RotateCcw },
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in max-w-3xl">
       {successMessage && (
         <div className="flex items-center space-x-3 px-5 py-3.5 rounded-2xl bg-green-500/10 border border-green-500/20 text-green-400 font-bold text-sm animate-fade-in shadow-lg">
           <CheckCircle2 size={18} />
@@ -211,271 +253,278 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
       {errorMessage && <ErrorBanner message={errorMessage} />}
       <div className="flex items-end justify-between">
         <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white">Settings</h1>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 ${saved
-            ? "bg-green-500 text-white"
-            : "bg-accent text-white hover:bg-accent-light shadow-lg shadow-accent/20"
-            }`}
-        >
-          {saving ? <Loader2 size={16} className="animate-spin" /> : saved ? <CheckCircle2 size={16} /> : <Save size={16} />}
-          <span>{saved ? "Saved!" : "Save"}</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          {saving && (
+            <div className="flex items-center space-x-1.5 text-xs text-gray-500 font-medium">
+              <Loader2 size={12} className="animate-spin" />
+              <span>Saving...</span>
+            </div>
+          )}
+          {saved && (
+            <div className="flex items-center space-x-1.5 text-xs text-green-500 font-medium animate-fade-in">
+              <CheckCircle2 size={12} />
+              <span>Saved</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Tab nav */}
-        <div className="lg:w-52 flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-1 overflow-x-auto scrollbar-hide shrink-0">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center space-x-3 px-4 py-3 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${activeTab === tab.id
-                ? "bg-accent text-white shadow-lg"
+      {/* Horizontal tab bar — easier to scan than sidebar */}
+      <div className="flex space-x-1 bg-white/[0.02] p-1 rounded-xl border border-white/[0.06] overflow-x-auto scrollbar-hide">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap transition-all flex-1 justify-center ${
+              activeTab === tab.id
+                ? "bg-accent text-white shadow-lg shadow-accent/20"
                 : "text-gray-500 hover:text-white hover:bg-white/[0.04]"
-                }`}
-            >
-              <tab.icon size={17} />
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
+            }`}
+          >
+            <tab.icon size={16} />
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </div>
 
         {/* Settings form */}
-        <div className="flex-1 space-y-6 max-w-2xl">
+        <div className="space-y-6">
           {activeTab === "general" && (
             <div className="space-y-6 animate-fade-in">
-              <SettingField
-                label="Anime Provider"
-                description="Where to scrape video content from."
-              >
-                <select
-                  value={String(config.general?.provider || "animepahe")}
-                  onChange={(e) => updateField("general", "provider", e.target.value)}
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+              <CardSection title="Appearance">
+                <SettingField
+                  label="Theme"
+                  description="Choose your preferred visual theme."
                 >
-                  <option value="animepahe">AnimePahe (Standard)</option>
-                </select>
-              </SettingField>
+                  <select
+                    value={theme}
+                    onChange={(e) => handleThemeChange(e.target.value as "system" | "dark" | "light")}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                  >
+                    <option value="system">System Default</option>
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                  </select>
+                </SettingField>
 
-              <SettingField
-                label="Manga Provider"
-                description="Where to scrape manga chapters from."
-              >
-                <select
-                  value={String(config.general?.manga_provider || "mangakatana")}
-                  onChange={(e) => updateField("general", "manga_provider", e.target.value)}
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                <SettingField
+                  label="Time Format"
+                  description="How dates and times should be displayed."
                 >
-                  <option value="mangakatana">MangaKatana (High Speed)</option>
-                </select>
-              </SettingField>
+                  <select
+                    value={String(config.general?.time_format || "12h")}
+                    onChange={(e) => updateField("general", "time_format", e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="12h">12-hour (AM/PM)</option>
+                    <option value="24h">24-hour</option>
+                  </select>
+                </SettingField>
+              </CardSection>
 
-              <SettingField
-                label="Media Searcher & Tracker"
-                description="The source for anime search, lists, and metadata (Use Jikan if AniList is currently down)."
-              >
-                <select
-                  value={String(config.general?.media_api || "anilist")}
-                  onChange={(e) => updateField("general", "media_api", e.target.value)}
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+              <CardSection title="Content Sources">
+                <SettingField
+                  label="Anime Provider"
+                  description="Source for streaming video."
                 >
-                  <option value="anilist">AniList (Default / Tracker Sync)</option>
-                  <option value="jikan">Jikan (MyAnimeList - Anonymous Search / Outage Fallback)</option>
-                </select>
-              </SettingField>
+                  <select
+                    value={String(config.general?.provider || "animepahe")}
+                    onChange={(e) => updateField("general", "provider", e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="animepahe">AnimePahe</option>
+                  </select>
+                </SettingField>
 
-              <SettingField
-                label="Time Format"
-                description="How dates and times should be displayed."
-              >
-                <select
-                  value={String(config.general?.time_format || "12h")}
-                  onChange={(e) => updateField("general", "time_format", e.target.value)}
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                <SettingField
+                  label="Manga Provider"
+                  description="Source for manga chapters."
                 >
-                  <option value="12h">12-hour (AM/PM)</option>
-                  <option value="24h">24-hour</option>
-                </select>
-              </SettingField>
+                  <select
+                    value={String(config.general?.manga_provider || "mangakatana")}
+                    onChange={(e) => updateField("general", "manga_provider", e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="mangakatana">MangaKatana</option>
+                  </select>
+                </SettingField>
 
-              <SettingField
-                label="App Appearance"
-                description="Choose your preferred visual theme for the application."
-              >
-                <select
-                  value={theme}
-                  onChange={(e) => handleThemeChange(e.target.value as "system" | "dark" | "light")}
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                <SettingField
+                  label="Search & Tracking API"
+                  description="Source for anime search, lists, and metadata."
                 >
-                  <option value="system">System Default (Sync macOS settings)</option>
-                  <option value="dark">Dark Theme</option>
-                  <option value="light">Light Theme</option>
-                </select>
-              </SettingField>
-
-
+                  <select
+                    value={String(config.general?.media_api || "anilist")}
+                    onChange={(e) => updateField("general", "media_api", e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                  >
+                    <option value="anilist">AniList</option>
+                    <option value="jikan">Jikan (MyAnimeList - Fallback)</option>
+                  </select>
+                </SettingField>
+              </CardSection>
             </div>
           )}
 
-          {activeTab === "stream" && (
+          {activeTab === "player" && (
             <div className="space-y-6 animate-fade-in">
-              <SettingField label="Quality" description="Preferred playback quality.">
-                <select
-                  value={String(config.stream?.quality || "1080")}
-                  onChange={(e) => updateField("stream", "quality", e.target.value)}
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
-                >
-                  {(options?.stream?.quality ?? ["1080", "720", "480", "360"]).map((q: string) => (
-                    <option key={q} value={q}>{q.endsWith('p') ? q : `${q}p`}</option>
-                  ))}
-                </select>
-              </SettingField>
+              <CardSection title="Playback">
+                <SettingField label="Quality" description="Preferred resolution.">
+                  <select
+                    value={String(config.stream?.quality || "1080")}
+                    onChange={(e) => updateField("stream", "quality", e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    {(options?.stream?.quality ?? ["1080", "720", "480", "360"]).map((q: string) => (
+                      <option key={q} value={q}>{q.endsWith('p') ? q : `${q}p`}</option>
+                    ))}
+                  </select>
+                </SettingField>
 
-              <SettingField label="Translation Type" description="Sub or dub.">
-                <select
-                  value={String(config.stream?.translation_type || "sub")}
-                  onChange={(e) => updateField("stream", "translation_type", e.target.value)}
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
-                >
-                  <option value="sub">Subtitled (JP)</option>
-                  <option value="dub">Dubbed (EN)</option>
-                </select>
-              </SettingField>
+                <SettingField label="Audio" description="Sub or dub.">
+                  <select
+                    value={String(config.stream?.translation_type || "sub")}
+                    onChange={(e) => updateField("stream", "translation_type", e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="sub">Subtitled (Japanese)</option>
+                    <option value="dub">Dubbed (English)</option>
+                  </select>
+                </SettingField>
 
-              <SettingField label="Player Type" description="Choose between native cinematic in-app player or external MPV.">
-                <select
-                  value={String(config.stream?.player_type || "embedded")}
-                  onChange={(e) => updateField("stream", "player_type", e.target.value)}
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
-                >
-                  {(options?.stream?.player_type ?? ["embedded", "external"]).map((p: string) => (
-                    <option key={p} value={p}>{p === 'embedded' ? 'Embedded Cinematic Overlay (In-App HLS)' : 'External Media Player (MPV client with Anime4K upscaling)'}</option>
-                  ))}
-                </select>
-              </SettingField>
+                <SettingField label="Skip Intro" description="Automatically skip opening and ending credits using AniSkip times.">
+                  <select
+                    value={autoSkip ? "true" : "false"}
+                    onChange={(e) => {
+                      const val = e.target.value === "true";
+                      setAutoSkip(val);
+                      localStorage.setItem("anicat_auto_skip", String(val));
+                    }}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="false">Manual (Show Skip Intro button)</option>
+                    <option value="true">Automatic (skip without prompt)</option>
+                  </select>
+                </SettingField>
+              </CardSection>
 
-              <SettingField label="Auto-Skip Credits" description="Automatically skip opening and ending credits themes using crowdsourced AniSkip times.">
-                <select
-                  value={autoSkip ? "true" : "false"}
-                  onChange={(e) => {
-                    const val = e.target.value === "true";
-                    setAutoSkip(val);
-                    localStorage.setItem("anicat_auto_skip", String(val));
-                  }}
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
-                >
-                  <option value="false">Manual (Show 'Skip Intro' button)</option>
-                  <option value="true">Automatic (Seamless Watching)</option>
-                </select>
-              </SettingField>
+              <CardSection title="Video Player">
+                <SettingField label="Player" description="In-app player or external MPV.">
+                  <select
+                    value={String(config.stream?.player_type || "embedded")}
+                    onChange={(e) => updateField("stream", "player_type", e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    {(options?.stream?.player_type ?? ["embedded", "external"]).map((p: string) => (
+                      <option key={p} value={p}>{p === 'embedded' ? 'In-App Player' : 'External (MPV)'}</option>
+                    ))}
+                  </select>
+                </SettingField>
 
-              <SettingField label="GPU Upscaling (MPV)" description="Enable or disable Anime4K upscaling for your companion video player.">
-                <select
-                  value={String(config.stream?.shader_profile || "balanced")}
-                  onChange={(e) => updateField("stream", "shader_profile", e.target.value)}
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
-                >
-                  <option value="balanced">On (Anime4K enabled)</option>
-                  <option value="off">Off (Battery saver)</option>
-                </select>
-              </SettingField>
+                <SettingField label="GPU Upscaling (MPV only)" description="Anime4K upscaling for the external player.">
+                  <select
+                    value={String(config.stream?.shader_profile || "balanced")}
+                    onChange={(e) => updateField("stream", "shader_profile", e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="balanced">On</option>
+                    <option value="off">Off</option>
+                  </select>
+                </SettingField>
+              </CardSection>
             </div>
           )}
 
           {activeTab === "downloads" && (
             <div className="space-y-6 animate-fade-in">
-              <SettingField label="Downloads Directory" description="Where downloaded media is stored on disk.">
-                <div className="relative">
-                  <HardDrive size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
-                  <input
-                    type="text"
-                    value={String(config.downloads?.downloads_dir || "")}
-                    onChange={(e) => updateField("downloads", "downloads_dir", e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:border-accent/40 outline-none transition-all"
-                  />
-                </div>
-              </SettingField>
+              <CardSection title="Storage">
+                <SettingField label="Download Location" description="Where downloaded media is saved on disk.">
+                  <div className="relative">
+                    <HardDrive size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
+                    <input
+                      type="text"
+                      value={String(config.downloads?.downloads_dir || "")}
+                      onChange={(e) => updateField("downloads", "downloads_dir", e.target.value)}
+                      className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium focus:border-accent/40 outline-none transition-all"
+                    />
+                  </div>
+                </SettingField>
+              </CardSection>
             </div>
           )}
 
-          {activeTab === "anilist" && (
+          {activeTab === "account" && (
             <div className="space-y-6 animate-fade-in">
-              <SettingField label="Login with AniList" description="Open AniList authorization in your browser, then paste the token below.">
-                <button
-                  onClick={() => mediaApi.openUrl("https://anilist.co/api/v2/oauth/authorize?client_id=20148&response_type=token")}
-                  className="w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-xl bg-accent/10 border border-accent/20 hover:bg-accent/20 text-accent font-semibold text-sm transition-all"
-                >
-                  <Globe size={16} />
-                  <span>Open Authorization</span>
-                </button>
-              </SettingField>
+              <CardSection title="AniList">
+                <SettingField label="Login" description="Authorize Anicat to access your AniList account.">
+                  <button
+                    onClick={() => mediaApi.openUrl("https://anilist.co/api/v2/oauth/authorize?client_id=20148&response_type=token")}
+                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-xl bg-accent/10 border border-accent/20 hover:bg-accent/20 text-accent font-semibold text-sm transition-all"
+                  >
+                    <Globe size={16} />
+                    <span>Open AniList Authorization</span>
+                  </button>
+                </SettingField>
 
-              <SettingField label="AniList Token" description="Your AniList API token for authentication.">
-                <input
-                  type="password"
-                  value={String(config.anilist?.token || "")}
-                  onChange={(e) => updateField("anilist", "token", e.target.value)}
-                  placeholder="Paste your token here..."
-                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all placeholder:text-gray-700"
-                />
-                <button
-                  id="logout-btn"
-                  data-confirmed="false"
-                  onClick={async () => {
-                    const btn = document.getElementById('logout-btn');
-                    if (btn?.getAttribute('data-confirmed') === 'true') {
-                      // Direct logout to avoid state racing
-                      mediaApi.updateConfig({ anilist: { token: "" } })
-                        .then(() => window.location.reload())
-                        .catch(err => {
-                          console.error("Logout failed:", err);
-                          alert("Logout failed. Please try again.");
-                        });
-                    } else {
-                      if (btn) {
-                        btn.setAttribute('data-confirmed', 'true');
-                        btn.innerHTML = '<span>Are you sure? Click again to Logout</span>';
-                        btn.className = "mt-2 text-xs font-bold text-red-400 transition-colors flex items-center space-x-1";
+                <SettingField label="API Token" description="Your AniList token. Paste it here after authorizing.">
+                  <input
+                    type="password"
+                    value={String(config.anilist?.token || "")}
+                    onChange={(e) => updateField("anilist", "token", e.target.value)}
+                    placeholder="Paste your token..."
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all placeholder:text-gray-700"
+                  />
+                  <button
+                    id="logout-btn"
+                    data-confirmed="false"
+                    onClick={async () => {
+                      const btn = document.getElementById('logout-btn');
+                      if (btn?.getAttribute('data-confirmed') === 'true') {
+                        mediaApi.updateConfig({ anilist: { token: "" } })
+                          .then(() => window.location.reload())
+                          .catch(err => {
+                            console.error("Logout failed:", err);
+                            alert("Logout failed. Please try again.");
+                          });
+                      } else {
+                        if (btn) {
+                          btn.setAttribute('data-confirmed', 'true');
+                          btn.innerHTML = '<span>Are you sure? Click again to Logout</span>';
+                          btn.className = "mt-2 text-xs font-bold text-red-400 transition-colors flex items-center space-x-1";
+                        }
                       }
-                    }
-                  }}
-                  className="mt-2 text-xs font-bold text-red-400/60 hover:text-red-400 transition-colors flex items-center space-x-1"
-                >
-                  <XCircle size={12} />
-                  <span>Logout from AniList</span>
-                </button>
-              </SettingField>
+                    }}
+                    className="mt-2 text-xs font-bold text-red-400/60 hover:text-red-400 transition-colors flex items-center space-x-1"
+                  >
+                    <XCircle size={12} />
+                    <span>Logout</span>
+                  </button>
+                </SettingField>
+              </CardSection>
             </div>
           )}
 
           {activeTab === "maintenance" && (
-            <div className="space-y-8 animate-fade-in">
-              {/* Application Update */}
-              <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-6">
+            <div className="space-y-6 animate-fade-in">
+              {/* Update */}
+              <CardSection title="Updates" description="Keep the app up to date.">
                 <div className="flex items-center justify-between pb-4 border-b border-white/[0.04]">
-                  <div>
-                    <h3 className="text-lg font-bold text-white">Application Update</h3>
-                    <p className="text-sm text-gray-500 mt-1">Keep your application up to date with the latest releases.</p>
-                  </div>
-                  <div className="px-3 py-1 bg-white/[0.04] rounded-lg border border-white/[0.1] text-[10px] font-mono text-gray-400">
-                    Current: {health?.current_version || "v1.2.4"}
+                  <div className="text-sm text-gray-400">
+                    Current version: <span className="font-mono text-white">{health?.current_version || "unknown"}</span>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-accent uppercase tracking-wider">Update Branch</label>
+                  <SettingField label="Update Channel" description="">
                     <select
                       value={String(config.general?.update_branch || "stable")}
                       onChange={(e) => handleBranchChange(e.target.value)}
                       className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white animate-fade-in"
                     >
-                      <option value="stable" className="bg-[#121212] text-white">Stable (Official releases)</option>
-                      <option value="nightly" className="bg-[#121212] text-white">Nightly (Early access, less stable)</option>
+                      <option value="stable" className="bg-[#121212] text-white">Stable (official releases)</option>
+                      <option value="nightly" className="bg-[#121212] text-white">Nightly (early access)</option>
                     </select>
-                  </div>
+                  </SettingField>
 
                   <button
                     onClick={handleUpdate}
@@ -514,65 +563,94 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                       <span>{updateMessage.text}</span>
                     </div>
                   )}
-                  <p className="text-[10px] text-center text-gray-600 pt-2 border-t border-white/5">Build: {new Date().toLocaleDateString()}</p>
                 </div>
-              </div>
+              </CardSection>
 
-              {/* Debugging & Logs */}
-              <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-white">Advanced</h3>
-                  <button
-                    onClick={async () => {
-                      try {
-                        const logs = await mediaApi.getLogs(50);
-                        const report = [
-                          `Anicat Version: ${health?.current_version || "unknown"}`,
-                          `Platform: ${window.navigator.platform}`,
-                          `User Agent: ${window.navigator.userAgent}`,
-                          `API Connected: ${health?.api_connected}`,
-                          `API Authenticated: ${health?.api_authenticated}`,
-                          `Is Offline: ${health?.is_offline}`,
-                          `Data Version: ${health?.data_version}`,
-                          `Timestamp: ${new Date().toISOString()}`,
-                          `\n--- LATEST LOGS ---\n`,
-                          logs.logs
-                        ].join('\n');
-                        await navigator.clipboard.writeText(report);
-                        setErrorMessage("Debug report copied to clipboard!");
-                        setTimeout(() => setErrorMessage(null), 4000);
-                      } catch (err) {
-                        setErrorMessage("Failed to generate report.");
-                        setTimeout(() => setErrorMessage(null), 6000);
-                      }
-                    }}
-                    className="text-[10px] font-bold text-accent hover:text-accent-light flex items-center space-x-1"
-                  >
-                    <Save size={12} />
-                    <span>Copy Debug Report</span>
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  <button
-                    onClick={handleOpenLogs}
-                    className="w-full py-2.5 bg-white/[0.04] hover:bg-white/[0.07] text-white/70 rounded-xl text-xs font-bold transition-all border border-white/5 flex items-center justify-center space-x-2"
-                  >
-                    <HardDrive size={14} />
-                    <span>Open Log Directory</span>
-                  </button>
-
-                  <div className="relative">
-                    <pre className="w-full h-40 bg-black/40 rounded-xl p-3 text-[10px] font-mono text-gray-500 overflow-y-auto scrollbar-hide border border-white/5">
-                      {health ? "Fetching latest logs..." : "Engine offline."}
-                      <LogViewer />
-                    </pre>
+              {/* Registry */}
+              <CardSection title="Registry" description="Offline metadata, progress, and download tracking.">
+                {registryStats && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                      <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Total Media</div>
+                      <div className="text-2xl font-extrabold text-white">
+                        {registryStats.registry?.total_media_breakdown?.total || 0}
+                      </div>
+                    </div>
+                    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                      <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Downloaded</div>
+                      <div className="text-2xl font-extrabold text-white">
+                        {registryStats.downloads?.downloaded || 0}
+                      </div>
+                    </div>
                   </div>
+                )}
+                <div className="flex space-x-3 pt-2">
+                  <button
+                    onClick={handleBackup}
+                    disabled={backingUp}
+                    className="flex-1 flex items-center justify-center space-x-2 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.07] text-gray-300 transition-all font-bold text-sm disabled:opacity-50 border border-white/[0.06]"
+                  >
+                    {backingUp ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                    <span>{backingUp ? "Creating..." : "Backup"}</span>
+                  </button>
+                  {backupUrl && (
+                    <a
+                      href={backupUrl}
+                      download
+                      className="flex-1 flex items-center justify-center space-x-2 py-2.5 rounded-xl bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30 transition-all font-bold text-sm"
+                    >
+                      <Download size={15} />
+                      <span>Download Backup</span>
+                    </a>
+                  )}
                 </div>
-              </div>
+              </CardSection>
+
+              {/* Logs */}
+              <CardSection title="Logs & Debugging">
+                <button
+                  onClick={handleOpenLogs}
+                  className="w-full py-2.5 bg-white/[0.04] hover:bg-white/[0.07] text-white/70 rounded-xl text-xs font-bold transition-all border border-white/5 flex items-center justify-center space-x-2"
+                >
+                  <HardDrive size={14} />
+                  <span>Open Log Directory</span>
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      const logs = await mediaApi.getLogs(50);
+                      const report = [
+                        `Anicat Version: ${health?.current_version || "unknown"}`,
+                        `Platform: ${window.navigator.platform}`,
+                        `User Agent: ${window.navigator.userAgent}`,
+                        `API Connected: ${health?.api_connected}`,
+                        `API Authenticated: ${health?.api_authenticated}`,
+                        `Is Offline: ${health?.is_offline}`,
+                        `Data Version: ${health?.data_version}`,
+                        `Timestamp: ${new Date().toISOString()}`,
+                        `\n--- LATEST LOGS ---\n`,
+                        logs.logs
+                      ].join('\n');
+                      await navigator.clipboard.writeText(report);
+                      setErrorMessage("Debug report copied to clipboard!");
+                      setTimeout(() => setErrorMessage(null), 4000);
+                    } catch (err) {
+                      setErrorMessage("Failed to generate report.");
+                      setTimeout(() => setErrorMessage(null), 6000);
+                    }
+                  }}
+                  className="w-full py-2.5 bg-white/[0.04] hover:bg-white/[0.07] text-white/70 rounded-xl text-xs font-bold transition-all border border-white/5 flex items-center justify-center space-x-2"
+                >
+                  <Save size={14} />
+                  <span>Copy Debug Report</span>
+                </button>
+                <pre className="w-full h-40 bg-black/40 rounded-xl p-3 text-[10px] font-mono text-gray-500 overflow-y-auto scrollbar-hide border border-white/5">
+                  <LogViewer />
+                </pre>
+              </CardSection>
 
               {/* Danger Zone */}
-              <div className="p-6 rounded-2xl bg-red-500/5 border border-red-500/10 space-y-4">
+              <CardSection title="Danger Zone" description="Irreversible actions.">
                 <button
                   id="clear-registry-btn"
                   data-confirmed="false"
@@ -598,10 +676,6 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                 >
                   Clear Local Registry
                 </button>
-              </div>
-
-              {/* Reset Setup */}
-              <div className="pt-4 border-t border-white/[0.06]">
                 <button
                   onClick={() => {
                     const btn = document.getElementById('reset-onboarding-btn');
@@ -623,59 +697,10 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <RotateCcw size={12} />
                   <span>Reset Onboarding Setup</span>
                 </button>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "registry" && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
-                <h2 className="text-lg font-bold text-white">Registry Management</h2>
-                <p className="text-sm text-gray-400">
-                  Your registry stores offline metadata, playback progress, and download tracking.
-                </p>
-                <div className="pt-4 border-t border-white/[0.04]">
-                  <button
-                    onClick={handleBackup}
-                    disabled={backingUp}
-                    className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-accent text-white hover:bg-accent-light transition-all font-bold text-sm disabled:opacity-50"
-                  >
-                    {backingUp ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                    <span>{backingUp ? "Creating Backup..." : "Backup Registry"}</span>
-                  </button>
-                  {backupUrl && (
-                    <a
-                      href={backupUrl}
-                      download
-                      className="inline-flex items-center space-x-2 mt-4 px-5 py-2.5 rounded-xl bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30 transition-all font-bold text-sm"
-                    >
-                      <Download size={16} />
-                      <span>Download Latest Backup</span>
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              {registryStats && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Total Media</div>
-                    <div className="text-3xl font-extrabold text-white">
-                      {registryStats.registry?.total_media_breakdown?.total || 0}
-                    </div>
-                  </div>
-                  <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Episodes Downloaded</div>
-                    <div className="text-3xl font-extrabold text-white">
-                      {registryStats.downloads?.downloaded || 0}
-                    </div>
-                  </div>
-                </div>
-              )}
+              </CardSection>
             </div>
           )}
         </div>
-      </div>
     </div>
   );
 }
@@ -699,6 +724,18 @@ function LogViewer() {
   }, []);
 
   return <div className="mt-2 text-gray-400 whitespace-pre-wrap">{logs}</div>;
+}
+
+function CardSection({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
+      <div className="pb-3 border-b border-white/[0.04]">
+        <h3 className="text-base font-bold text-white">{title}</h3>
+        {description && <p className="text-xs text-gray-500 mt-0.5">{description}</p>}
+      </div>
+      {children}
+    </div>
+  );
 }
 
 function SettingField({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {

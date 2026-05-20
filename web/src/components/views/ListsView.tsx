@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Loader2, Monitor, CheckCircle2, Bookmark, Pause, XCircle, Heart } from "lucide-react";
-import MediaCard from "@/components/media/MediaCard";
+import LazyCard from "@/components/media/LazyCard";
 import InfiniteScroll from "@/components/shared/InfiniteScroll";
 import MediaTypeToggle from "@/components/shared/MediaTypeToggle";
 import { usePaginatedList } from "@/lib/usePaginatedList";
@@ -100,7 +100,7 @@ export default function ListsView({ onSelect }: ListsViewProps) {
         {items.length > 0 ? (
           <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 animate-fade-in transition-opacity duration-200 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
             {items.map((item) => (
-              <MediaCard key={item.id} item={item} onSelect={onSelect} />
+              <LazyCard key={item.id} item={item} onSelect={onSelect} />
             ))}
           </div>
         ) : loading && !hasLoadedOnce ? (

@@ -26,6 +26,8 @@ local function hex_to_ass_color(hex)
 end
 
 local accent_ass = hex_to_ass_color(opts.accent)
+local green_ass = hex_to_ass_color('22c55e')
+local amber_ass = hex_to_ass_color('f59e0b')
 
 local state = {
   overlay = mp.create_osd_overlay('ass-events'),
@@ -35,7 +37,10 @@ local state = {
   duration = 0,
   skips = {},
   active_skip = nil,
-  button = nil,
+  skip_button = nil,
+  hq_button = nil,
+  shaders_on = false,
+  file_loaded = false,
 }
 
 local function escape_ass(text)
@@ -81,6 +86,11 @@ end
 
 state.skips = parse_skip_times(opts.skip_times)
 
+local function refresh_shaders_state()
+  local current_shaders = mp.get_property('glsl-shaders') or ''
+  state.shaders_on = (current_shaders ~= '')
+end
+
 local function refresh_state()
   local w, h = mp.get_osd_size()
   state.width = w or 1280
@@ -117,14 +127,52 @@ local function skip_current_segment()
   end
 end
 
-local function render()
-  refresh_state()
-  state.button = nil
+local function toggle_shaders()
+  refresh_shaders_state()
+  if not state.shaders_on then
+    local shader_paths = {
+      "~~/shaders/Anime4K_Clamp_Highlights.glsl",
+      "~~/shaders/Anime4K_Restore_CNN_VL.glsl",
+      "~~/shaders/Anime4K_Upscale_CNN_x2_VL.glsl",
+      "~~/shaders/Anime4K_AutoDownscalePre_x2.glsl",
+      "~~/shaders/Anime4K_AutoDownscalePre_x4.glsl"
+    }
+    local path_str = table.concat(shader_paths, ":")
+    mp.commandv("change-list", "glsl-shaders", "set", path_str)
+    mp.osd_message("AniCat: Upscaling ON", 2.0)
+  else
+    mp.commandv("set", "glsl-shaders", "")
+    mp.osd_message("AniCat: Upscaling OFF", 2.0)
+  end
+  refresh_shaders_state()
+  render()
+end
 
-  if not state.active_skip then
+-- Draw a rounded pill button and return the label width
+local function draw_button(ass, x1, y1, x2, y2, bg_color, border_color, label, font_size, text_color)
+  -- Button background
+  ass:new_event()
+  ass:append(string.format([[{\an7\1c%s\3c%s\bord1.5\shad0\alpha&H20&}]], hex_to_ass_color(bg_color), hex_to_ass_color(border_color)))
+  round_rect(ass, x1, y1, x2, y2)
+
+  -- Button text
+  ass:new_event()
+  local text_x = math.floor((x1 + x2) / 2)
+  local text_y = math.floor((y1 + y2) / 2) - 1
+  ass:append(string.format([[{\an5\fn%s\fs%d\b1\1c%s\bord0\shad0\pos(%d,%d)}]], opts.font, font_size, hex_to_ass_color(text_color), text_x, text_y))
+  ass:append(escape_ass(label))
+end
+
+local function render()
+  if not state.file_loaded then
     state.overlay:remove()
     return
   end
+
+  refresh_state()
+  refresh_shaders_state()
+  state.skip_button = nil
+  state.hq_button = nil
 
   local w = state.width
   local h = state.height
@@ -133,38 +181,47 @@ local function render()
   end
 
   local ass = assdraw.ass_new()
-  
-  local skip_label = 'Skip Intro'
-  if state.active_skip.type == 'ed' then
-    skip_label = 'Skip Outro'
-  elseif state.active_skip.type == 'op' then
-    skip_label = 'Skip Intro'
+  local pad = 20
+  local btn_h = 36
+
+  -- ======== UPSCALING TOGGLE (top-right, persistent) ========
+  local hq_label = "Upscaling"
+  local hq_value = state.shaders_on and "ON" or "OFF"
+  local hq_text = hq_label .. " " .. hq_value
+  local hq_text_w = #hq_text * 8.5 + 32
+  local hq_x1 = w - hq_text_w - pad
+  local hq_y1 = pad + 4
+  local hq_x2 = w - pad
+  local hq_y2 = hq_y1 + btn_h
+  state.hq_button = { x1 = hq_x1, y1 = hq_y1, x2 = hq_x2, y2 = hq_y2 }
+
+  if state.shaders_on then
+    draw_button(ass, hq_x1, hq_y1, hq_x2, hq_y2, '0a0b10', '22c55e', hq_text, 13, 'ffffff')
   else
-    skip_label = 'Skip Segment'
+    draw_button(ass, hq_x1, hq_y1, hq_x2, hq_y2, '0a0b10', '555555', hq_text, 13, '888888')
   end
 
-  local text_len = #skip_label
-  local btn_width = math.max(120, text_len * 9 + 40)
-  
-  -- Netflix-style bottom-right positioning, nicely floating clear of ModernZ OSC
-  local x1 = w - btn_width - 30
-  local y1 = h - 130
-  local x2 = w - 30
-  local y2 = h - 85
+  -- ======== SKIP BUTTON (bottom-right, only when active skip) ========
+  if state.active_skip then
+    local skip_label = 'Skip Intro'
+    if state.active_skip.type == 'ed' then
+      skip_label = 'Skip Outro'
+    elseif state.active_skip.type == 'op' then
+      skip_label = 'Skip Intro'
+    else
+      skip_label = 'Skip Segment'
+    end
 
-  state.button = { x1 = x1, y1 = y1, x2 = x2, y2 = y2 }
+    local text_len = #skip_label
+    local btn_width = math.max(130, text_len * 9 + 48)
+    local s_x1 = w - btn_width - pad
+    local s_y1 = h - btn_h - pad - 60
+    local s_x2 = w - pad
+    local s_y2 = s_y1 + btn_h
+    state.skip_button = { x1 = s_x1, y1 = s_y1, x2 = s_x2, y2 = s_y2 }
 
-  -- Glassmorphic panel styling
-  ass:new_event()
-  ass:append(string.format([[{\an7\1c%s\3c%s\bord2\shad0\alpha&H30&}]], hex_to_ass_color('0a0b10'), accent_ass))
-  round_rect(ass, x1, y1, x2, y2)
-
-  -- Centered text styling
-  ass:new_event()
-  local text_x = math.floor((x1 + x2) / 2)
-  local text_y = math.floor((y1 + y2) / 2) - 1
-  ass:append(string.format([[{\an5\fn%s\fs15\b1\1c%s\bord0\shad0\pos(%d,%d)}]], opts.font, '&H00FFFFFF&', text_x, text_y))
-  ass:append(escape_ass(skip_label))
+    draw_button(ass, s_x1, s_y1, s_x2, s_y2, '0a0b10', opts.accent, skip_label, 14, 'ffffff')
+  end
 
   state.overlay.data = ass.text
   state.overlay.res_x = w
@@ -176,12 +233,20 @@ end
 local function on_left_click()
   refresh_state()
   local mouse = mp.get_property_native('mouse-pos')
-  if not mouse or not state.button then
+  if not mouse then
     return
   end
   local x = mouse.x or 0
   local y = mouse.y or 0
-  if in_rect(x, y, state.button.x1, state.button.y1, state.button.x2, state.button.y2) then
+
+  -- Check upscaling toggle button
+  if state.hq_button and in_rect(x, y, state.hq_button.x1, state.hq_button.y1, state.hq_button.x2, state.hq_button.y2) then
+    toggle_shaders()
+    return
+  end
+
+  -- Check skip button
+  if state.skip_button and in_rect(x, y, state.skip_button.x1, state.skip_button.y1, state.skip_button.x2, state.skip_button.y2) then
     skip_current_segment()
   end
 end
@@ -191,49 +256,33 @@ local function register_script_messages()
     return
   end
   mp.register_script_message('anicat-skip-intro', skip_current_segment)
+  mp.register_script_message('anicat-toggle-upscale', toggle_shaders)
 end
 
 mp.observe_property('time-pos', 'number', render)
 mp.observe_property('duration', 'number', render)
 mp.observe_property('mouse-pos', 'native', render)
-mp.register_event('file-loaded', function()
-  -- Try to extract from observed script-opts
-  local opts_str = mp.get_property('options/script-opts') or ''
-  local match_val = opts_str:match('anicat_ui%-skip_times=([^,]+)') or opts.skip_times
-  state.skips = parse_skip_times(match_val)
+mp.observe_property('glsl-shaders', 'string', function()
+  refresh_shaders_state()
   render()
+end)
+
+mp.register_event('file-loaded', function()
+  state.file_loaded = true
+  state.skips = parse_skip_times(opts.skip_times)
+  refresh_shaders_state()
+  render()
+end)
+
+mp.register_event('end-file', function()
+  state.file_loaded = false
+  state.overlay:remove()
 end)
 
 register_script_messages()
 
-local function toggle_shaders()
-  -- Detect the current active shaders list
-  local current_shaders = mp.get_property('glsl-shaders') or ''
-  local shaders_enabled = (current_shaders ~= '')
-
-  if not shaders_enabled then
-    -- Load standard, high-efficiency Anime4K upscaling shaders
-    local shader_paths = {
-      "~~/shaders/Anime4K_Clamp_Highlights.glsl",
-      "~~/shaders/Anime4K_Restore_CNN_VL.glsl",
-      "~~/shaders/Anime4K_Upscale_CNN_x2_VL.glsl",
-      "~~/shaders/Anime4K_AutoDownscalePre_x2.glsl",
-      "~~/shaders/Anime4K_AutoDownscalePre_x4.glsl"
-    }
-    local path_str = table.concat(shader_paths, ":")
-    mp.commandv("change-list", "glsl-shaders", "set", path_str)
-    mp.osd_message("AniCat Preset: Standard Quality (Neural Upscaling Enabled)", 3.0)
-  else
-    -- Clear all shaders to enter Battery Saver / Low-End profile
-    mp.commandv("set", "glsl-shaders", "")
-    mp.osd_message("AniCat Preset: Battery Saver Mode (Upscaling Off)", 3.0)
-  end
-end
-
 local ok, err = pcall(function()
-  mp.add_forced_key_binding('MBTN_LEFT', 'anicat-skip-click', on_left_click)
-  
-  -- Logical cross-platform shader toggle binds: ctrl+g (consistent with ctrl+s) and g
+  mp.add_forced_key_binding('MBTN_LEFT', 'anicat-left-click', on_left_click)
   mp.add_forced_key_binding('ctrl+g', 'anicat-toggle-shaders-ctrl', toggle_shaders)
   mp.add_forced_key_binding('g', 'anicat-toggle-shaders-g', toggle_shaders)
 end)
@@ -241,4 +290,4 @@ if not ok then
   msg.warn('Could not register forced keybindings: ' .. tostring(err))
 end
 
-msg.info('AniCat skip helper overlay loaded')
+msg.info('AniCat overlay loaded (skip helper + upscaling toggle)')

@@ -118,7 +118,8 @@ export default function AnimePlayer({
     if (isNaN(epNum)) return;
 
     // AniSkip API requires MyAnimeList (MAL) ID. Fall back to AniList ID if MAL ID is unavailable.
-    const queryId = malId || mediaId;
+    // Use null check explicitly since malId can be 0 (falsy in JS but valid).
+    const queryId = malId != null && malId !== 0 ? malId : mediaId;
     console.log(`[AniSkip] Fetching skip times for ID ${queryId} (MAL ID: ${malId || "N/A"}, AniList ID: ${mediaId}), Ep: ${epNum}`);
 
     fetch(`https://api.aniskip.com/v2/skip-times/${queryId}/${epNum}?types[]=op&types[]=ed&episodeLength=0`)
@@ -133,14 +134,16 @@ export default function AnimePlayer({
           console.log(`[AniSkip] Found skip times for ID ${queryId}:`, times);
           setSkipTimes(times);
         } else {
-          console.log(`[AniSkip] No skip times found for ID ${queryId}. Using standard 90s fallback.`);
-          // Standard 90s fallback intro starting at 0:00 to 1:30
-          setSkipTimes([{ type: "op", start: 0, end: 90 }]);
+          console.log(`[AniSkip] No skip times found for ID ${queryId}. No fallback used — skip button won't appear.`);
+          // Intentionally no fallback. A blanket first-90s fallback causes the
+          // "Skip Intro" button to appear on every episode even when no intro
+          // is playing, which is worse than no skip times at all.
+          setSkipTimes([]);
         }
       })
       .catch(err => {
         console.error("[AniSkip] Error querying skip API:", err);
-        setSkipTimes([{ type: "op", start: 0, end: 90 }]);
+        setSkipTimes([]);
       });
   }, [mediaId, malId, episodeNumber]);
 
@@ -409,8 +412,8 @@ export default function AnimePlayer({
         } catch {}
       }
 
-      // Check active skip times
-      if (skipTimes.length > 0) {
+      // Check active skip times — only show while actively playing, not paused
+      if (skipTimes.length > 0 && !video.paused) {
         const matchingSkip = skipTimes.find(s => time >= s.start && time < s.end);
         if (matchingSkip) {
           setActiveSkip(matchingSkip);
@@ -450,6 +453,46 @@ export default function AnimePlayer({
       resetControlsTimeout();
     }
   };
+
+  // Ensure video resumes after a manual seek (skip button, etc.).
+  // HLS.js seeks can stall playback if the stream needs to rebuffer.
+  // We wait for the actual `seeked` event (fired after rebuffer completes)
+  // before calling play(), instead of calling it immediately.
+  const handleSeekAndPlay = (time: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const newTime = Math.max(0, Math.min(duration, time));
+    video.currentTime = newTime;
+    setCurrentTime(newTime);
+    resetControlsTimeout();
+
+    // Wait for the seek to complete (HLS.js rebuffer), then resume
+    const onSeeked = () => {
+      video.removeEventListener('seeked', onSeeked);
+      video.removeEventListener('canplay', onSeeked);
+      video.play().catch(() => {});
+    };
+    video.addEventListener('seeked', onSeeked);
+    // Fallback: if seeked never fires, try after a timeout
+    video.addEventListener('canplay', onSeeked);
+  };
+
+  // Intercept Escape key when the player is active.
+  // The global useKeyboardShortcuts handler also listens for Escape
+  // and calls closeDetail, which closes MediaDetail.  We want ESC
+  // to close only the player (keeping the detail page open).
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        handleClose();
+      }
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleVolumeChange = (newVal: number) => {
     const vol = Math.max(0, Math.min(1, newVal));
@@ -609,7 +652,7 @@ export default function AnimePlayer({
       {loading && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 space-y-4 z-40">
           <Loader2 className="animate-spin text-accent" size={48} />
-          <p className="text-sm font-semibold tracking-wider text-white/60">RESOLVING SECURE SERVERS...</p>
+          <p className="text-sm font-semibold tracking-wider text-white/60">Loading...</p>
         </div>
       )}
 
@@ -871,7 +914,7 @@ export default function AnimePlayer({
       {/* Skip Intro/Outro Overlay Button */}
       {activeSkip && (
         <button
-          onClick={() => handleSeek(activeSkip.end)}
+          onClick={() => handleSeekAndPlay(activeSkip.end)}
           className="absolute bottom-24 right-8 z-[240] flex items-center space-x-2 px-5 py-3 bg-black/60 hover:bg-black/85 backdrop-blur-xl border border-white/10 text-white font-extrabold rounded-xl shadow-2xl transition-all active:scale-95 animate-fade-in text-xs uppercase tracking-widest cursor-pointer group"
         >
           <span>Skip {activeSkip.type === 'op' ? 'Intro' : 'Outro'}</span>
