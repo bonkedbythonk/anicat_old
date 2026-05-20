@@ -109,12 +109,15 @@ fi
 # 9. Automatically Restart the Application
 echo "Relaunching Anicat..."
 
-# Kill the old running instances first to unblock a clean relaunch
+# Kill all running Anicat instances and services to ensure a clean restart
 killall "Anicat" 2>/dev/null || true
 killall "Anicat Dev" 2>/dev/null || true
+killall "anicat-server" 2>/dev/null || true
+# Force-free port 13370 in case a dev uvicorn or stale sidecar is holding it
+lsof -ti :13370 | xargs kill -9 2>/dev/null || true
 
-# Wait a brief moment for processes to release resources, then boot it fresh
-sleep 1
+# Wait for processes to release resources, then boot fresh
+sleep 2
 open -a "$INSTALL_PATH"
 
 echo ""
