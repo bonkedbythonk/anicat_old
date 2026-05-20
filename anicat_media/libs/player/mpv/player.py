@@ -46,9 +46,23 @@ class MpvPlayer(BasePlayer):
         # Determine bundled paths:
         app_dir = os.path.dirname(sys.executable)
         bundled_paths = [
-            os.path.abspath(os.path.join(app_dir, "..", "Resources", "resources", "mpv")),
+            os.path.abspath(
+                os.path.join(app_dir, "..", "Resources", "resources", "mpv")
+            ),
             os.path.abspath(os.path.join(app_dir, "..", "Resources", "mpv")),
-            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "web", "src-tauri", "resources", "mpv")),
+            os.path.abspath(
+                os.path.join(
+                    os.path.dirname(__file__),
+                    "..",
+                    "..",
+                    "..",
+                    "..",
+                    "web",
+                    "src-tauri",
+                    "resources",
+                    "mpv",
+                )
+            ),
         ]
 
         # Always search for and prioritize the bundled MPV shipped with AniCat to ensure consistent UX/shaders/ModernZ theme.
@@ -61,7 +75,13 @@ class MpvPlayer(BasePlayer):
                     resources_dir = os.path.dirname(self.executable)
                     if sys.platform == "darwin":
                         subprocess.run(
-                            ["xattr", "-r", "-d", "com.apple.quarantine", resources_dir],
+                            [
+                                "xattr",
+                                "-r",
+                                "-d",
+                                "com.apple.quarantine",
+                                resources_dir,
+                            ],
                             stdout=subprocess.DEVNULL,
                             stderr=subprocess.DEVNULL,
                         )
@@ -72,7 +92,9 @@ class MpvPlayer(BasePlayer):
 
         # Only check system-installed MPV locations if no bundled MPV was found (e.g. running in CLI dev mode)
         if not self.executable:
-            logger.info("Bundled MPV not found. Checking system-installed MPV for compatibility.")
+            logger.info(
+                "Bundled MPV not found. Checking system-installed MPV for compatibility."
+            )
             if sys.platform == "darwin":
                 self.executable = shutil.which("mpv")
                 if not self.executable:
@@ -87,7 +109,9 @@ class MpvPlayer(BasePlayer):
                             self.executable = path
                             break
                 if self.executable:
-                    logger.info(f"System-installed MPV discovered at: {self.executable}")
+                    logger.info(
+                        f"System-installed MPV discovered at: {self.executable}"
+                    )
             else:
                 # Non-macOS standard PATH lookup
                 self.executable = shutil.which("mpv")
@@ -228,7 +252,9 @@ class MpvPlayer(BasePlayer):
             subprocess.Popen: The running MPV process.
         """
         if not self.executable:
-            raise AnicatError("MPV executable not found in PATH. Please install MPV to use the dashboard.")
+            raise AnicatError(
+                "MPV executable not found in PATH. Please install MPV to use the dashboard."
+            )
 
         mpv_args = [
             self.executable,
@@ -248,33 +274,38 @@ class MpvPlayer(BasePlayer):
         log_dir = os.path.expanduser("~/Library/Caches/anicat/logs")
         if sys.platform != "darwin":
             log_dir = os.path.expanduser("~/.cache/anicat/logs")
-        
+
         try:
             os.makedirs(log_dir, exist_ok=True)
             mpv_log_path = os.path.join(log_dir, "mpv.log")
             mpv_log_file = open(mpv_log_path, "w", encoding="utf-8")
             logger.info(f"Redirecting MPV process stdout/stderr to: {mpv_log_path}")
         except Exception as e:
-            logger.warning(f"Could not create MPV log file: {e}. Falling back to DEVNULL.")
+            logger.warning(
+                f"Could not create MPV log file: {e}. Falling back to DEVNULL."
+            )
             mpv_log_file = subprocess.DEVNULL
 
         full_cmd = pre_args + mpv_args
-        
+
         # Isolated standalone Vulkan ICD resolution for Mac out-of-the-box compatibility
         process_env = detect.get_clean_env().copy()
-        
+
         # In development mode, prioritize the dynamically located resources_dir over sys.executable paths if vk_icd.json exists there
         if sys.platform == "darwin":
             resources_dir = self._find_resources_dir()
             if resources_dir:
-                dev_icd = os.path.abspath(os.path.join(resources_dir, "lib", "vk_icd.json"))
+                dev_icd = os.path.abspath(
+                    os.path.join(resources_dir, "lib", "vk_icd.json")
+                )
                 if os.path.exists(dev_icd):
                     process_env["VK_ICD_FILENAMES"] = dev_icd
                     process_env["VK_DRIVER_FILES"] = dev_icd
 
             if process_env.get("VK_ICD_FILENAMES"):
-                logger.info(f"Vulkan ICD dynamic loader isolation active: {process_env.get('VK_ICD_FILENAMES')}")
-
+                logger.info(
+                    f"Vulkan ICD dynamic loader isolation active: {process_env.get('VK_ICD_FILENAMES')}"
+                )
 
         logger.info(f"Starting MPV with IPC socket: {socket_path}")
         logger.info(f"MPV Command: {' '.join(full_cmd)}")
@@ -307,7 +338,9 @@ class MpvPlayer(BasePlayer):
         """
         WEBTORRENT_CLI = shutil.which("webtorrent")
         if not WEBTORRENT_CLI:
-            raise AnicatError("Please Install webtorrent cli inorder to stream torrents")
+            raise AnicatError(
+                "Please Install webtorrent cli inorder to stream torrents"
+            )
 
         args = [WEBTORRENT_CLI, params.url, "--mpv"]
         if mpv_args := self._create_mpv_cli_options(params):
@@ -355,9 +388,15 @@ class MpvPlayer(BasePlayer):
         if sys.platform == "darwin":
             mpv_args.append("--vo=gpu")
 
+        if getattr(params, "subtitles", None):
+            for sub_url in params.subtitles:
+                mpv_args.append(f"--sub-file={sub_url}")
+
         if getattr(params, "fullscreen", False):
             mpv_args.append("--fs")
-            logger.info("AniCat is in fullscreen. Requesting MPV to launch in fullscreen mode (--fs).")
+            logger.info(
+                "AniCat is in fullscreen. Requesting MPV to launch in fullscreen mode (--fs)."
+            )
 
         # Dynamically locate isolated configs and shaders from resources, regardless of whether system or bundled MPV is used
         resources_dir = self._find_resources_dir()
@@ -368,9 +407,13 @@ class MpvPlayer(BasePlayer):
                 mpv_args.append("--osc=no")
                 # Point config-dir to our isolated, custom-themed settings to load mpv.conf, input.conf, and modernz.lua
                 mpv_args.append(f"--config-dir={bundled_config}")
-                logger.info(f"Using isolated premium MPV configuration from: {bundled_config}")
+                logger.info(
+                    f"Using isolated premium MPV configuration from: {bundled_config}"
+                )
                 # If we ship a custom AniCat UI script, prefer loading it explicitly
-                ani_ui = os.path.abspath(os.path.join(bundled_config, "scripts", "anicat_ui", "main.lua"))
+                ani_ui = os.path.abspath(
+                    os.path.join(bundled_config, "scripts", "anicat_ui", "main.lua")
+                )
                 if os.path.exists(ani_ui):
                     # Pass script explicitly in case MPV's auto-loading is affected by user settings
                     mpv_args.append(f"--script={ani_ui}")
@@ -382,29 +425,47 @@ class MpvPlayer(BasePlayer):
                 bundled_shaders_dir = os.path.join(bundled_config, "shaders")
                 if os.path.exists(bundled_shaders_dir):
                     # Mode A: CNN_L-based upscaling — sharper than DoG, runs well on Apple Silicon
-                    clamp_path = os.path.join(bundled_shaders_dir, "Anime4K_Clamp_Highlights.glsl")
-                    restore_path = os.path.join(bundled_shaders_dir, "Anime4K_Restore_CNN_L.glsl")
-                    upscale_path = os.path.join(bundled_shaders_dir, "Anime4K_Upscale_CNN_x2_L.glsl")
-                    downscale_x2 = os.path.join(bundled_shaders_dir, "Anime4K_AutoDownscalePre_x2.glsl")
-                    downscale_x4 = os.path.join(bundled_shaders_dir, "Anime4K_AutoDownscalePre_x4.glsl")
+                    clamp_path = os.path.join(
+                        bundled_shaders_dir, "Anime4K_Clamp_Highlights.glsl"
+                    )
+                    restore_path = os.path.join(
+                        bundled_shaders_dir, "Anime4K_Restore_CNN_L.glsl"
+                    )
+                    upscale_path = os.path.join(
+                        bundled_shaders_dir, "Anime4K_Upscale_CNN_x2_L.glsl"
+                    )
+                    downscale_x2 = os.path.join(
+                        bundled_shaders_dir, "Anime4K_AutoDownscalePre_x2.glsl"
+                    )
+                    downscale_x4 = os.path.join(
+                        bundled_shaders_dir, "Anime4K_AutoDownscalePre_x4.glsl"
+                    )
                     shaders_to_load = []
-                    for p in [clamp_path, restore_path, upscale_path, downscale_x2, downscale_x4]:
+                    for p in [
+                        clamp_path,
+                        restore_path,
+                        upscale_path,
+                        downscale_x2,
+                        downscale_x4,
+                    ]:
                         if os.path.exists(p):
                             shaders_to_load.append(p)
                     if shaders_to_load:
                         mpv_args.append(f"--glsl-shaders={':'.join(shaders_to_load)}")
                         logger.info("Using Anime4K Mode A (CNN_L) upscaling shaders.")
             else:
-                logger.info("GPU upscaling shaders are disabled (Battery Saver / Low-End profile).")
+                logger.info(
+                    "GPU upscaling shaders are disabled (Battery Saver / Low-End profile)."
+                )
 
         # Pass AniSkip skip times to the AniCat UI script if available
-        if getattr(params, 'skip_times', None):
+        if getattr(params, "skip_times", None):
             try:
                 parts = []
                 for s in params.skip_times:
-                    t = s.get('type')
-                    start = int(s.get('start') or 0)
-                    end = int(s.get('end') or 0)
+                    t = s.get("type")
+                    start = int(s.get("start") or 0)
+                    end = int(s.get("end") or 0)
                     parts.append(f"{t},{start},{end}")
                 encoded = ";".join(parts)
                 mpv_args.append(f"--script-opts=anicat_ui-skip_times={encoded}")
@@ -419,7 +480,7 @@ class MpvPlayer(BasePlayer):
                 # Clean value of newlines and extra spaces
                 clean_v = v.strip().replace("\n", "").replace("\r", "")
                 headers_list.append(f"{k}:{clean_v}")
-            
+
             header_str = ",".join(headers_list)
             mpv_args.append(f"--http-header-fields={header_str}")
 
@@ -443,23 +504,42 @@ class MpvPlayer(BasePlayer):
         app_dir = os.path.dirname(sys.executable)
         candidate_paths = []
         if sys.platform == "darwin":
-            candidate_paths.extend([
-                os.path.abspath(os.path.join(app_dir, "..", "Resources", "resources")),
-                os.path.abspath(os.path.join(app_dir, "..", "Resources")),
-            ])
+            candidate_paths.extend(
+                [
+                    os.path.abspath(
+                        os.path.join(app_dir, "..", "Resources", "resources")
+                    ),
+                    os.path.abspath(os.path.join(app_dir, "..", "Resources")),
+                ]
+            )
         else:
-            candidate_paths.extend([
-                os.path.abspath(os.path.join(app_dir, "resources")),
-            ])
+            candidate_paths.extend(
+                [
+                    os.path.abspath(os.path.join(app_dir, "resources")),
+                ]
+            )
 
         # Explicit development fallback relative to the package
-        dev_fallback = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "web", "src-tauri", "resources"))
+        dev_fallback = os.path.abspath(
+            os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "..",
+                "..",
+                "..",
+                "web",
+                "src-tauri",
+                "resources",
+            )
+        )
         candidate_paths.append(dev_fallback)
 
         # Try to detect a repository root (look for .git or pyproject.toml) and prefer its web/src-tauri/resources
         cur = os.path.abspath(os.path.dirname(__file__))
         for _ in range(6):
-            if os.path.exists(os.path.join(cur, ".git")) or os.path.exists(os.path.join(cur, "pyproject.toml")):
+            if os.path.exists(os.path.join(cur, ".git")) or os.path.exists(
+                os.path.join(cur, "pyproject.toml")
+            ):
                 repo_resources = os.path.join(cur, "web", "src-tauri", "resources")
                 candidate_paths.append(os.path.abspath(repo_resources))
                 break

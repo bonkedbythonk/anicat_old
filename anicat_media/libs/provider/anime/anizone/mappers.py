@@ -19,6 +19,7 @@ from ....provider.anime.types import (
     PageInfo,
     SearchResult,
     SearchResults,
+    Subtitle,
 )
 
 # ---------------------------------------------------------------------------
@@ -202,6 +203,29 @@ def extract_stream_url(raw_html: str) -> Optional[str]:
     # Fallback: search for any seiryuu master.m3u8 URL
     m = re.search(r'https://seiryuu\.vid-cdn\.xyz/[^"\'\\s<>]+/master\.m3u8', raw_html)
     return m.group(0) if m else None
+
+
+def extract_subtitles(raw_html: str) -> list[Subtitle]:
+    """Extract subtitle tracks from an episode page.
+
+    The <track> elements in the player contain ASS subtitle URLs:
+    <track src=https://seiryuu.vid-cdn.xyz/{uuid}/subtitles/0_en.ass
+           kind="subtitles" label="Full Subtitles [MTBB]" srclang="en" />
+    Note: src may be unquoted.
+    """
+    subtitles: list[Subtitle] = []
+    track_pattern = re.compile(
+        r'<track\s+src="?(https://[^"]*?seiryuu\.vid-cdn\.xyz/[^"\s>]+?/subtitles/\d+_\w+\.ass)"?'
+        r'[^>]*?label="([^"]*)"'
+        r'[^>]*?srclang="([^"]*)"',
+        re.DOTALL | re.IGNORECASE,
+    )
+    for m in track_pattern.finditer(raw_html):
+        url = m.group(1)
+        label = m.group(2).replace("&amp;", "&")
+        lang = m.group(3)
+        subtitles.append(Subtitle(url=url, language=f"{lang} ({label})"))
+    return subtitles
 
 
 def extract_episodes_from_episode_page(

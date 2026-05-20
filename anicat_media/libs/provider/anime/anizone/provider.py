@@ -124,9 +124,12 @@ class AniZone(BaseAnimeProvider):
                 )
                 return
 
+            subtitles = mappers.extract_subtitles(response.text)
+
             yield Server(
                 name="AniZone",
                 links=[EpisodeStream(link=stream_url, hls=True)],
+                subtitles=subtitles,
             )
 
             # Also extract episode list to populate titles if needed

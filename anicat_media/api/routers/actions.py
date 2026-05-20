@@ -13,45 +13,57 @@ from .status import set_playback
 
 logger = logging.getLogger(__name__)
 
+
 class PlaybackTrackRequest(BaseModel):
     media_id: int
     episode: str
     current_time: float
     total_time: float
 
+
 router = APIRouter()
-_active_requests = {} # media_id -> timestamp
+_active_requests = {}  # media_id -> timestamp
 
 from ..deps import get_ctx
+
 
 def _play_and_track(ctx, params, anime, media_item, local: bool = False):
     """Background task to play media and then track watch history."""
     try:
         from ...libs.provider.anime.types import SearchResult as AnimeSearchResult
         from ...libs.provider.anime.params import AnimeParams
+
         if anime and isinstance(anime, AnimeSearchResult):
             try:
                 full_anime = ctx.provider.get(
                     AnimeParams(
                         id=anime.id,
-                        query=media_item.title.english or media_item.title.romaji or ""
+                        query=media_item.title.english or media_item.title.romaji or "",
                     )
                 )
                 if full_anime:
                     anime = full_anime
             except Exception as e:
                 import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Failed to resolve full anime details in background playback: {e}")
 
-        player_result = ctx.player.play(params, anime=anime, media_item=media_item, local=local)
+                logger = logging.getLogger(__name__)
+                logger.error(
+                    f"Failed to resolve full anime details in background playback: {e}"
+                )
+
+        player_result = ctx.player.play(
+            params, anime=anime, media_item=media_item, local=local
+        )
         if player_result:
             ctx.watch_history.track(media_item, player_result)
             ctx.data_version += 1
     except Exception as e:
         import logging
+
         logger = logging.getLogger(__name__)
         logger.error(f"Error in background playback tracking: {e}", exc_info=True)
+
+
 async def _resolve_episode_stream(media_id: int, episode: Optional[str] = None):
     """
     Shared helper to resolve media search results, select the best anime match,
@@ -70,56 +82,64 @@ async def _resolve_episode_stream(media_id: int, episode: Optional[str] = None):
     else:
         # If episode is provided, check if we have a resume position for it
         _, resume_time = ctx.watch_history.get_episode(media_item)
-        current_progress = str(media_item.user_status.progress) if media_item.user_status else "0"
+        current_progress = (
+            str(media_item.user_status.progress) if media_item.user_status else "0"
+        )
         if episode == str(int(current_progress) + 1) or episode == current_progress:
             start_time = resume_time
 
     title = media_item.title.romaji or media_item.title.english
     from .media import get_anime_ref
-    
+
     anime_id, record = await get_anime_ref(ctx, media_item, media_id)
     if not anime_id:
-         raise HTTPException(status_code=404, detail=f"No results found for {title}")
-         
+        raise HTTPException(status_code=404, detail=f"No results found for {title}")
+
     from ...libs.provider.anime.params import AnimeParams
+
     full_anime = ctx.provider.get(AnimeParams(id=anime_id, query=title))
     if not full_anime:
-         raise HTTPException(status_code=404, detail="Anime details not found")
-    
+        raise HTTPException(status_code=404, detail="Anime details not found")
+
     # 3. Get streams
     from ...libs.provider.anime.params import EpisodeStreamsParams
+
     streams_iter = ctx.provider.episode_streams(
         EpisodeStreamsParams(
             query=title,
             anime_id=anime_id,
             episode=episode,
-            translation_type=ctx.config.stream.translation_type
+            translation_type=ctx.config.stream.translation_type,
         )
     )
-    
+
     if not streams_iter:
         raise HTTPException(status_code=404, detail="No streams found")
-        
+
     # Get first server
     try:
         server = next(streams_iter)
     except StopIteration:
         raise HTTPException(status_code=404, detail="No stream servers available")
-        
+
     if not server.links:
         raise HTTPException(status_code=404, detail="No links found on server")
-        
+
     preferred_quality = ctx.config.stream.quality
-    selected_link = next((link for link in server.links if link.quality == preferred_quality), None)
-    
+    selected_link = next(
+        (link for link in server.links if link.quality == preferred_quality), None
+    )
+
     if not selected_link:
         try:
-            selected_link = sorted(server.links, key=lambda x: int(x.quality), reverse=True)[0]
+            selected_link = sorted(
+                server.links, key=lambda x: int(x.quality), reverse=True
+            )[0]
         except Exception:
             selected_link = server.links[-1]
-            
+
     stream_link = selected_link.link
-    
+
     return {
         "url": stream_link,
         "title": title,
@@ -127,15 +147,17 @@ async def _resolve_episode_stream(media_id: int, episode: Optional[str] = None):
         "headers": server.headers or {},
         "start_time": start_time,
         "anime_ref": full_anime,
-        "media_item": media_item
+        "media_item": media_item,
+        "subtitles": [s.url for s in server.subtitles] if server.subtitles else None,
     }
+
 
 @router.post("/play/{media_id}")
 async def play_media(
-    media_id: int, 
-    background_tasks: BackgroundTasks, 
+    media_id: int,
+    background_tasks: BackgroundTasks,
     episode: Optional[str] = None,
-    fullscreen: bool = False
+    fullscreen: bool = False,
 ):
     """
     Smart Play: Finds the next episode and triggers playback in MPV.
@@ -143,9 +165,11 @@ async def play_media(
     now = time.time()
     if media_id in _active_requests:
         last_request_time = _active_requests[media_id]
-        if now - last_request_time < 2.0: # Only block if within 2 seconds
-            raise HTTPException(status_code=429, detail="Playback request already in progress")
-    
+        if now - last_request_time < 2.0:  # Only block if within 2 seconds
+            raise HTTPException(
+                status_code=429, detail="Playback request already in progress"
+            )
+
     _active_requests[media_id] = now
     try:
         ctx = get_ctx()
@@ -158,6 +182,7 @@ async def play_media(
             try:
                 from ...libs.media_api.params import UpdateUserMediaListEntryParams
                 from ...libs.media_api.types import UserMediaListStatus
+
                 ctx.media_api.update_list_entry(
                     UpdateUserMediaListEntryParams(
                         media_id=media_id,
@@ -167,47 +192,65 @@ async def play_media(
                 # Re-fetch media_item so user_status is populated downstream
                 media_item = ctx.media_api.get_media_item(media_id) or media_item
             except Exception as e:
-                logger.warning(f"Failed to auto-add media {media_id} to watching list: {e}")
+                logger.warning(
+                    f"Failed to auto-add media {media_id} to watching list: {e}"
+                )
 
         # 2. Check if Manga
         from ...libs.media_api.types import MediaType, MediaFormat
+
         is_manga = media_item.type == MediaType.MANGA or media_item.format in (
             MediaFormat.MANGA,
             MediaFormat.NOVEL,
             MediaFormat.ONE_SHOT,
         )
-        
+
         title = media_item.title.romaji or media_item.title.english
-        from ...core.utils.normalizer import normalize_title
-        
+
         if is_manga:
             from ...libs.provider.manga.params import MangaParams
             from .media import get_manga_ref
-            
+
             manga_id, record = await get_manga_ref(ctx, media_item, media_id)
             if not manga_id:
-                 raise HTTPException(status_code=404, detail=f"No manga results found for {title}")
-                 
+                raise HTTPException(
+                    status_code=404, detail=f"No manga results found for {title}"
+                )
+
             full_manga = ctx.manga_provider.get(MangaParams(id=manga_id, query=title))
             if not full_manga or not full_manga.chapters:
-                 raise HTTPException(status_code=404, detail="No chapters found")
-            
+                raise HTTPException(status_code=404, detail="No chapters found")
+
             # Find the requested chapter
-            chapter = next((ch for ch in full_manga.chapters if ch.number == episode), None)
+            chapter = next(
+                (ch for ch in full_manga.chapters if ch.number == episode), None
+            )
             if not chapter:
                 chapter = full_manga.chapters[0]
                 episode = chapter.number
-                
-            chapter_data = ctx.manga_provider.get_chapter_thumbnails(full_manga.id, chapter.url or chapter.number)
+
+            chapter_data = ctx.manga_provider.get_chapter_thumbnails(
+                full_manga.id, chapter.url or chapter.number
+            )
             if not chapter_data or not chapter_data.get("thumbnails"):
-                 raise HTTPException(status_code=404, detail="Failed to load chapter pages")
-            
-            ctx.watch_history.track(media_item, PlayerResult(episode=str(episode), stop_time=None, total_time=None))
+                raise HTTPException(
+                    status_code=404, detail="Failed to load chapter pages"
+                )
+
+            ctx.watch_history.track(
+                media_item,
+                PlayerResult(episode=str(episode), stop_time=None, total_time=None),
+            )
             ctx.data_version += 1
-            
+
             set_playback(media_id=media_id, media_title=title, episode=str(episode))
             _active_requests.pop(media_id, None)
-            return {"status": "reading", "media": title, "episode": episode, "chapter_data": chapter_data}
+            return {
+                "status": "reading",
+                "media": title,
+                "episode": episode,
+                "chapter_data": chapter_data,
+            }
 
         # Intercept for completed local downloads before resolving HLS stream
         resolved_episode = episode
@@ -217,18 +260,40 @@ async def play_media(
             resolved_episode = str(resolved_episode) if resolved_episode else "1"
         else:
             _, resume_time = ctx.watch_history.get_episode(media_item)
-            current_progress = str(media_item.user_status.progress) if media_item.user_status else "0"
-            if resolved_episode == str(int(current_progress) + 1) or resolved_episode == current_progress:
+            current_progress = (
+                str(media_item.user_status.progress) if media_item.user_status else "0"
+            )
+            if (
+                resolved_episode == str(int(current_progress) + 1)
+                or resolved_episode == current_progress
+            ):
                 start_time = resume_time
 
         from ...cli.service.registry.models import DownloadStatus
+
         record = ctx.media_registry.get_media_record(media_id)
-        ep_record = next((e for e in record.media_episodes if e.episode_number == resolved_episode), None) if record and record.media_episodes else None
-        
+        ep_record = (
+            next(
+                (
+                    e
+                    for e in record.media_episodes
+                    if e.episode_number == resolved_episode
+                ),
+                None,
+            )
+            if record and record.media_episodes
+            else None
+        )
+
         is_local = False
         file_path = None
-        if ep_record and ep_record.download_status == DownloadStatus.COMPLETED and ep_record.file_path:
+        if (
+            ep_record
+            and ep_record.download_status == DownloadStatus.COMPLETED
+            and ep_record.file_path
+        ):
             from pathlib import Path
+
             path_obj = Path(ep_record.file_path)
             if path_obj.exists():
                 is_local = True
@@ -236,9 +301,11 @@ async def play_media(
 
         if is_local and file_path is not None:
             local_title = f"{media_item.title.english or media_item.title.romaji}; Episode {resolved_episode}"
-            if media_item.streaming_episodes and media_item.streaming_episodes.get(resolved_episode):
+            if media_item.streaming_episodes and media_item.streaming_episodes.get(
+                resolved_episode
+            ):
                 local_title = media_item.streaming_episodes[resolved_episode].title
-                
+
             params = PlayerParams(
                 url=str(file_path),
                 query=media_item.title.english or media_item.title.romaji or "",
@@ -246,36 +313,62 @@ async def play_media(
                 title=local_title,
                 headers={},
                 start_time=start_time,
-                fullscreen=fullscreen
+                fullscreen=fullscreen,
             )
             # Attempt to fetch AniSkip skip times for this media/episode
             try:
-                query_id = media_item.id_mal if media_item.id_mal not in (None, 0) else media_id
+                query_id = (
+                    media_item.id_mal
+                    if media_item.id_mal not in (None, 0)
+                    else media_id
+                )
                 ep_num = int(resolved_episode)
                 aniskip_url = f"https://api.aniskip.com/v2/skip-times/{query_id}/{ep_num}?types[]=op&types[]=ed&episodeLength=0"
                 r = httpx.get(aniskip_url, timeout=5.0)
                 if r.status_code == 200:
                     data = r.json()
-                    if data and data.get('found') and data.get('results'):
+                    if data and data.get("found") and data.get("results"):
                         times = []
-                        for res in data['results']:
-                            times.append({
-                                'type': res.get('skipType'),
-                                'start': res.get('interval', {}).get('startTime', 0),
-                                'end': res.get('interval', {}).get('endTime', 0)
-                            })
-                        params = params.__class__(**{**params.__dict__, 'skip_times': times})
+                        for res in data["results"]:
+                            times.append(
+                                {
+                                    "type": res.get("skipType"),
+                                    "start": res.get("interval", {}).get(
+                                        "startTime", 0
+                                    ),
+                                    "end": res.get("interval", {}).get("endTime", 0),
+                                }
+                            )
+                        params = params.__class__(
+                            **{**params.__dict__, "skip_times": times}
+                        )
             except Exception as e:
                 logger.debug(f"Failed to fetch AniSkip times: {e}")
-            background_tasks.add_task(_play_and_track, ctx, params, anime=None, media_item=media_item, local=True)
-            
-            set_playback(media_id=media_id, media_title=media_item.title.english or media_item.title.romaji, episode=resolved_episode)
+            background_tasks.add_task(
+                _play_and_track,
+                ctx,
+                params,
+                anime=None,
+                media_item=media_item,
+                local=True,
+            )
+
+            set_playback(
+                media_id=media_id,
+                media_title=media_item.title.english or media_item.title.romaji,
+                episode=resolved_episode,
+            )
             _active_requests.pop(media_id, None)
-            return {"status": "playing", "media": media_item.title.english or media_item.title.romaji, "episode": resolved_episode, "local": True}
+            return {
+                "status": "playing",
+                "media": media_item.title.english or media_item.title.romaji,
+                "episode": resolved_episode,
+                "local": True,
+            }
 
         # 3. Resolve stream
         resolved = await _resolve_episode_stream(media_id, episode)
-        
+
         params = PlayerParams(
             url=resolved["url"],
             query=resolved["title"],
@@ -283,41 +376,64 @@ async def play_media(
             title=resolved["title"],
             headers=resolved["headers"],
             start_time=resolved["start_time"],
-            fullscreen=fullscreen
+            fullscreen=fullscreen,
+            subtitles=resolved.get("subtitles"),
         )
         # Try to fetch AniSkip skip times for better experience in external MPV
         try:
-            query_id = media_item.id_mal if media_item.id_mal not in (None, 0) else media_id
+            query_id = (
+                media_item.id_mal if media_item.id_mal not in (None, 0) else media_id
+            )
             ep_num = int(resolved["episode"])
             aniskip_url = f"https://api.aniskip.com/v2/skip-times/{query_id}/{ep_num}?types[]=op&types[]=ed&episodeLength=0"
             r = httpx.get(aniskip_url, timeout=5.0)
             if r.status_code == 200:
                 data = r.json()
-                if data and data.get('found') and data.get('results'):
+                if data and data.get("found") and data.get("results"):
                     times = []
-                    for res in data['results']:
-                        times.append({
-                            'type': res.get('skipType'),
-                            'start': res.get('interval', {}).get('startTime', 0),
-                            'end': res.get('interval', {}).get('endTime', 0)
-                        })
-                    params = params.__class__(**{**params.__dict__, 'skip_times': times})
+                    for res in data["results"]:
+                        times.append(
+                            {
+                                "type": res.get("skipType"),
+                                "start": res.get("interval", {}).get("startTime", 0),
+                                "end": res.get("interval", {}).get("endTime", 0),
+                            }
+                        )
+                    params = params.__class__(
+                        **{**params.__dict__, "skip_times": times}
+                    )
         except Exception as e:
             logger.debug(f"Failed to fetch AniSkip times: {e}")
-        background_tasks.add_task(_play_and_track, ctx, params, anime=resolved["anime_ref"], media_item=resolved["media_item"])
-        
-        set_playback(media_id=media_id, media_title=resolved["title"], episode=resolved["episode"])
+        background_tasks.add_task(
+            _play_and_track,
+            ctx,
+            params,
+            anime=resolved["anime_ref"],
+            media_item=resolved["media_item"],
+        )
+
+        set_playback(
+            media_id=media_id,
+            media_title=resolved["title"],
+            episode=resolved["episode"],
+        )
         _active_requests.pop(media_id, None)
-        return {"status": "playing", "media": resolved["title"], "episode": resolved["episode"]}
-        
+        return {
+            "status": "playing",
+            "media": resolved["title"],
+            "episode": resolved["episode"],
+        }
+
     except HTTPException:
         _active_requests.pop(media_id, None)
         raise
     except Exception as e:
         _active_requests.pop(media_id, None)
         import traceback
+
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/play/{media_id}/resolve")
 async def resolve_media_stream(media_id: int, episode: Optional[str] = None):
@@ -335,6 +451,7 @@ async def resolve_media_stream(media_id: int, episode: Optional[str] = None):
             try:
                 from ...libs.media_api.params import UpdateUserMediaListEntryParams
                 from ...libs.media_api.types import UserMediaListStatus
+
                 ctx.media_api.update_list_entry(
                     UpdateUserMediaListEntryParams(
                         media_id=media_id,
@@ -343,7 +460,9 @@ async def resolve_media_stream(media_id: int, episode: Optional[str] = None):
                 )
                 media_item = ctx.media_api.get_media_item(media_id) or media_item
             except Exception as e:
-                logger.warning(f"Failed to auto-add media {media_id} to watching list: {e}")
+                logger.warning(
+                    f"Failed to auto-add media {media_id} to watching list: {e}"
+                )
 
         resolved_episode = episode
         start_time = None
@@ -352,18 +471,40 @@ async def resolve_media_stream(media_id: int, episode: Optional[str] = None):
             resolved_episode = str(resolved_episode) if resolved_episode else "1"
         else:
             _, resume_time = ctx.watch_history.get_episode(media_item)
-            current_progress = str(media_item.user_status.progress) if media_item.user_status else "0"
-            if resolved_episode == str(int(current_progress) + 1) or resolved_episode == current_progress:
+            current_progress = (
+                str(media_item.user_status.progress) if media_item.user_status else "0"
+            )
+            if (
+                resolved_episode == str(int(current_progress) + 1)
+                or resolved_episode == current_progress
+            ):
                 start_time = resume_time
 
         # Check if locally downloaded
         from ...cli.service.registry.models import DownloadStatus
+
         record = ctx.media_registry.get_media_record(media_id)
-        ep_record = next((e for e in record.media_episodes if e.episode_number == resolved_episode), None) if record and record.media_episodes else None
-        
+        ep_record = (
+            next(
+                (
+                    e
+                    for e in record.media_episodes
+                    if e.episode_number == resolved_episode
+                ),
+                None,
+            )
+            if record and record.media_episodes
+            else None
+        )
+
         is_local = False
-        if ep_record and ep_record.download_status == DownloadStatus.COMPLETED and ep_record.file_path:
+        if (
+            ep_record
+            and ep_record.download_status == DownloadStatus.COMPLETED
+            and ep_record.file_path
+        ):
             from pathlib import Path
+
             file_path = Path(ep_record.file_path)
             if file_path.exists():
                 is_local = True
@@ -371,13 +512,14 @@ async def resolve_media_stream(media_id: int, episode: Optional[str] = None):
         if is_local:
             title = media_item.title.english or media_item.title.romaji
             set_playback(media_id=media_id, media_title=title, episode=resolved_episode)
-            
+
             # Serve local file via FastAPI route
             local_stream_url = f"http://127.0.0.1:13370/api/actions/local-file/{media_id}/{resolved_episode}"
-            
+
             start_time_seconds = 0
             if start_time:
                 from ...core.utils.converter import time_to_seconds
+
                 if ":" in str(start_time):
                     start_time_seconds = time_to_seconds(start_time)
                 else:
@@ -385,7 +527,7 @@ async def resolve_media_stream(media_id: int, episode: Optional[str] = None):
                         start_time_seconds = float(start_time)
                     except (ValueError, TypeError):
                         start_time_seconds = 0
-            
+
             return {
                 "stream_url": local_stream_url,
                 "raw_stream_url": local_stream_url,
@@ -394,26 +536,31 @@ async def resolve_media_stream(media_id: int, episode: Optional[str] = None):
                 "start_time": start_time_seconds,
                 "media_id": media_id,
                 "headers": {},
-                "local": True
+                "local": True,
             }
 
         resolved = await _resolve_episode_stream(media_id, episode)
-        
+
         # Track playback for Now Playing bar
-        set_playback(media_id=media_id, media_title=resolved["title"], episode=resolved["episode"])
-        
+        set_playback(
+            media_id=media_id,
+            media_title=resolved["title"],
+            episode=resolved["episode"],
+        )
+
         raw_stream_url = resolved["url"]
         stream_headers = resolved["headers"]
-        
+
         # Route HLS manifest through local proxy
         proxy_prefix = "/api/actions/proxy"
         headers_str = json.dumps(stream_headers)
-        
+
         proxied_stream_url = f"http://127.0.0.1:13370{proxy_prefix}?url={urllib.parse.quote(raw_stream_url)}&headers={urllib.parse.quote(headers_str)}"
-        
+
         start_time_seconds = 0
         if resolved["start_time"]:
             from ...core.utils.converter import time_to_seconds
+
             if ":" in str(resolved["start_time"]):
                 start_time_seconds = time_to_seconds(resolved["start_time"])
             else:
@@ -421,7 +568,7 @@ async def resolve_media_stream(media_id: int, episode: Optional[str] = None):
                     start_time_seconds = float(resolved["start_time"])
                 except (ValueError, TypeError):
                     start_time_seconds = 0
-        
+
         return {
             "stream_url": proxied_stream_url,
             "raw_stream_url": raw_stream_url,
@@ -429,14 +576,16 @@ async def resolve_media_stream(media_id: int, episode: Optional[str] = None):
             "episode": resolved["episode"],
             "start_time": start_time_seconds,
             "media_id": media_id,
-            "headers": stream_headers
+            "headers": stream_headers,
         }
     except HTTPException:
         raise
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
 
 def _proxy_m3u8_content(m3u8_content: str, base_url: str, headers_json: str) -> str:
     """
@@ -458,7 +607,7 @@ def _proxy_m3u8_content(m3u8_content: str, base_url: str, headers_json: str) -> 
                     suffix_parts = parts[1].split('"', 1)
                     uri = suffix_parts[0]
                     remaining = suffix_parts[1] if len(suffix_parts) > 1 else ""
-                    
+
                     absolute_uri = urllib.parse.urljoin(base_url, uri)
                     proxied_uri = f"http://127.0.0.1:13370/api/actions/proxy?url={urllib.parse.quote(absolute_uri)}&headers={urllib.parse.quote(headers_json)}"
                     rewritten_lines.append(f'{prefix}URI="{proxied_uri}"{remaining}')
@@ -473,6 +622,7 @@ def _proxy_m3u8_content(m3u8_content: str, base_url: str, headers_json: str) -> 
             rewritten_lines.append(proxied_url)
     return "\n".join(rewritten_lines)
 
+
 @router.get("/proxy")
 async def hls_stream_proxy(url: str, headers: str):
     """
@@ -486,7 +636,9 @@ async def hls_stream_proxy(url: str, headers: str):
         req_headers = {}
 
     if "User-Agent" not in req_headers:
-        req_headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"
+        req_headers["User-Agent"] = (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"
+        )
 
     # Make the request to the real server
     async with httpx.AsyncClient(follow_redirects=True, verify=False) as client:
@@ -505,12 +657,14 @@ async def hls_stream_proxy(url: str, headers: str):
                 headers={
                     "Access-Control-Allow-Origin": "*",
                     "Access-Control-Allow-Headers": "*",
-                    "Cache-Control": "no-cache"
-                }
+                    "Cache-Control": "no-cache",
+                },
             )
         elif is_key:
             # Return standard application/octet-stream for HLS decryption key files
-            logger.info(f"[Proxy Key Debug] Fetching key {url} | Status: {response.status_code} | Length: {len(response.content)} | First 16 bytes: {response.content.hex()[:32]}")
+            logger.info(
+                f"[Proxy Key Debug] Fetching key {url} | Status: {response.status_code} | Length: {len(response.content)} | First 16 bytes: {response.content.hex()[:32]}"
+            )
             return Response(
                 content=response.content,
                 status_code=response.status_code,
@@ -518,21 +672,30 @@ async def hls_stream_proxy(url: str, headers: str):
                 headers={
                     "Access-Control-Allow-Origin": "*",
                     "Access-Control-Allow-Headers": "*",
-                    "Cache-Control": "public, max-age=86400"
-                }
+                    "Cache-Control": "public, max-age=86400",
+                },
             )
         else:
             # Detect fragmented MP4 segments vs MPEG-TS segments, even if disguised as images (e.g. .jpg)
             media_type = "video/mp2t"
             if len(response.content) >= 12:
                 magic_slice = response.content[:12]
-                if b"ftyp" in magic_slice or b"moof" in magic_slice or b"styp" in magic_slice or b"mdat" in magic_slice:
+                if (
+                    b"ftyp" in magic_slice
+                    or b"moof" in magic_slice
+                    or b"styp" in magic_slice
+                    or b"mdat" in magic_slice
+                ):
                     media_type = "video/mp4"
 
             if len(response.content) < 5000:
-                logger.warning(f"[Proxy Segment Debug] Warning: abnormally small segment {url} | Length: {len(response.content)} | Content preview: {response.content[:100]}")
+                logger.warning(
+                    f"[Proxy Segment Debug] Warning: abnormally small segment {url} | Length: {len(response.content)} | Content preview: {response.content[:100]}"
+                )
             else:
-                logger.info(f"[Proxy Segment Debug] Fetched segment {url} | Status: {response.status_code} | Length: {len(response.content)} | Media Type: {media_type}")
+                logger.info(
+                    f"[Proxy Segment Debug] Fetched segment {url} | Status: {response.status_code} | Length: {len(response.content)} | Media Type: {media_type}"
+                )
             return Response(
                 content=response.content,
                 status_code=response.status_code,
@@ -540,9 +703,10 @@ async def hls_stream_proxy(url: str, headers: str):
                 headers={
                     "Access-Control-Allow-Origin": "*",
                     "Access-Control-Allow-Headers": "*",
-                    "Cache-Control": "public, max-age=86400"
-                }
+                    "Cache-Control": "public, max-age=86400",
+                },
             )
+
 
 @router.get("/local-file/{media_id}/{episode}")
 async def serve_local_file(media_id: int, episode: str):
@@ -553,18 +717,22 @@ async def serve_local_file(media_id: int, episode: str):
     record = ctx.media_registry.get_media_record(media_id)
     if not record or not record.media_episodes:
         raise HTTPException(status_code=404, detail="Media record not found")
-        
-    ep_record = next((e for e in record.media_episodes if e.episode_number == episode), None)
+
+    ep_record = next(
+        (e for e in record.media_episodes if e.episode_number == episode), None
+    )
     if not ep_record or not ep_record.file_path:
         raise HTTPException(status_code=404, detail="Downloaded episode not found")
-        
+
     from pathlib import Path
+
     file_path = Path(ep_record.file_path)
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Local video file does not exist")
-        
+
     if file_path.suffix == ".m3u8":
         import json
+
         headers = {}
         provider = (ep_record.provider_name or "").lower()
         if "animepahe" in provider:
@@ -575,44 +743,51 @@ async def serve_local_file(media_id: int, episode: str):
             headers["Referer"] = "https://allanime.to"
         else:
             headers["Referer"] = "https://animepahe.pw"
-            
+
         headers_json = json.dumps(headers)
         m3u8_content = file_path.read_text(encoding="utf-8")
-        rewritten = _proxy_m3u8_content(m3u8_content, base_url="", headers_json=headers_json)
+        rewritten = _proxy_m3u8_content(
+            m3u8_content, base_url="", headers_json=headers_json
+        )
         return Response(
             content=rewritten,
             media_type="application/x-mpegURL",
             headers={
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Headers": "*",
-                "Cache-Control": "no-cache"
-            }
+                "Cache-Control": "no-cache",
+            },
         )
-        
+
     import mimetypes
+
     media_type, _ = mimetypes.guess_type(str(file_path))
     if not media_type:
         media_type = "video/mp4"
-        
+
     return FileResponse(path=str(file_path), media_type=media_type)
+
 
 @router.get("/test")
 async def test_actions():
     return {"status": "ok", "message": "Actions router is active"}
+
 
 class FrontendLogRequest(BaseModel):
     level: str
     message: str
     data: Optional[dict] = None
 
+
 @router.post("/log")
 async def log_frontend_message(req: FrontendLogRequest):
     import logging
+
     logger = logging.getLogger("frontend")
     formatted_msg = f"[Frontend {req.level.upper()}] {req.message}"
     if req.data:
         formatted_msg += f" | Data: {json.dumps(req.data)}"
-    
+
     if req.level == "error":
         logger.error(formatted_msg)
     elif req.level == "warn":
@@ -627,10 +802,12 @@ async def open_link(url: str):
     """Opens a URL in the user's default browser."""
     try:
         import webbrowser
+
         webbrowser.open(url)
         return {"status": "success", "url": url}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/playback/track")
 async def track_playback(req: PlaybackTrackRequest):
@@ -645,7 +822,7 @@ async def track_playback(req: PlaybackTrackRequest):
 
         # 1. Save local watch history
         from ...libs.player.types import PlayerResult
-        
+
         def _to_hhmmss(sec) -> str | None:
             if sec is None:
                 return None
@@ -661,41 +838,47 @@ async def track_playback(req: PlaybackTrackRequest):
         result = PlayerResult(
             episode=req.episode,
             stop_time=_to_hhmmss(req.current_time),
-            total_time=_to_hhmmss(req.total_time)
+            total_time=_to_hhmmss(req.total_time),
         )
         ctx.watch_history.track(media_item, result)
-        
+
         # 2. Check for completion (default 80%)
         complete_percent = ctx.config.stream.episode_complete_at
-        is_completed = (req.current_time / req.total_time * 100) >= complete_percent if req.total_time > 0 else False
-        
+        is_completed = (
+            (req.current_time / req.total_time * 100) >= complete_percent
+            if req.total_time > 0
+            else False
+        )
+
         synced = False
         if is_completed:
             # Check if this episode is greater than the current progress
-            current_progress = media_item.user_status.progress if media_item.user_status else 0
+            current_progress = (
+                media_item.user_status.progress if media_item.user_status else 0
+            )
             try:
                 ep_num = int(float(req.episode))
             except ValueError:
                 ep_num = 0
-                
+
             if ep_num > current_progress:
                 # Update progress in local registry
                 ctx.media_registry.update_media_index_entry(
-                    media_id=req.media_id,
-                    progress=str(ep_num)
+                    media_id=req.media_id, progress=str(ep_num)
                 )
                 # Sync with AniList
                 from ...libs.media_api.params import UpdateUserMediaListEntryParams
+
                 params = UpdateUserMediaListEntryParams(
-                    media_id=req.media_id,
-                    progress=str(ep_num)
+                    media_id=req.media_id, progress=str(ep_num)
                 )
                 synced = ctx.media_api.update_list_entry(params)
 
         ctx.data_version += 1
         return {"status": "success", "completed": is_completed, "synced": synced}
-        
+
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
