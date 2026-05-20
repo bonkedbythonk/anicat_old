@@ -23,6 +23,12 @@ a = Analysis(
         'pydantic_core._pydantic_core',
         'email_validator',
         'starlette',
+        # Config modules (imported via re-exports in model.py)
+        'anicat_media.core.config.general',
+        'anicat_media.core.config.stream',
+        'anicat_media.core.config.downloads',
+        'anicat_media.core.config.api',
+        'anicat_media.core.config.infrastructure',
     ],
     hookspath=[],
     hooksconfig={},
