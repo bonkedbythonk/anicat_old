@@ -85,7 +85,8 @@ _cached_update_available: bool = False
 
 
 def _normalize_version(value: str) -> str:
-    return value.strip().removeprefix("v").removeprefix("V")
+    # Strip leading "v"/"V" and any suffix after "-" (e.g. "v4.6.1-stable" -> "4.6.1")
+    return value.strip().removeprefix("v").removeprefix("V").split("-")[0]
 
 
 def _version_tag_matches(candidate: str, expected: str) -> bool:
