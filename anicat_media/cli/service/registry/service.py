@@ -236,8 +236,13 @@ class MediaRegistryService:
         """Get recently watched anime or read manga."""
         index = self._load_index()
 
+        # Only include entries that were explicitly watched (last_watched not None)
+        watched_entries = [
+            e for e in index.media_index.values()
+            if e.last_watched is not None
+        ]
         sorted_entries = sorted(
-            index.media_index.values(), key=lambda x: getattr(x, "last_watched", datetime.min) or datetime.min, reverse=True
+            watched_entries, key=lambda x: x.last_watched or datetime.min, reverse=True
         )
 
         recent_media: List[MediaItem] = []
@@ -451,7 +456,7 @@ class MediaRegistryService:
                 # Sort by last watched time from registry
                 def get_last_watched(media):
                     entry = index.media_index.get(f"{self._media_api}_{media.id}")
-                    return entry.last_watched if entry else datetime.min
+                    return entry.last_watched if entry and entry.last_watched else datetime.min
 
                 return sorted(media_list, key=get_last_watched, reverse=True)
             else:
@@ -487,7 +492,7 @@ class MediaRegistryService:
             media_list,
             key=lambda media_item: next(
                 (
-                    entry.last_watched
+                    entry.last_watched or datetime.min
                     for entry in index.media_index.values()
                     if entry.media_id == media_item.id
                 ),

@@ -1,6 +1,6 @@
 import os
 import sys
-from importlib import metadata, resources
+from importlib import resources
 from pathlib import Path
 
 PLATFORM = sys.platform
@@ -12,27 +12,9 @@ APP_NAME = os.environ.get(f"{CLI_NAME}_APP_NAME", CLI_NAME_LOWER)
 USER_NAME = os.environ.get("USERNAME", os.environ.get("USER", "User"))
 
 
-try:
-    __version__ = metadata.version("anicat")
-except Exception:
-    try:
-        # Fallback for standalone/dev builds
-        project_root = Path(__file__).resolve().parent.parent.parent
-        version_file = project_root / "version.txt"
-        if version_file.exists():
-            content = version_file.read_text().split('\n')[0]
-            # Extract "1.2.5" from "# Version 1.2.5 - ..."
-            import re
-            match = re.search(r"(\d+\.\d+\.\d+)", content)
-            if match:
-                __version__ = match.group(1)
-            else:
-                __version__ = "4.0.0"
-        else:
-            __version__ = "4.0.0"
-    except Exception:
-        __version__ = "4.0.0"
-
+# Single source of truth: version.txt at project root
+_version_file = Path(__file__).resolve().parent.parent.parent / "version.txt"
+__version__ = _version_file.read_text().strip()
 VERSION = __version__
 
 AUTHOR = "bonkedbythonk"

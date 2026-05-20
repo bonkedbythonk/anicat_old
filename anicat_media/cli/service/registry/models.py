@@ -56,7 +56,7 @@ class MediaRegistryIndexEntry(BaseModel):
     status: UserMediaListStatus = UserMediaListStatus.WATCHING
     progress: str = "0"
     last_watch_position: Optional[str] = None
-    last_watched: datetime = Field(default_factory=datetime.now)
+    last_watched: Optional[datetime] = None
     total_duration: Optional[str] = None
     total_episodes: int = 0
     chapter_number: Optional[str] = None
