@@ -93,9 +93,20 @@ update_branch = "nightly"
 TOML
     fi
     echo "Configured update branch: nightly"
+
+    # Write nightly release commit SHA so the app knows which version is installed
+    LAST_COMMIT_FILE="$HOME/Library/Caches/anicat/.last_commit"
+    mkdir -p "$(dirname "$LAST_COMMIT_FILE")"
+    COMMIT_SHA=$(echo "$LATEST_RELEASE" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('target_commitish',''))" 2>/dev/null)
+    if [ -n "$COMMIT_SHA" ]; then
+        echo "$COMMIT_SHA" > "$LAST_COMMIT_FILE"
+        echo "Recorded nightly commit SHA: ${COMMIT_SHA:0:12}..."
+    else
+        echo "Warning: Could not determine nightly commit SHA. Update detection may be affected."
+    fi
 fi
 
-# 8. Automatically Restart the Application
+# 9. Automatically Restart the Application
 echo "Relaunching Anicat..."
 
 # Kill the old running instances first to unblock a clean relaunch
