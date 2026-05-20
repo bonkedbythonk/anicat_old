@@ -273,10 +273,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => {
-                setConnectionStatus("checking");
-                window.location.reload();
-              }}
+              onClick={() => window.location.reload()}
               className="w-full py-2.5 text-xs font-semibold text-gray-500 hover:text-white transition-colors"
             >
               Retry Connection
