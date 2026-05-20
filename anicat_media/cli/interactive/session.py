@@ -15,7 +15,6 @@ from .state import InternalDirective, MenuName, State
 
 if TYPE_CHECKING:
     from ...libs.media_api.base import BaseApiClient
-    from ...libs.provider.anime.base import BaseAnimeProvider
     from ...libs.selectors.base import BaseSelector
     from ..service.auth import AuthService
     from ..service.download.service import DownloadService
@@ -86,7 +85,8 @@ class Switch:
 class Context:
     config: "AppConfig"
     switch: Switch = field(default_factory=Switch)
-    _provider: Optional["BaseAnimeProvider"] = None
+    _provider: Optional[Any] = None
+    _provider_config_key: Optional[str] = None
     _manga_provider: Optional[Any] = None
     _selector: Optional["BaseSelector"] = None
     _media_api: Optional["BaseApiClient"] = None
@@ -99,7 +99,7 @@ class Context:
     _auth: Optional["AuthService"] = None
     _player: Optional["PlayerService"] = None
     _updater: Optional["UpdaterService"] = None
-    
+
     data_version: int = 0
     is_offline: bool = False
 
@@ -107,15 +107,84 @@ class Context:
     def manga_provider(self) -> Any:
         if not self._manga_provider:
             from ...libs.provider.manga.provider import create_manga_provider
-            self._manga_provider = create_manga_provider(self.config.general.manga_provider)
+
+            self._manga_provider = create_manga_provider(
+                self.config.general.manga_provider
+            )
         return self._manga_provider
 
     @property
-    def provider(self) -> "BaseAnimeProvider":
-        if not self._provider:
-            from ...libs.provider.anime.provider import create_provider
+    def provider(self) -> Any:
+        # Build a config key that changes when provider config changes
+        config_key = (
+            f"{self.config.general.provider.value}"
+            f"_{sorted(p.value for p in self.config.general.provider_fallbacks)}"
+        )
 
-            self._provider = create_provider(self.config.general.provider)
+        if self._provider is not None and self._provider_config_key == config_key:
+            return self._provider
+
+        old_provider = (
+            self._provider_config_key.split("_")[0]
+            if self._provider_config_key
+            else None
+        )
+        new_provider = self.config.general.provider.value
+
+        logger.info(
+            f"Provider config changed — recreating: "
+            f"primary={new_provider}, "
+            f"fallbacks={[p.value for p in self.config.general.provider_fallbacks]}"
+        )
+
+        from ...libs.provider.anime.fallback import FallbackAnimeProvider
+        from ...libs.provider.anime.provider import create_provider
+
+        # Clear stale cached provider IDs for the new provider so all media
+        # re-searches with the correct provider instead of using stale UUIDs.
+        if old_provider and old_provider != new_provider and self._media_registry:
+            try:
+                count = 0
+                for record in self._media_registry.iter_all():
+                    if (
+                        record.provider_mapping
+                        and new_provider in record.provider_mapping
+                    ):
+                        del record.provider_mapping[new_provider]
+                        count += 1
+                if count > 0:
+                    logger.info(
+                        f"Cleared {count} stale cached provider IDs for provider "
+                        f"'{new_provider}' — media will re-search on next access."
+                    )
+                    self._media_registry.save_all()
+            except Exception as e:
+                logger.warning(f"Failed to clear stale provider cache: {e}")
+
+        primary = create_provider(self.config.general.provider)
+        fallback_names = self.config.general.provider_fallbacks
+
+        if fallback_names:
+            # Build fallback chain, skipping duplicates of the primary
+            fallback_providers = []
+            seen = {self.config.general.provider}
+            for name in fallback_names:
+                if name not in seen:
+                    try:
+                        fallback_providers.append(create_provider(name))
+                        seen.add(name)
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to load fallback provider '{name.value}': {e}"
+                        )
+            if fallback_providers:
+                self._provider = FallbackAnimeProvider([primary] + fallback_providers)
+            else:
+                self._provider = primary
+        else:
+            self._provider = primary
+
+        self._provider_config_key = config_key
         return self._provider
 
     @property
@@ -150,16 +219,19 @@ class Context:
                     self.is_offline = True
                 except httpx.HTTPStatusError as e:
                     # HTTP status errors like 400 Invalid token are not connectivity outages.
-                    status_code = e.response.status_code if e.response is not None else 0
+                    status_code = (
+                        e.response.status_code if e.response is not None else 0
+                    )
                     if status_code >= 500:
                         logger.warning(f"It seems you are offline: {e}")
                         self.is_offline = True
                     else:
-                        logger.warning(f"Authentication request failed (HTTP {status_code}): {e}")
+                        logger.warning(
+                            f"Authentication request failed (HTTP {status_code}): {e}"
+                        )
             else:
                 self.feedback.warning(
-                    "You are not logged in.",
-                    "Please run 'anicat login' to continue."
+                    "You are not logged in.", "Please run 'anicat login' to continue."
                 )
             self._media_api = media_api
 
@@ -268,16 +340,19 @@ class Session:
 
         if sys.platform == "darwin":
             import subprocess
+
             rprint("\n[bold yellow]Opening your config file in your text editor...[/]")
             rprint(f"[dim]If it doesn't open, please find it at: {USER_CONFIG}[/]")
             subprocess.run(["open", "-t", str(USER_CONFIG)])
             click.pause("Press Enter here after you have saved your changes...")
         elif sys.platform == "win32":
             subprocess.run(["start", str(USER_CONFIG)], shell=True)
-            click.pause("Config opened in your default editor. Press Enter here after you have saved your changes...")
+            click.pause(
+                "Config opened in your default editor. Press Enter here after you have saved your changes..."
+            )
         else:
             click.edit(filename=str(USER_CONFIG))
-            
+
         logger.debug("Config changed; Reloading context")
         loader = ConfigLoader()
         config = loader.load()
@@ -286,14 +361,15 @@ class Session:
     def _login(self):
         """Triggers the login flow and reloads the context."""
         from ..commands.login import login_flow
-        
+
         # We invoke the login flow directly
         # It handles browser opening, editor opening, and waiting for user.
         try:
             login_flow(self._context.config)
-            
+
             # After login, we must reload the config as it was saved to disk
             from ..config import ConfigLoader
+
             loader = ConfigLoader()
             config = loader.load()
             self._load_context(config)
@@ -307,9 +383,10 @@ class Session:
         history: Optional[List[State]] = None,
     ):
         self._load_context(config)
-        
+
         from rich.console import Console
         from ...core.constants import USER_NAME
+
         Console().print(f"[bold green]Welcome back, {USER_NAME}![/bold green]")
 
         if resume:
@@ -322,9 +399,11 @@ class Session:
             self._history = history
         else:
             update_available = self._context.updater.get_cached_status()
-            main_state = State(menu_name=MenuName.MAIN, update_available=update_available)
+            main_state = State(
+                menu_name=MenuName.MAIN, update_available=update_available
+            )
             self._history.append(main_state)
-            
+
             # Trigger a background check for updates if enabled
             def background_check():
                 if not self._context.config.general.check_for_updates:
@@ -332,29 +411,47 @@ class Session:
                 try:
                     if self._context.updater.check_version():
                         # If update found, update the initial state in history
-                        if self._history and self._history[0].menu_name == MenuName.MAIN:
-                            self._history[0] = self._history[0].model_copy(update={"update_available": True})
-                            logger.info("Background update check found a new version! Update indicator set.")
+                        if (
+                            self._history
+                            and self._history[0].menu_name == MenuName.MAIN
+                        ):
+                            self._history[0] = self._history[0].model_copy(
+                                update={"update_available": True}
+                            )
+                            logger.info(
+                                "Background update check found a new version! Update indicator set."
+                            )
                 except Exception as e:
                     logger.debug(f"Background update check failed: {e}")
 
             # Trigger a background sync for offline watches
             def background_sync():
                 try:
-                    
-                    if not self._context.is_offline and self._context.media_api.is_authenticated():
+                    if (
+                        not self._context.is_offline
+                        and self._context.media_api.is_authenticated()
+                    ):
                         # Only sync unsynced entries
                         registry = self._context.media_registry
                         api = self._context.media_api
-                        
+
                         all_records = registry.get_all_media_records()
                         uploaded_count = 0
-                        
+
                         for record in all_records:
-                            index_entry = registry.get_media_index_entry(record.media_item.id)
+                            index_entry = registry.get_media_index_entry(
+                                record.media_item.id
+                            )
                             # Sync if is_synced is False or if it's an old entry without the field (it defaults to True so it won't be synced unnecessarily)
-                            if index_entry and getattr(index_entry, "is_synced", True) is False and index_entry.status:
-                                from ...libs.media_api.params import UpdateUserMediaListEntryParams
+                            if (
+                                index_entry
+                                and getattr(index_entry, "is_synced", True) is False
+                                and index_entry.status
+                            ):
+                                from ...libs.media_api.params import (
+                                    UpdateUserMediaListEntryParams,
+                                )
+
                                 update_params = UpdateUserMediaListEntryParams(
                                     media_id=record.media_item.id,
                                     status=index_entry.status,
@@ -362,15 +459,20 @@ class Session:
                                     score=index_entry.score,
                                 )
                                 if api.update_list_entry(update_params):
-                                    registry.update_media_index_entry(media_id=record.media_item.id, is_synced=True)
+                                    registry.update_media_index_entry(
+                                        media_id=record.media_item.id, is_synced=True
+                                    )
                                     uploaded_count += 1
-                        
+
                         if uploaded_count > 0:
-                            logger.info(f"Background sync uploaded {uploaded_count} offline watches.")
+                            logger.info(
+                                f"Background sync uploaded {uploaded_count} offline watches."
+                            )
                 except Exception as e:
                     logger.debug(f"Background sync failed: {e}")
 
             import threading
+
             threading.Thread(target=background_check, daemon=True).start()
             threading.Thread(target=background_sync, daemon=True).start()
 
@@ -452,7 +554,7 @@ class Session:
 
     def load_menus_from_folder(self, package: str):
         """Load menu modules from a subfolder.
-        
+
         Uses pkgutil to discover modules for regular Python, and falls back
         to the package's __all__ list for PyInstaller frozen executables.
         """
@@ -469,13 +571,14 @@ class Session:
         # Try pkgutil first (works in regular Python)
         package_path = getattr(parent_package, "__path__", None)
         module_names = []
-        
+
         if package_path:
             module_names = [
-                name for _, name, ispkg in pkgutil.iter_modules(package_path)
+                name
+                for _, name, ispkg in pkgutil.iter_modules(package_path)
                 if not ispkg and not name.startswith("_")
             ]
-        
+
         # Fallback to __all__ for PyInstaller frozen executables
         if not module_names:
             module_names = getattr(parent_package, "__all__", [])
@@ -488,9 +591,7 @@ class Session:
                 # which runs the @session.menu decorators
                 importlib.import_module(full_module_name)
             except Exception as e:
-                logger.error(
-                    f"Failed to load menu module '{full_module_name}': {e}"
-                )
+                logger.error(f"Failed to load menu module '{full_module_name}': {e}")
 
 
 # Create a single, global instance of the Session to be imported by menu modules.

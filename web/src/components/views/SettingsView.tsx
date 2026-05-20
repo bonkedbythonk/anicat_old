@@ -325,7 +325,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
               <CardSection title="Content Sources">
                 <SettingField
                   label="Anime Provider"
-                  description="Source for streaming video."
+                  description="Primary source for streaming video."
                 >
                   <select
                     value={String(config.general?.provider || "animepahe")}
@@ -333,7 +333,61 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                     className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
                   >
                     <option value="animepahe">AnimePahe</option>
+                    <option value="anizone">AniZone</option>
+                    <option value="gogoanime">GogoAnime (AniNeko)</option>
                   </select>
+                </SettingField>
+
+                <SettingField
+                  label="Fallback Providers"
+                  description="Providers to try in order if the primary fails to find results. Leave empty to use only the primary."
+                >
+                  <div className="space-y-2">
+                    {(() => {
+                      const fallbacks: string[] = (config.general?.provider_fallbacks as string[]) || [];
+                      const allProviders = ["anizone", "gogoanime", "animepahe"];
+                      const slots = [0, 1];
+                      return slots.map((i) => {
+                        const current = fallbacks[i] || "none";
+                        // Filter out the primary provider and already-selected fallbacks
+                        const primary = String(config.general?.provider || "animepahe");
+                        const otherSelected = fallbacks.filter((_, idx) => idx !== i);
+                        return (
+                          <select
+                            key={i}
+                            value={current}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const newFallbacks = [...fallbacks];
+                              if (i < newFallbacks.length) {
+                                newFallbacks[i] = val;
+                              } else if (val !== "none") {
+                                newFallbacks.push(val);
+                              }
+                              // Remove "none" entries and filter to non-empty
+                              const cleaned = newFallbacks.filter(v => v && v !== "none");
+                              updateField("general", "provider_fallbacks", cleaned);
+                            }}
+                            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                          >
+                            <option value="none">-- Disabled --</option>
+                            {allProviders
+                              .filter(p => p !== primary && !otherSelected.includes(p))
+                              .map(p => (
+                                <option key={p} value={p}>
+                                  {p === "anizone" ? "AniZone" :
+                                   p === "gogoanime" ? "GogoAnime (AniNeko)" :
+                                   p === "hianime" ? "HiAnime" :
+                                   p === "allanime" ? "AllAnime" :
+                                   p === "allmanga" ? "AllManga" :
+                                   p === "animepahe" ? "AnimePahe" : p}
+                                </option>
+                              ))}
+                          </select>
+                        );
+                      });
+                    })()}
+                  </div>
                 </SettingField>
 
                 <SettingField

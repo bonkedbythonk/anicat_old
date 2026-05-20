@@ -12,7 +12,9 @@ PROVIDERS_AVAILABLE = {
     "allanime": "provider.AllAnime",
     "allmanga": "provider.AllManga",
     "animepahe": "provider.AnimePahe",
+    "gogoanime": "provider.GogoAnime",
     "hianime": "provider.HiAnime",
+    "anizone": "provider.AniZone",
 }
 
 
@@ -63,7 +65,7 @@ class AnimeProviderFactory:
             headers={
                 "User-Agent": random_user_agent(),
                 "Accept-Encoding": "identity",
-                **provider_class.HEADERS
+                **provider_class.HEADERS,
             }
         )
 

@@ -12,7 +12,9 @@ class ProviderName(Enum):
     ALLANIME = "allanime"
     ALLMANGA = "allmanga"
     ANIMEPAHE = "animepahe"
+    GOGOANIME = "gogoanime"
     HIANIME = "hianime"
+    ANIZONE = "anizone"
 
 
 class ProviderServer(Enum):
