@@ -65,7 +65,7 @@ class MpvPlayer(BasePlayer):
             ),
         ]
 
-        # Always search for and prioritize the bundled MPV shipped with AniCat to ensure consistent UX/shaders.
+        # Always search for and prioritize the bundled MPV shipped with AniCat to ensure consistent UX/shaders/ModernZ theme.
         for path in bundled_paths:
             if os.path.exists(path):
                 self.executable = path
@@ -405,7 +405,7 @@ class MpvPlayer(BasePlayer):
             if os.path.exists(bundled_config):
                 # Enforce native OSC disable explicitly to override any global/fallback settings
                 mpv_args.append("--osc=no")
-                # Point config-dir to our isolated settings to load mpv.conf, input.conf, and anicat_ui.lua
+                # Point config-dir to our isolated, custom-themed settings to load mpv.conf, input.conf, and modernz.lua
                 mpv_args.append(f"--config-dir={bundled_config}")
                 logger.info(
                     f"Using isolated premium MPV configuration from: {bundled_config}"
