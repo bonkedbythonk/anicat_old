@@ -1,22 +1,17 @@
 from typing import List
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from ...libs.media_api.types import Notification
+from ..deps import get_media_api
 
 router = APIRouter()
 
-def get_ctx():
-    from ..main import ctx
-    return ctx
-
 @router.get("/", response_model=List[Notification])
-async def get_notifications():
+async def get_notifications(api = Depends(get_media_api)):
     """Get the authenticated user's unread notifications."""
     try:
-        ctx = get_ctx()
-        if not ctx.media_api.is_authenticated():
+        if not api.is_authenticated():
             return []
-        
-        notifications = ctx.media_api.get_notifications()
+        notifications = api.get_notifications()
         return notifications or []
     except HTTPException:
         raise
@@ -24,14 +19,12 @@ async def get_notifications():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/read")
-async def mark_notifications_as_read():
+async def mark_notifications_as_read(api = Depends(get_media_api)):
     """Mark all notifications as read."""
     try:
-        ctx = get_ctx()
-        if not ctx.media_api.is_authenticated():
+        if not api.is_authenticated():
             return {"status": "success"}
-        
-        success = ctx.media_api.mark_notifications_as_read()
+        success = api.mark_notifications_as_read()
         return {"status": "success" if success else "failed"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

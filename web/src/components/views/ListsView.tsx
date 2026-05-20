@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Monitor, BookOpen, CheckCircle2, Bookmark, Pause, XCircle, Heart } from "lucide-react";
+import { Loader2, Monitor, CheckCircle2, Bookmark, Pause, XCircle, Heart } from "lucide-react";
 import MediaCard from "@/components/media/MediaCard";
 import InfiniteScroll from "@/components/shared/InfiniteScroll";
+import MediaTypeToggle from "@/components/shared/MediaTypeToggle";
+import { usePaginatedList } from "@/lib/usePaginatedList";
 import { mediaApi, type MediaItem } from "@/lib/api";
 import { useRefreshTrigger } from "@/lib/events";
 
@@ -23,15 +25,24 @@ export default function ListsView({ onSelect }: ListsViewProps) {
   const refreshKey = useRefreshTrigger();
   const [activeTab, setActiveTab] = useState("watching");
   const [type, setType] = useState<"ANIME" | "MANGA">("ANIME");
-  const [items, setItems] = useState<MediaItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [delayedLoading, setDelayedLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
 
+  const { items, loading, loadingMore, hasMore, loadMore } =
+    usePaginatedList<MediaItem>({
+      fetchFn: async (page) => {
+        const data = await mediaApi.getUserList(activeTab, type, page);
+        return {
+          items: data.media || [],
+          hasNextPage: data.page_info?.has_next_page || false,
+        };
+      },
+      deps: [activeTab, type, refreshKey],
+    });
+
+  // Delayed loading UX — shows an overlay spinner during tab switches
+  // after a short delay so quick switches don't flash the spinner.
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
     if (loading) {
       timer = setTimeout(() => setDelayedLoading(true), 400);
     } else {
@@ -40,61 +51,11 @@ export default function ListsView({ onSelect }: ListsViewProps) {
     return () => clearTimeout(timer);
   }, [loading]);
 
-  useEffect(() => {
-    setLoading(true);
-    mediaApi.getUserList(activeTab, type, 1)
-      .then(data => {
-        setItems(data.media || []);
-        setHasMore(data.page_info?.has_next_page || false);
-        setPage(1);
-      })
-      .catch(err => {
-        console.error("Failed to load list:", err);
-        setItems([]);
-      })
-      .finally(() => setLoading(false));
-  }, [activeTab, type, refreshKey]);
-
-  const loadMore = async () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    try {
-      const nextPage = page + 1;
-      const data = await mediaApi.getUserList(activeTab, type, nextPage);
-      setItems(prev => [...prev, ...(data.media || [])]);
-      setHasMore(data.page_info?.has_next_page || false);
-      setPage(nextPage);
-    } catch {
-      console.error("Load more failed");
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white">My Lists</h1>
-        <div className="flex bg-white/[0.04] p-1 rounded-xl border border-white/[0.06] w-fit">
-            <button
-              onClick={() => setType("ANIME")}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-                type === "ANIME" ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-gray-500 hover:text-white"
-              }`}
-            >
-              <Monitor size={16} />
-              <span>Anime</span>
-            </button>
-            <button
-              onClick={() => setType("MANGA")}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-                type === "MANGA" ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-gray-500 hover:text-white"
-              }`}
-            >
-              <BookOpen size={16} />
-              <span>Manga</span>
-            </button>
-          </div>
+        <MediaTypeToggle value={type} onChange={setType} />
       </div>
 
       {/* Tabs */}

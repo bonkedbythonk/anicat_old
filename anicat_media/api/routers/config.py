@@ -8,9 +8,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-def get_ctx():
-    from ..main import ctx
-    return ctx
+from ..deps import get_ctx
 
 @router.get("/")
 async def get_config():

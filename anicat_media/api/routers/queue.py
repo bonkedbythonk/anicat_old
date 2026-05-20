@@ -5,9 +5,7 @@ from ...cli.service.registry.models import DownloadStatus
 
 router = APIRouter()
 
-def get_ctx():
-    from ..main import ctx
-    return ctx
+from ..deps import get_ctx
 
 class QueueItem(BaseModel):
     media_id: int

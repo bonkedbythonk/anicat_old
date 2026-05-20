@@ -36,10 +36,7 @@ async def get_schedule(
         logger.error(f"Failed to fetch schedule: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Use lazy import for ctx to avoid circular dependency
-def get_ctx():
-    from ..main import ctx
-    return ctx
+from ..deps import get_ctx
 
 def _get_current_anime_season() -> tuple[MediaSeason, int]:
     """Determine the current anime season and year."""

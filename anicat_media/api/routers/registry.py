@@ -3,9 +3,7 @@ from fastapi.responses import FileResponse
 
 router = APIRouter()
 
-def get_ctx():
-    from ..main import ctx
-    return ctx
+from ..deps import get_ctx
 
 @router.get("/stats")
 async def get_registry_stats():

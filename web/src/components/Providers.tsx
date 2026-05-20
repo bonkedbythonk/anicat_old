@@ -1,10 +1,22 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AppStateProvider } from "@/lib/AppStateContext";
 import { useState } from "react";
 
+/**
+ * Module-level reference to the singleton QueryClient so non-React
+ * code (health polling, events) can invalidate caches directly.
+ * Access via `getQueryClient()` — never read directly in SSR contexts.
+ */
+let _queryClient: QueryClient | undefined;
+
+export function getQueryClient(): QueryClient | undefined {
+  return _queryClient;
+}
+
 export default function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(
+  const [qc] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
@@ -16,9 +28,14 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       })
   );
 
+  // Publish singleton for external invalidation
+  _queryClient = qc;
+
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
+    <QueryClientProvider client={qc}>
+      <AppStateProvider>
+        {children}
+      </AppStateProvider>
     </QueryClientProvider>
   );
 }

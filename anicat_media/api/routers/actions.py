@@ -22,9 +22,7 @@ class PlaybackTrackRequest(BaseModel):
 router = APIRouter()
 _active_requests = {} # media_id -> timestamp
 
-def get_ctx():
-    from ..main import ctx
-    return ctx
+from ..deps import get_ctx
 
 def _play_and_track(ctx, params, anime, media_item, local: bool = False):
     """Background task to play media and then track watch history."""

@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Play, Loader2, Star, Users, Calendar, Clock, Building2, Monitor, CheckCircle2, Bookmark, Pause, XCircle, Download, BookOpen, RotateCcw, ChevronDown, ChevronUp, MoreHorizontal, Trash2, Edit2, Check } from "lucide-react";
 import { mediaApi, type MediaItem, type Episode, type Character, type Review } from "@/lib/api";
-import { dispatchRefresh, useRefreshTrigger } from "@/lib/events";
+import { dispatchRefresh } from "@/lib/events";
 import { formatTime, formatRelativeTime } from "@/lib/date";
+import { useAmbientColor } from "@/lib/useAmbientColor";
+import { useProgressEditor } from "@/lib/useProgressEditor";
+import { useAppState } from "@/lib/AppStateContext";
 import EpisodeList from "./EpisodeList";
 
 interface MediaDetailProps {
@@ -23,117 +27,47 @@ type DetailConfig = {
 };
 
 export default function MediaDetail({ item, onClose, initialAction, onRead, onPlayEpisode }: MediaDetailProps) {
-  const refreshKey = useRefreshTrigger();
-  const [fullItem, setFullItem] = useState<MediaItem>(item);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [recommendations, setRecommendations] = useState<MediaItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
   const [loadingEps, setLoadingEps] = useState(false);
   const [loadingChars, setLoadingChars] = useState(false);
   const [isPlayingNext, setIsPlayingNext] = useState(false);
   const [activeTab, setActiveTab] = useState<"episodes" | "characters" | "reviews" | "recommendations">("episodes");
-  const [config, setConfig] = useState<DetailConfig | null>(null);
-  const [ambientColor, setAmbientColor] = useState<string>("rgba(236, 72, 153, 0.18)");
 
+  // Initial detail load via React Query
+  const {
+    data: fullItem = item,
+    isLoading: loading,
+  } = useQuery({
+    queryKey: ["media-detail", item.id],
+    queryFn: async () => {
+      const details = await mediaApi.getDetails(item.id);
+      return details;
+    },
+    staleTime: 60_000,
+  });
+
+  const { data: config = null } = useQuery<DetailConfig | null>({
+    queryKey: ["media-config", item.id],
+    queryFn: async () => {
+      const userConfig = await mediaApi.getConfig();
+      return userConfig;
+    },
+    staleTime: 60_000,
+  });
+
+  // Derived values (computed from state/props, must precede hooks that consume them)
   const isManga = item.type === "MANGA" || !!(item.format && ["MANGA", "ONE_SHOT", "NOVEL"].includes(item.format));
   const banner = fullItem.banner_image || fullItem.cover_image.large;
-
-  // Upgraded premium ambient color extractor with average pixel extraction & brightness boosting
-  useEffect(() => {
-    if (!banner) return;
-    
-    // Set fallback immediately
-    setAmbientColor("rgba(236, 72, 153, 0.18)");
-
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = banner;
-    img.onload = () => {
-      try {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-        
-        canvas.width = 10;
-        canvas.height = 10;
-        ctx.drawImage(img, 0, 0, 10, 10);
-        
-        const imgData = ctx.getImageData(0, 0, 10, 10).data;
-        let r = 0, g = 0, b = 0, count = 0;
-        
-        // 1. Extract non-dark vibrant pixels
-        for (let i = 0; i < imgData.length; i += 4) {
-          const pr = imgData[i];
-          const pg = imgData[i+1];
-          const pb = imgData[i+2];
-          
-          if (pr + pg + pb > 120) {
-            r += pr;
-            g += pg;
-            b += pb;
-            count++;
-          }
-        }
-        
-        if (count > 0) {
-          r = Math.round(r / count);
-          g = Math.round(g / count);
-          b = Math.round(b / count);
-        } else {
-          // Fallback to absolute average
-          for (let i = 0; i < imgData.length; i += 4) {
-            r += imgData[i];
-            g += imgData[i+1];
-            b += imgData[i+2];
-          }
-          r = Math.round(r / (imgData.length / 4));
-          g = Math.round(g / (imgData.length / 4));
-          b = Math.round(b / (imgData.length / 4));
-        }
-
-        // 2. Brightness boosting if the artwork is too dark to glow
-        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-        if (brightness < 60) {
-          const scale = 60 / (brightness || 1);
-          r = Math.min(255, Math.round(r * scale));
-          g = Math.min(255, Math.round(g * scale));
-          b = Math.min(255, Math.round(b * scale));
-        }
-        
-        // Minimum color threshold
-        if (r < 30 && g < 30 && b < 30) {
-          r = 236; g = 72; b = 153;
-        }
-        
-        setAmbientColor(`rgba(${r}, ${g}, ${b}, 0.18)`);
-      } catch (err) {
-        console.warn("[MediaDetail] Artwork color extraction blocked by CORS:", err);
-      }
-    };
-  }, [banner]);
   const normalizedUserStatus = fullItem.user_status?.status?.toLowerCase();
   const isPlanning = normalizedUserStatus === "planning";
 
-  useEffect(() => {
-    async function loadDetails() {
-      try {
-        const [details, userConfig] = await Promise.all([
-          mediaApi.getDetails(item.id),
-          mediaApi.getConfig()
-        ]);
-        setFullItem(details);
-        setConfig(userConfig);
-      } catch (error) {
-        console.error("Failed to load media details:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadDetails();
-  }, [item.id, refreshKey]);
+  // Extracted hooks
+  const ambientColor = useAmbientColor(banner);
+  const progressEditor = useProgressEditor();
 
   useEffect(() => {
     let isCancelled = false;
@@ -234,17 +168,8 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
     }
   };
 
-  const [isEditingProgress, setIsEditingProgress] = useState(false);
-  const [editProgressValue, setEditProgressValue] = useState("");
-
   const handleUpdateProgress = async (newProgress: number) => {
-    try {
-      await mediaApi.updateStatus(item.id, undefined, undefined, newProgress);
-      dispatchRefresh();
-      setIsEditingProgress(false);
-    } catch (error) {
-      console.error("Failed to update progress:", error);
-    }
+    await progressEditor.commitProgress(item.id, newProgress);
   };
 
   const handleRemoveFromList = async () => {
@@ -260,6 +185,9 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   };
 
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const queryClient = useQueryClient();
+  const appState = useAppState();
+
   const handleToggleWatchlist = async () => {
     if (isUpdatingStatus) return;
     setIsUpdatingStatus(true);
@@ -270,9 +198,8 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
       } else {
         await mediaApi.updateStatus(item.id, "planning");
       }
-      // Re-fetch media details after modifying list entry to instantly update UI state
-      const details = await mediaApi.getDetails(item.id);
-      setFullItem(details);
+      // Invalidate the detail query so it re-fetches with updated status
+      queryClient.invalidateQueries({ queryKey: ["media-detail", item.id] });
       dispatchRefresh();
     } catch (error) {
       console.error("Failed to toggle watchlist:", error);
@@ -415,27 +342,27 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                 <div className="flex items-center space-x-6">
                   <div>
                     <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mb-1">Progress</div>
-                    {isEditingProgress ? (
+                    {progressEditor.isEditing ? (
                       <div className="flex items-center space-x-2">
                         <input 
                           autoFocus
                           type="number" 
-                          value={editProgressValue}
-                          onChange={(e) => setEditProgressValue(e.target.value)}
+                          value={progressEditor.editValue}
+                          onChange={(e) => progressEditor.setEditValue(e.target.value)}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleUpdateProgress(parseInt(editProgressValue) || 0);
-                            if (e.key === 'Escape') setIsEditingProgress(false);
+                            if (e.key === 'Enter') handleUpdateProgress(parseInt(progressEditor.editValue) || 0);
+                            if (e.key === 'Escape') progressEditor.cancelEditing();
                           }}
                           className="w-16 bg-foreground/5 border border-border rounded-lg px-2 py-1 text-sm font-bold text-foreground focus:outline-none focus:border-accent"
                         />
                         <button 
-                          onClick={() => handleUpdateProgress(parseInt(editProgressValue) || 0)}
+                          onClick={() => handleUpdateProgress(parseInt(progressEditor.editValue) || 0)}
                           className="p-1.5 bg-accent text-white rounded-lg hover:bg-accent-light transition-colors"
                         >
                           <Check size={14} />
                         </button>
                         <button 
-                          onClick={() => setIsEditingProgress(false)}
+                          onClick={() => progressEditor.cancelEditing()}
                           className="p-1.5 bg-foreground/5 text-muted-foreground rounded-lg hover:bg-foreground/10 transition-colors"
                         >
                           <X size={14} />
@@ -449,10 +376,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                           <span className="text-muted-foreground">{fullItem.episodes || fullItem.chapters || "?"}</span>
                         </p>
                         <button 
-                          onClick={() => {
-                            setEditProgressValue(String(fullItem.user_status?.progress || 0));
-                            setIsEditingProgress(true);
-                          }}
+                          onClick={() => progressEditor.startEditing(fullItem.user_status?.progress || 0)}
                           className="p-1.5 bg-foreground/5 text-muted-foreground hover:text-foreground hover:bg-foreground/10 rounded-lg transition-all opacity-0 group-hover/progress:opacity-100"
                         >
                           <Edit2 size={12} />
@@ -603,7 +527,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                 {activeTab === "recommendations" && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {recommendations.map(rec => (
-                      <button key={rec.id} onClick={() => mediaApi.getDetails(rec.id).then(setFullItem)} className="group space-y-2 text-left">
+                      <button key={rec.id} onClick={() => appState.selectItem(rec)} className="group space-y-2 text-left">
                         <div className="aspect-[2/3] rounded-xl overflow-hidden border border-border shadow-lg">
                           <img src={rec.cover_image.large} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                         </div>

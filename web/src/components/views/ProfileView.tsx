@@ -1,35 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, User, Clock, Tv, BookOpen, Bookmark, Heart, Sparkles } from "lucide-react";
 import { mediaApi, type UserProfile, type MediaItem } from "@/lib/api";
 import MediaCard from "@/components/media/MediaCard";
-
-import { useRefreshTrigger } from "@/lib/events";
 
 interface ProfileViewProps {
   onSelect?: (item: MediaItem) => void;
 }
 
 export default function ProfileView({ onSelect }: ProfileViewProps) {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
   const [favType, setFavType] = useState<"ANIME" | "MANGA">("ANIME");
-  const refreshKey = useRefreshTrigger();
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await mediaApi.getProfile();
-        setProfile(data);
-      } catch (err) {
-        console.error("Failed to load profile:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [refreshKey]);
+  const {
+    data: profile,
+    isLoading: loading,
+  } = useQuery<UserProfile | null>({
+    queryKey: ["profile"],
+    queryFn: () => mediaApi.getProfile(),
+    staleTime: 60_000,
+  });
 
   if (loading) {
     return (

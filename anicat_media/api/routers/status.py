@@ -55,9 +55,7 @@ async def get_logs(lines: int = 100):
     except Exception as e:
         return {"logs": f"Error reading logs: {str(e)}"}
 
-def get_ctx():
-    from ..main import ctx
-    return ctx
+from ..deps import get_ctx
 
 class PlaybackInfo(BaseModel):
     media_id: int

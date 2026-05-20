@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, Loader2, Monitor, BookOpen, SlidersHorizontal, Activity } from "lucide-react";
+import { Search, Loader2, SlidersHorizontal, Activity } from "lucide-react";
 import MediaCard from "@/components/media/MediaCard";
 import InfiniteScroll from "@/components/shared/InfiniteScroll";
+import MediaTypeToggle from "@/components/shared/MediaTypeToggle";
 import { mediaApi, type MediaItem, type SearchFilters } from "@/lib/api";
 
 interface SearchViewProps {
@@ -144,26 +145,7 @@ export default function SearchView({ onSelect }: SearchViewProps) {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white">Search</h1>
-          <div className="flex bg-white/[0.04] p-1 rounded-xl border border-white/[0.06] w-fit">
-            <button
-              onClick={() => setType("ANIME")}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-                type === "ANIME" ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-gray-500 hover:text-white"
-              }`}
-            >
-              <Monitor size={16} />
-              <span>Anime</span>
-            </button>
-            <button
-              onClick={() => setType("MANGA")}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-                type === "MANGA" ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-gray-500 hover:text-white"
-              }`}
-            >
-              <BookOpen size={16} />
-              <span>Manga</span>
-            </button>
-          </div>
+          <MediaTypeToggle value={type} onChange={setType} />
         </div>
 
         <div className="relative group">

@@ -8,7 +8,11 @@ import MediaDetail from "@/components/media/MediaDetail";
 import MangaReader from "@/components/media/MangaReader";
 import AnimePlayer from "@/components/media/AnimePlayer";
 import useKeyboardShortcuts from "@/lib/useKeyboardShortcuts";
-import { mediaApi, type MediaItem, type HealthStatus, API_BASE_ORIGIN } from "@/lib/api";
+import { useRemoteLogging } from "@/lib/useRemoteLogging";
+import { useTheme } from "@/lib/useTheme";
+import { useHealthPolling } from "@/lib/useHealthPolling";
+import { AppStateProvider, useAppState } from "@/lib/AppStateContext";
+import { mediaApi, API_BASE_ORIGIN } from "@/lib/api";
 import { dispatchRefresh } from "@/lib/events";
 import Onboarding from "@/components/layout/Onboarding";
 import { X, WifiOff, RotateCw } from "lucide-react";
@@ -27,178 +31,36 @@ import ProfileView from "@/components/views/ProfileView";
 import HelpModal from "@/components/modals/HelpModal";
 
 export default function App() {
-  // Remote WebView debugging logging bridge
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  // --- Extracted side-effect hooks (replace 2 large useEffect blocks) ---
+  useRemoteLogging();
+  useTheme();
 
-    const safeStringify = (val: any): string => {
-      try {
-        if (val === null) return "null";
-        if (val === undefined) return "undefined";
-        if (typeof val === "object") {
-          if (val instanceof Error) {
-            return `${val.name}: ${val.message}\n${val.stack || ""}`;
-          }
-          // Safe circular checker
-          const seen = new WeakSet();
-          return JSON.stringify(val, (key, value) => {
-            if (typeof value === "object" && value !== null) {
-              if (seen.has(value)) return "[Circular]";
-              seen.add(value);
-            }
-            return value;
-          });
-        }
-        return String(val);
-      } catch (e) {
-        return `[Unstringifiable Object: ${val?.constructor?.name || typeof val}]`;
-      }
-    };
+  const {
+    connectionStatus,
+    connectionError,
+    healthStatus,
+    isOffline,
+    dismissedOffline,
+    notificationCount,
+    dismissOffline,
+  } = useHealthPolling();
 
-    const logToBackend = async (level: string, message: string, data?: any) => {
-      try {
-        await fetch("http://127.0.0.1:13370/api/actions/log", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            level,
-            message,
-            data: data ? { detail: safeStringify(data) } : undefined
-          })
-        });
-      } catch (e) {
-        // Silence fallback
-      }
-    };
-
-    const handleError = (event: ErrorEvent) => {
-      logToBackend("error", `Uncaught Error: ${event.message} at ${event.filename}:${event.lineno}:${event.colno}`, event.error);
-    };
-
-    const handleRejection = (event: PromiseRejectionEvent) => {
-      logToBackend("error", `Unhandled Rejection: ${event.reason}`, event.reason);
-    };
-
-    const originalConsoleError = console.error;
-    const originalConsoleWarn = console.warn;
-    const originalConsoleLog = console.log;
-
-    console.error = (...args: any[]) => {
-      originalConsoleError.apply(console, args);
-      logToBackend("error", args.map(safeStringify).join(" "));
-    };
-
-    console.warn = (...args: any[]) => {
-      originalConsoleWarn.apply(console, args);
-      logToBackend("warn", args.map(safeStringify).join(" "));
-    };
-
-    console.log = (...args: any[]) => {
-      originalConsoleLog.apply(console, args);
-      logToBackend("info", args.map(safeStringify).join(" "));
-    };
-
-    window.addEventListener("error", handleError);
-    window.addEventListener("unhandledrejection", handleRejection);
-
-    logToBackend("info", "--- REMOTE WEBVIEW LOGGING BRIDGE INITIALIZED ---");
-    logToBackend("info", `WebView User Agent: ${navigator.userAgent}`);
-
-    return () => {
-      window.removeEventListener("error", handleError);
-      window.removeEventListener("unhandledrejection", handleRejection);
-      console.error = originalConsoleError;
-      console.warn = originalConsoleWarn;
-      console.log = originalConsoleLog;
-    };
-  }, []);
-
-  // Listen to system theme changes and manual settings overrides in real-time
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    
-    const applyTheme = () => {
-      const theme = localStorage.getItem("anicat_theme") || "system";
-      const isDarkSystem = mediaQuery.matches;
-      
-      document.documentElement.classList.remove("light", "dark", "system");
-      document.documentElement.classList.add(theme);
-      
-      if (theme === "light" || (theme === "system" && !isDarkSystem)) {
-        document.documentElement.classList.add("light");
-      } else {
-        document.documentElement.classList.add("dark");
-      }
-    };
-
-    applyTheme();
-
-    const listener = () => {
-      const theme = localStorage.getItem("anicat_theme") || "system";
-      if (theme === "system") {
-        document.documentElement.classList.add("theme-transition");
-        applyTheme();
-        setTimeout(() => {
-          document.documentElement.classList.remove("theme-transition");
-        }, 300);
-      }
-    };
-
-    mediaQuery.addEventListener("change", listener);
-    
-    const storageListener = (e: StorageEvent) => {
-      if (e.key === "anicat_theme") {
-        document.documentElement.classList.add("theme-transition");
-        applyTheme();
-        setTimeout(() => {
-          document.documentElement.classList.remove("theme-transition");
-        }, 300);
-      }
-    };
-    window.addEventListener("storage", storageListener);
-
-    return () => {
-      mediaQuery.removeEventListener("change", listener);
-      window.removeEventListener("storage", storageListener);
-    };
-  }, []);
-
+  // --- App UI state ---
   const [activeView, setActiveView] = useState<ViewName>("home");
-  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
-  const [initialAction, setInitialAction] = useState<"play" | null>(null);
-  const [readingItem, setReadingItem] = useState<MediaItem | null>(null);
-  const [readingChapter, setReadingChapter] = useState<string | null>(null);
-  const [playingItem, setPlayingItem] = useState<MediaItem | null>(null);
-  const [playingEpisode, setPlayingEpisode] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
-  const [isOffline, setIsOffline] = useState(false);
-  const [dismissedOffline, setDismissedOffline] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem("anicat_offline_dismissed") === "true";
-    }
-    return false;
-  });
-
-  const handleDismissOffline = () => {
-    setDismissedOffline(true);
-    sessionStorage.setItem("anicat_offline_dismissed", "true");
-  };
-  const [notificationCount, setNotificationCount] = useState(0);
-  const [connectionStatus, setConnectionStatus] = useState<"checking" | "connected" | "failed">("checking");
-  const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-
+    if (typeof window === "undefined") return false;
     return !localStorage.getItem("anicat_onboarding_seen");
   });
-  const [activeUpdateOverlay, setActiveUpdateOverlay] = useState<{ active: boolean; message: string; isNative: boolean } | null>(null);
+  const [activeUpdateOverlay, setActiveUpdateOverlay] = useState<{
+    active: boolean;
+    message: string;
+    isNative: boolean;
+  } | null>(null);
 
-  const lastDataVersion = useRef<number | null>(null);
+  // Media item state lives in AppStateContext
+  const appState = useAppState();
+
   const updateOverlayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const clearUpdateOverlayTimeout = () => {
@@ -207,82 +69,13 @@ export default function App() {
       updateOverlayTimeoutRef.current = null;
     }
   };
-  
-  // Poll health for offline banner, notifications, and live sync
-  useEffect(() => {
-    let failedAttempts = 0;
-    let isInitial = true;
-    let checkInterval: NodeJS.Timeout;
-    
-    async function checkSystem() {
-      try {
-        const status = await mediaApi.getHealthStatus();
-        setHealthStatus(status);
-        setConnectionStatus("connected");
-        setConnectionError(null);
-        failedAttempts = 0;
-        
-        // 1. Live Sync Detection
-        if (status.data_version !== undefined) {
-          if (lastDataVersion.current !== null && status.data_version > lastDataVersion.current) {
-            console.log("Live Sync: Data changed (version " + lastDataVersion.current + " -> " + status.data_version + "). Refreshing views...");
-            dispatchRefresh();
-          }
-          lastDataVersion.current = status.data_version;
-        }
 
-        // 2. Offline Detection
-        const shouldBeOffline = status.api_authenticated && (status.is_offline || !status.api_connected);
-        setIsOffline(shouldBeOffline);
-        
-        if (!shouldBeOffline) setDismissedOffline(false);
-        setNotificationCount(status.unread_notifications || 0);
-
-        // Connection succeeded, transition to normal 10s polling interval
-        if (isInitial) {
-          isInitial = false;
-          clearInterval(checkInterval);
-          checkInterval = setInterval(checkSystem, 10000);
-        }
-      } catch (err: any) {
-        failedAttempts++;
-        console.error("Health check failed (attempt " + failedAttempts + "):", err);
-        
-        if (isInitial) {
-          // In the initial boot phase, we show "checking" status and retry quickly (every 1s)
-          setConnectionStatus("checking");
-          
-          if (failedAttempts >= 8) {
-            isInitial = false;
-            clearInterval(checkInterval);
-            setConnectionStatus("failed");
-            setConnectionError(err?.message || "Connection refused (backend sidecar unreachable on port 13370).");
-            // Transition to slow polling so we can try to recover if they click retry
-            checkInterval = setInterval(checkSystem, 10000);
-          }
-        } else {
-          // If we were already connected and it suddenly failed, we wait for 6 consecutive failed 10s polls before failing
-          if (failedAttempts >= 6) {
-            setConnectionStatus("failed");
-            setConnectionError(err?.message || "Connection refused (backend sidecar unreachable on port 13370).");
-          }
-        }
-      }
-    }
-    
-    // Start initial fast polling (every 1s)
-    checkSystem();
-    checkInterval = setInterval(checkSystem, 1000);
-
-    return () => {
-      clearInterval(checkInterval);
-    };
-  }, []);
-
+  // Cleanup update overlay timeout on unmount
   useEffect(() => {
     return () => {
       clearUpdateOverlayTimeout();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleOnboardingComplete = () => {
@@ -298,29 +91,24 @@ export default function App() {
 
   useKeyboardShortcuts({
     onNavigate: setActiveView,
-    onCloseDetail: () => setSelectedItem(null),
+    onCloseDetail: appState.closeDetail,
     onToggleHelp: () => setShowHelp(h => !h),
   });
-
-  const handleSelect = (item: MediaItem, action?: "play") => {
-    setSelectedItem(item);
-    setInitialAction(action || null);
-  };
 
   const renderView = () => {
     switch (activeView) {
       case "home":
-        return <HomeView onSelect={handleSelect} />;
+        return <HomeView onSelect={appState.selectItem} />;
       case "manga":
-        return <MangaView onSelect={handleSelect} />;
+        return <MangaView onSelect={appState.selectItem} />;
       case "search":
-        return <SearchView onSelect={handleSelect} />;
+        return <SearchView onSelect={appState.selectItem} />;
       case "lists":
-        return <ListsView onSelect={handleSelect} />;
+        return <ListsView onSelect={appState.selectItem} />;
       case "downloads":
         return <DownloadsView />;
       case "library":
-        return <LibraryView onSelect={handleSelect} />;
+        return <LibraryView onSelect={appState.selectItem} />;
       case "settings":
         return (
           <SettingsView
@@ -346,11 +134,11 @@ export default function App() {
           />
         );
       case "notifications":
-        return <NotificationsView onSelect={handleSelect} />;
+        return <NotificationsView onSelect={appState.selectItem} />;
       case "schedule":
-        return <ScheduleView onSelect={handleSelect} />;
+        return <ScheduleView onSelect={appState.selectItem} />;
       case "profile":
-        return <ProfileView onSelect={handleSelect} />;
+        return <ProfileView onSelect={appState.selectItem} />;
     }
   };
 
@@ -535,7 +323,7 @@ export default function App() {
                   Retry Connection
                 </button>
                 <button 
-                  onClick={handleDismissOffline}
+                  onClick={dismissOffline}
                   className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
                 >
                   <X size={16} className="text-gray-400" />
@@ -611,38 +399,32 @@ export default function App() {
 
       {/* Media detail drawer */}
       <AnimatePresence>
-        {selectedItem && (
+        {appState.selectedItem && (
           <MediaDetail 
-            item={selectedItem} 
-            initialAction={initialAction || undefined}
+            item={appState.selectedItem} 
+            initialAction={appState.initialAction || undefined}
             onRead={(chapter) => {
-              setReadingItem(selectedItem);
-              setReadingChapter(chapter);
+              appState.startReading(appState.selectedItem!, chapter);
             }}
             onPlayEpisode={(episode) => {
-              setPlayingItem(selectedItem);
-              setPlayingEpisode(episode);
+              appState.startPlayback(appState.selectedItem!, episode);
             }}
-            onClose={() => {
-              setSelectedItem(null);
-              setInitialAction(null);
-            }} 
+            onClose={appState.closeDetail} 
           />
         )}
       </AnimatePresence>
 
-      {readingItem && readingChapter && (
+      {appState.readingItem && appState.readingChapter && (
         <MangaReader
-          mediaId={readingItem.id}
-          chapterNumber={readingChapter}
+          mediaId={appState.readingItem.id}
+          chapterNumber={appState.readingChapter}
           onClose={() => {
-            setReadingChapter(null);
-            setReadingItem(null);
+            appState.closeReader();
             dispatchRefresh();
           }}
           onProgressUpdate={async (num) => {
             try {
-              await mediaApi.updateStatus(readingItem.id, undefined, undefined, parseInt(num));
+              await mediaApi.updateStatus(appState.readingItem!.id, undefined, undefined, parseInt(num));
               dispatchRefresh();
             } catch (error) {
               console.error("Failed to update manga progress:", error);
@@ -651,30 +433,29 @@ export default function App() {
         />
       )}
 
-      {playingItem && playingEpisode && (
+      {appState.playingItem && appState.playingEpisode && (
         <AnimePlayer
-          mediaId={playingItem.id}
-          malId={playingItem.id_mal}
-          episodeNumber={playingEpisode}
-          totalEpisodes={playingItem.episodes || undefined}
+          mediaId={appState.playingItem.id}
+          malId={appState.playingItem.id_mal}
+          episodeNumber={appState.playingEpisode}
+          totalEpisodes={appState.playingItem.episodes || undefined}
           onClose={() => {
-            setPlayingEpisode(null);
-            setPlayingItem(null);
+            appState.closePlayback();
             dispatchRefresh();
           }}
           onEpisodeCompleted={async (num) => {
             try {
-              await mediaApi.updateStatus(playingItem.id, undefined, undefined, parseInt(num));
+              await mediaApi.updateStatus(appState.playingItem!.id, undefined, undefined, parseInt(num));
               dispatchRefresh();
             } catch (error) {
               console.error("Failed to update watch progress:", error);
             }
           }}
           onPlayNextEpisode={() => {
-            const nextEp = String(parseInt(playingEpisode) + 1);
-            setPlayingEpisode(nextEp);
+            const nextEp = String(parseInt(appState.playingEpisode!) + 1);
+            appState.setEpisode(nextEp);
           }}
-          hasNextEpisode={playingItem.episodes ? parseInt(playingEpisode) < playingItem.episodes : true}
+          hasNextEpisode={appState.playingItem.episodes ? parseInt(appState.playingEpisode!) < appState.playingItem.episodes : true}
         />
       )}
 
