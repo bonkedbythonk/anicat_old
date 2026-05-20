@@ -138,11 +138,13 @@ local function enable_shaders()
   local path_str = table.concat(shader_paths, ":")
   mp.commandv("change-list", "glsl-shaders", "set", path_str)
   refresh_shaders_state()
+  mp.osd_message("Upscaling: ON", 1.5)
 end
 
 local function disable_shaders()
   mp.commandv("set", "glsl-shaders", "")
   refresh_shaders_state()
+  mp.osd_message("Upscaling: OFF", 1.5)
 end
 
 -- Draw a rounded pill button and return the label width
