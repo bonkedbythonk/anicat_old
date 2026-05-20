@@ -15,7 +15,9 @@ import {
   User,
   Layout,
   PlayCircle,
-  RotateCcw
+  RotateCcw,
+  Calendar,
+  Bell
 } from "lucide-react";
 import { mediaApi } from "@/lib/api";
 
@@ -111,29 +113,48 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
     {
       id: 1,
       title: "Welcome to Anicat",
-      subtitle: "Your Ultimate Anime & Manga Companion",
+      subtitle: "Your Anime & Manga Hub",
       content: (
         <div className="space-y-8 animate-fade-in">
-          <div className="grid grid-cols-2 gap-4">
+          {/* Logo */}
+          <div className="flex justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/anicat_logo.png"
+              alt="Anicat"
+              className="w-32 h-auto dark:[filter:brightness(0)_invert(1)] [filter:invert(1)]"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <FeatureCard 
               icon={<Monitor className="text-accent" />} 
-              title="Stream & Track" 
-              desc="Watch your favorite shows and sync progress automatically."
+              title="Stream & Sync" 
+              desc="Watch anime, track progress across devices."
             />
             <FeatureCard 
               icon={<BookOpen className="text-secondary" />} 
               title="Manga Reader" 
-              desc="A premium reading experience for your favorite manga."
+              desc="Read manga with a clean, distraction-free viewer."
+            />
+            <FeatureCard 
+              icon={<Calendar className="text-purple-400" />} 
+              title="Schedule" 
+              desc="See what's airing today and never miss an episode."
+            />
+            <FeatureCard 
+              icon={<Bell className="text-amber-400" />} 
+              title="Notifications" 
+              desc="Get desktop alerts when new episodes drop."
             />
             <FeatureCard 
               icon={<Download className="text-green-400" />} 
               title="Downloads" 
-              desc="Take your library offline with ease."
+              desc="Save episodes for offline watching."
             />
             <FeatureCard 
-              icon={<Layout className="text-orange-400" />} 
-              title="Clean UI" 
-              desc="Designed for clarity and visual excellence."
+              icon={<Layout className="text-rose-400" />} 
+              title="Clean Design" 
+              desc="Dark-themed, glassmorphic, built for clarity."
             />
           </div>
           <button 
@@ -148,54 +169,54 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
     },
     {
       id: 2,
-      title: "Personalize Playback",
-      subtitle: "Choose how you want to watch and read",
+      title: "Set Up Playback",
+      subtitle: "Choose how you want to watch",
       content: (
         <div className="space-y-5 text-left animate-fade-in">
           <div className="space-y-4 bg-white/[0.01] border border-white/[0.04] p-5 rounded-[24px]">
             {/* Player Type Selection */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Player Engine</label>
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Video Player</label>
               <select
                 value={playerType}
                 onChange={(e) => setPlayerType(e.target.value)}
                 className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
               >
-                <option value="embedded" className="bg-surface">Embedded Cinematic HLS Player (In-App)</option>
-                <option value="external" className="bg-surface">Bundled MPV Companion Player (Upscaling)</option>
+                <option value="embedded" className="bg-surface">Built-in Player (simple, no setup)</option>
+                <option value="external" className="bg-surface">External Player - MPV (best quality, GPU upscaling)</option>
               </select>
             </div>
 
-            {/* Shaders Quality (Show only if MPV is selected or as a general tier pre-config) */}
+            {/* Shaders Quality */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">GPU Upscaling (MPV)</label>
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Visual Quality (MPV)</label>
               <select
                 value={shaderProfile}
                 onChange={(e) => setShaderProfile(e.target.value)}
                 className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
               >
-                <option value="off" className="bg-surface">Off (Battery saver)</option>
-                <option value="balanced" className="bg-surface">On (Anime4K enabled)</option>
+                <option value="off" className="bg-surface">Standard</option>
+                <option value="balanced" className="bg-surface">High Quality (GPU enhanced)</option>
               </select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Auto Skip Selection */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Auto-Skip Credits</label>
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Skip Intros</label>
                 <select
                   value={localAutoSkip ? "true" : "false"}
                   onChange={(e) => setLocalAutoSkip(e.target.value === "true")}
                   className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                 >
-                  <option value="false" className="bg-surface">Manual skip</option>
+                  <option value="false" className="bg-surface">Manual</option>
                   <option value="true" className="bg-surface">Auto-skip OP/ED</option>
                 </select>
               </div>
 
               {/* Translation Selection */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Preferred Language</label>
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Audio Language</label>
                 <select
                   value={translationType}
                   onChange={(e) => setTranslationType(e.target.value)}
@@ -231,13 +252,13 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
     },
     {
       id: 3,
-      title: "Connect Your Account",
-      subtitle: "Sync your library and track your progress",
+      title: "Connect AniList",
+      subtitle: "Sync your watch history and lists",
       content: (
         <div className="space-y-6 animate-fade-in">
           <p className="text-gray-400 text-sm leading-relaxed">
-            Anicat works best when connected to <span className="text-white font-semibold">AniList</span>. 
-            It's like a digital diary for your anime and manga. By connecting, your watch history stays synced across all your devices.
+            Anicat works best with <span className="text-white font-semibold">AniList</span>. 
+            It keeps your watch history, ratings, and lists synced across all your devices. Your data stays private — the token only reads and updates your lists.
           </p>
 
           <div className="space-y-4">
