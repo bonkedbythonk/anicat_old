@@ -374,8 +374,19 @@ async def get_health():
         except Exception:
             pass
 
-        # Detect if an update is in progress (flag file set before the old process exits)
+        # Detect if an update is in progress (flag file set before the old process exits).
+        # If the flag file is stale (>5 minutes old), the update likely failed — clean it up.
         updating = UPDATE_IN_PROGRESS_FILE.exists()
+        if updating:
+            try:
+                mtime = os.path.getmtime(UPDATE_IN_PROGRESS_FILE)
+                age = datetime.now().timestamp() - mtime
+                if age > 300:  # 5 minutes
+                    logger.warning("[UPDATE] Stale update flag detected (>5min). Clearing.")
+                    UPDATE_IN_PROGRESS_FILE.unlink()
+                    updating = False
+            except Exception:
+                pass
 
         return HealthInfo(
             api_connected=api_connected,
@@ -475,21 +486,49 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
         if req and req.branch in ("stable", "nightly"):
             update_branch = req.branch
 
-        # For macOS, the most reliable way to update the native app is via the installer script
-        # which downloads the latest release and replaces the binary.
+        # Determine the repo root once
+        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        is_git_install = os.path.exists(os.path.join(repo_root, ".git"))
+
+        if is_git_install:
+            # Git-based install (dev checkout) — pull the latest code regardless of platform
+            from anicat_media.utils.subprocess import run_cmd
+            rc, stdout, _ = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=5, cwd=repo_root)
+            current_branch = stdout.strip() if (rc == 0 and stdout) else "main"
+
+            if update_branch == "nightly":
+                target_branch = "testbranch"
+            else:
+                target_branch = "main"
+
+            subprocess.run(["git", "stash"], cwd=repo_root, capture_output=True)
+            if current_branch != target_branch:
+                subprocess.run(["git", "checkout", target_branch], cwd=repo_root, capture_output=True)
+            result = subprocess.run(["git", "pull", "origin", target_branch], cwd=repo_root, capture_output=True, text=True, timeout=60)
+            subprocess.run(["git", "stash", "pop"], cwd=repo_root, capture_output=True)
+
+            _last_update_check = datetime.now()
+            _cached_update_available = False
+
+            if result.returncode == 0:
+                install_script = os.path.join(repo_root, "scripts", "install.sh")
+                if os.path.exists(install_script):
+                    subprocess.Popen(["bash", install_script, "--no-launch"], cwd=repo_root, start_new_session=True)
+                    return {"status": "success", "message": f"Update in progress (Git branch {target_branch}). Rebuilding frontend..."}
+                return {"status": "success", "message": f"Updated successfully (Git branch {target_branch} code only)."}
+            else:
+                return {"status": "error", "message": f"Git pull failed: {result.stderr.strip() or result.stdout.strip()}"}
+
+        # Release install (DMG/binary) — macOS native app update
         import platform
         if platform.system() == "Darwin":
-            # Signal to the frontend that an update is in progress so it shows a
-            # friendly "Updating..." screen instead of "Connection Failed".
             UPDATE_IN_PROGRESS_FILE.write_text("1", encoding="utf-8")
 
             logger.info("[UPDATE] Triggering macOS native update via installer script")
-            # If we are running in local dev and the local installer script exists, run it directly!
-            repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
             local_script = os.path.join(repo_root, "scripts", "install_macos.sh")
-            
+
             branch_name = "testbranch" if update_branch == "nightly" else "main"
-            
+
             if os.path.exists(local_script):
                 logger.info(f"[UPDATE] Running local installer script: {local_script}")
                 subprocess.Popen(
@@ -510,35 +549,6 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
             _cached_update_available = False
             return {"status": "success", "message": "Native update triggered! The application will download the latest version and restart shortly. Please wait a few moments."}
 
-        # Fallback for dev/git-based installations
-        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-        if os.path.exists(os.path.join(repo_root, ".git")):
-            from anicat_media.utils.subprocess import run_cmd
-            rc, stdout, _ = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=5, cwd=repo_root)
-            current_branch = stdout.strip() if (rc == 0 and stdout) else "main"
-            
-            if update_branch == "nightly":
-                target_branch = "testbranch"
-            else:
-                target_branch = "main"
-
-            subprocess.run(["git", "stash"], cwd=repo_root, capture_output=True)
-            if current_branch != target_branch:
-                subprocess.run(["git", "checkout", target_branch], cwd=repo_root, capture_output=True)
-            result = subprocess.run(["git", "pull", "origin", target_branch], cwd=repo_root, capture_output=True, text=True, timeout=60)
-            subprocess.run(["git", "stash", "pop"], cwd=repo_root, capture_output=True)
-            
-            if result.returncode == 0:
-                install_script = os.path.join(repo_root, "scripts", "install.sh")
-                if os.path.exists(install_script):
-                    subprocess.Popen(["bash", install_script, "--no-launch"], cwd=repo_root, start_new_session=True)
-                    _last_update_check = datetime.now()
-                    _cached_update_available = False
-                    return {"status": "success", "message": f"Update in progress (Git branch {target_branch}). Rebuilding frontend..."}
-                _last_update_check = datetime.now()
-                _cached_update_available = False
-                return {"status": "success", "message": f"Updated successfully (Git branch {target_branch} code only)."}
-        
         return {"status": "error", "message": "Could not determine update method for this platform."}
         
     except subprocess.TimeoutExpired:

@@ -14,7 +14,10 @@ USER_NAME = os.environ.get("USERNAME", os.environ.get("USER", "User"))
 
 # Single source of truth: version.txt at project root
 _version_file = Path(__file__).resolve().parent.parent.parent / "version.txt"
-__version__ = _version_file.read_text().strip()
+try:
+    __version__ = _version_file.read_text().strip()
+except Exception:
+    __version__ = "0.0.0"
 VERSION = __version__
 
 AUTHOR = "bonkedbythonk"

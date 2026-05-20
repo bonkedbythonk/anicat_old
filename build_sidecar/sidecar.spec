@@ -11,6 +11,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('../anicat_media', 'anicat_media'),
+        ('../version.txt', 'version.txt'),
     ],
     hiddenimports=[
         'uvicorn.protocols.http.h11_impl',

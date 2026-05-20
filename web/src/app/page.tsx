@@ -62,6 +62,8 @@ export default function App() {
   const appState = useAppState();
 
   const updateOverlayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const updateStartedAtRef = useRef<number | null>(null);
+  const updateDismissedRef = useRef(false);
 
   const clearUpdateOverlayTimeout = () => {
     if (updateOverlayTimeoutRef.current) {
@@ -69,6 +71,16 @@ export default function App() {
       updateOverlayTimeoutRef.current = null;
     }
   };
+
+  // Reset the stale-update tracker when updating flag goes away
+  useEffect(() => {
+    if (healthStatus?.updating && !updateStartedAtRef.current && !updateDismissedRef.current) {
+      updateStartedAtRef.current = Date.now();
+    } else if (!healthStatus?.updating) {
+      updateStartedAtRef.current = null;
+      updateDismissedRef.current = false;
+    }
+  }, [healthStatus?.updating]);
 
   // Cleanup update overlay timeout on unmount
   useEffect(() => {
@@ -217,7 +229,12 @@ export default function App() {
 
   // Show a friendly "Updating..." screen when the background process restarts
   // during an update, instead of the scary "Connection Failed" error.
-  if (healthStatus?.updating) {
+  // Auto-dismiss if the flag has been stuck for >2 minutes (update likely failed).
+  const isUpdatingStale = updateStartedAtRef.current && (Date.now() - updateStartedAtRef.current) > 120000;
+  if (isUpdatingStale) {
+    updateDismissedRef.current = true;
+  }
+  if (healthStatus?.updating && !isUpdatingStale && !updateDismissedRef.current) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#050505] text-white p-6 font-sans">
         <div className="max-w-md w-full text-center space-y-6 animate-fade-in">
