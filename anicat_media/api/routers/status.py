@@ -127,7 +127,7 @@ def _check_github_update(update_branch: str) -> bool:
 
         if update_branch == "nightly" and latest_tag.lower() == "nightly":
             # Use the release's target_commitish (the commit the DMG was built from)
-            # instead of raw testbranch HEAD, so we don't falsely detect an update
+            # instead of raw nightly branch HEAD, so we don't falsely detect an update
             # when commits were pushed but CI hasn't built a DMG yet.
             remote_sha = ""
             if isinstance(res_data, list) and res_data:
@@ -294,12 +294,12 @@ async def get_health():
                 if os.path.exists(os.path.join(repo_root, ".git")):
                     from anicat_media.utils.subprocess import run_cmd
                     rc, stdout, _ = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=2, cwd=repo_root)
-                    current_branch = stdout.strip() if (rc == 0 and stdout) else "main"
-                    
+                    current_branch = stdout.strip() if (rc == 0 and stdout) else "master"
+
                     if update_branch == "nightly":
-                        target_branch = "testbranch"
+                        target_branch = "nightly"
                     else:
-                        target_branch = "main"
+                        target_branch = "master"
 
                     try:
                         run_cmd(["git", "fetch", "origin", target_branch, "--quiet"], timeout=8, cwd=repo_root)
@@ -436,12 +436,12 @@ async def check_for_updates():
         if os.path.exists(os.path.join(repo_root, ".git")):
             from anicat_media.utils.subprocess import run_cmd
             rc, stdout, _ = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=5, cwd=repo_root)
-            current_branch = stdout.strip() if (rc == 0 and stdout) else "main"
-            
+            current_branch = stdout.strip() if (rc == 0 and stdout) else "master"
+
             if update_branch == "nightly":
-                target_branch = "testbranch"
+                target_branch = "nightly"
             else:
-                target_branch = "main"
+                target_branch = "master"
 
             run_cmd(["git", "fetch", "origin", target_branch, "--quiet"], timeout=10, cwd=repo_root)
             rc, stdout, _ = run_cmd(["git", "rev-list", "--count", f"HEAD..origin/{target_branch}"], timeout=8, cwd=repo_root)
@@ -500,12 +500,12 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
             # Git-based install (dev checkout) — pull the latest code regardless of platform
             from anicat_media.utils.subprocess import run_cmd
             rc, stdout, _ = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=5, cwd=repo_root)
-            current_branch = stdout.strip() if (rc == 0 and stdout) else "main"
+            current_branch = stdout.strip() if (rc == 0 and stdout) else "master"
 
             if update_branch == "nightly":
-                target_branch = "testbranch"
+                target_branch = "nightly"
             else:
-                target_branch = "main"
+                target_branch = "master"
 
             subprocess.run(["git", "stash"], cwd=repo_root, capture_output=True)
             if current_branch != target_branch:
@@ -553,7 +553,7 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
             logger.info("[UPDATE] Triggering macOS native update via installer script")
             local_script = os.path.join(repo_root, "scripts", "install_macos.sh")
 
-            branch_name = "testbranch" if update_branch == "nightly" else "main"
+            branch_name = "nightly" if update_branch == "nightly" else "master"
 
             if os.path.exists(local_script):
                 logger.info(f"[UPDATE] Running local installer script: {local_script}")

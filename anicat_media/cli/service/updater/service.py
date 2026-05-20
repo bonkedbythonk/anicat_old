@@ -42,11 +42,11 @@ class UpdaterService:
         """
         try:
             # Determine target branch
-            branch = "main"
+            branch = "master"
             if self.config:
                 branch_setting = getattr(self.config.general, "update_branch", "stable")
                 if branch_setting == "nightly":
-                    branch = "testbranch"
+                    branch = "nightly"
 
             # 1. Fetch latest commit hash from GitHub
             commit_url = f"https://api.github.com/repos/bonkedbythonk/anicat/commits/{branch}"

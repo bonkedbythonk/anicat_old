@@ -3,8 +3,8 @@ name: Build Nightly
 on:
   push:
     branches:
-      - testbranch
-      - main
+      - nightly
+      - master
   workflow_dispatch:
 
 concurrency:
@@ -87,16 +87,16 @@ jobs:
       - name: Set release parameters
         run: |
           VERSION=$(cat version.txt)
-          if [ "${{ github.ref_name }}" = "main" ]; then
+          if [ "${{ github.ref_name }}" = "master" ]; then
             echo "RELEASE_TAG=v${VERSION}-stable" >> $GITHUB_ENV
             echo "RELEASE_NAME=Anicat v${VERSION} (Stable Rolling)" >> $GITHUB_ENV
-            echo "RELEASE_BODY=Auto-built from main branch — Anicat v${VERSION}. This rolling stable build updates on every push to main." >> $GITHUB_ENV
+            echo "RELEASE_BODY=Auto-built from master branch — Anicat v${VERSION}. This rolling stable build updates on every push to master." >> $GITHUB_ENV
             echo "RELEASE_DRAFT=true" >> $GITHUB_ENV
             echo "RELEASE_PRERELEASE=false" >> $GITHUB_ENV
           else
             echo "RELEASE_TAG=nightly" >> $GITHUB_ENV
             echo "RELEASE_NAME=Anicat Nightly Build" >> $GITHUB_ENV
-            echo "RELEASE_BODY=Automated rolling pre-release built from testbranch. Last updated: ${{ github.event.head_commit.timestamp || 'Manual Trigger' }} (commit ${{ github.sha }}). Install via: curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/main/scripts/install_macos.sh | sed 's/releases/latest/releases/tags/nightly/g' | bash" >> $GITHUB_ENV
+            echo "RELEASE_BODY=Automated rolling pre-release built from nightly branch. Last updated: ${{ github.event.head_commit.timestamp || 'Manual Trigger' }} (commit ${{ github.sha }}). Install via: curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/master/scripts/install_macos.sh | sed 's/releases/latest/releases/tags/nightly/g' | bash" >> $GITHUB_ENV
             echo "RELEASE_DRAFT=false" >> $GITHUB_ENV
             echo "RELEASE_PRERELEASE=true" >> $GITHUB_ENV
           fi
