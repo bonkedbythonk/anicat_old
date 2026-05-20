@@ -66,10 +66,15 @@ export default function HomeView({ onSelect }: HomeViewProps) {
     queryFn: () => mediaApi.search('', 'ANIME', 1, { status: 'RELEASING' }),
   });
 
-  // 5. Continue Watching = local watch history sorted by last_watched DESC
+  // 5. Continue Watching = local watch history filtered to only shows
+  //    currently on the user's AniList watching/repeating list
   const continueWatchingList = useMemo(() => {
-    return recentlyWatchedQuery.data?.media || [];
-  }, [recentlyWatchedQuery.data]);
+    const recent = recentlyWatchedQuery.data?.media || [];
+    const watching = watchingQuery.data?.media || [];
+    // Build a set of watching media IDs for fast lookup
+    const watchingIds = new Set(watching.map((m) => m.id));
+    return recent.filter((m) => watchingIds.has(m.id));
+  }, [recentlyWatchedQuery.data, watchingQuery.data]);
 
   // 6. "New for You" — based on AniList watching list + schedule
   const watchingMedia = watchingQuery.data?.media || [];

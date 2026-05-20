@@ -281,7 +281,18 @@ class MediaRegistryService:
                     recent_media.append(record.media_item)
             except Exception as e:
                 logger.warning(f"Failed to load media record {entry.media_id}: {e}")
-                
+
+        # Exclude entries where the user's AniList status is completed/dropped/planning/paused.
+        # Include entries with no user_status (local-only watches) or status WATCHING/REPEATING.
+        recent_media = [
+            m for m in recent_media
+            if m.user_status is None
+            or m.user_status.status in (
+                UserMediaListStatus.WATCHING,
+                UserMediaListStatus.REPEATING,
+            )
+        ]
+
         if type:
             recent_media = [m for m in recent_media if m.type == type]
 
