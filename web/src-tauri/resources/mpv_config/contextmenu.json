@@ -1,0 +1,12 @@
+[
+  { "type": "menu", "title": "AniCat Actions", "items": [
+    { "command": "script-message anicat-next-episode", "title": "⏭️ Next Episode" },
+    { "command": "script-message anicat-previous-episode", "title": "⏮️ Previous Episode" },
+    { "command": "script-message anicat-toggle-auto-next", "title": "🔄 Toggle Auto-Play" },
+    { "command": "script-message anicat-toggle-translation", "title": "💬 Toggle Dub / Sub" },
+    { "command": "script-message anicat-reload-episode", "title": "🔄 Reload Episode" }
+  ]},
+  { "type": "divider" },
+  { "command": "cycle pause", "title": "Play / Pause" },
+  { "command": "cycle fullscreen", "title": "Toggle Fullscreen" }
+]

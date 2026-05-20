@@ -75,6 +75,7 @@ Thumbs.db
 .anicat.iconset/
 applet.icns
 .anicat_path
+QUICKSTART.md
 docs/DEV_VS_PUBLIC.md
 scripts/start-dev.sh
 scripts/dev_backend.sh
@@ -104,3 +105,4 @@ build_sidecar/
 !build_sidecar/sidecar.spec
 !build_sidecar/anicat-server.py
 web/src-tauri/target/release/bundle/dmg/
+.copilot/

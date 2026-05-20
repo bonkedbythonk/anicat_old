@@ -1,35 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, User, Clock, Tv, BookOpen, Bookmark, Heart, Sparkles } from "lucide-react";
 import { mediaApi, type UserProfile, type MediaItem } from "@/lib/api";
-import MediaCard from "@/components/media/MediaCard";
-
-import { useRefreshTrigger } from "@/lib/events";
+import LazyCard from "@/components/media/LazyCard";
 
 interface ProfileViewProps {
   onSelect?: (item: MediaItem) => void;
 }
 
 export default function ProfileView({ onSelect }: ProfileViewProps) {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
   const [favType, setFavType] = useState<"ANIME" | "MANGA">("ANIME");
-  const refreshKey = useRefreshTrigger();
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await mediaApi.getProfile();
-        setProfile(data);
-      } catch (err) {
-        console.error("Failed to load profile:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [refreshKey]);
+  const {
+    data: profile,
+    isLoading: loading,
+  } = useQuery<UserProfile | null>({
+    queryKey: ["profile"],
+    queryFn: () => mediaApi.getProfile(),
+    staleTime: 60_000,
+  });
 
   if (loading) {
     return (
@@ -43,7 +34,7 @@ export default function ProfileView({ onSelect }: ProfileViewProps) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
         <User size={48} className="text-gray-600" />
-        <p className="text-gray-400 font-medium">Please login via the CLI to view your profile.</p>
+        <p className="text-gray-400 font-medium">Please connect AniList in {"Settings > AniList"} to view your profile.</p>
       </div>
     );
   }
@@ -257,7 +248,7 @@ export default function ProfileView({ onSelect }: ProfileViewProps) {
         {favorites.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
             {favorites.map((item) => (
-              <MediaCard key={item.id} item={item} onSelect={onSelect} />
+              <LazyCard key={item.id} item={item} onSelect={onSelect} />
             ))}
           </div>
         ) : (

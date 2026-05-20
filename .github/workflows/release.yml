@@ -73,6 +73,12 @@ jobs:
         with:
           targets: ${{ matrix.triple }}
 
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            web/src-tauri -> target
+
       - name: install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
@@ -81,6 +87,9 @@ jobs:
 
       - name: install frontend dependencies
         run: cd web && npm install
+
+      - name: Setup Bundled Player Companion
+        run: chmod +x ./scripts/setup_bundled_player.sh && ./scripts/setup_bundled_player.sh
 
       - name: build frontend
         working-directory: web

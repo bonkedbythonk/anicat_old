@@ -1,6 +1,6 @@
 # Anicat
 
-![Anicat Dashboard](assets/branding/dashboard.png)
+![Anicat Desktop](assets/branding/dashboard.png)
 
 **Premium Anime & Manga Experience for macOS.**
 
@@ -39,58 +39,62 @@ If you prefer to download the `.dmg` manually from the GitHub Releases page:
 
 ---
 
-### 2. Setting Up Playback (Built-in vs. Native MPV)
-Anicat features two ways to watch anime, fitting both casual viewers and quality purists:
+### 2. Setting Up Playback (Built-in vs. Advanced MPV)
+Anicat features two premium ways to watch anime, fitting both casual viewers and quality purists:
 
 #### A. The Built-in Player (Zero Setup)
 * Works 100% out-of-the-box on your first launch!
 * Plays streams directly inside the Anicat window without installing any extra software.
 
-#### B. The Native MPV Player (Unlock Premium 4K Upscaling & Skins)
-To play high-performance upscaled anime via **Anime4K** shaders or use advanced skins (ModernX), you need the native **MPV** player. 
+#### B. The Companion MPV Player (Zero Setup + Advanced ModernZ Skin & Upscaling)
+On macOS, Anicat **automatically bundles** a standalone, high-performance isolated **MPV** player package pre-configured with:
+*   The premium **Samillion/ModernZ** skin.
+*   Curated Outfit typography and responsive controls.
+*   Automatic **Skip Intro / Skip Outro** glassmorphic overlay badges.
+*   Support for high-end **Anime4K** real-time upscaling.
 
-We highly recommend installing it via **Homebrew** (this handles all media decoders and updates automatically):
+No manual Homebrew or external MPV installation is required! The desktop installer handles everything automatically.
 
-1. **Install Homebrew** (if you don't have it already):
-   ```bash
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-   ```
-2. **Install MPV**:
-   ```bash
-   brew install mpv
-   ```
-Anicat will automatically detect the installation and seamlessly route your upscaled playback!
+*Note: If you prefer to use your own system-wide, custom-configured MPV player instead, simply install it via Homebrew (`brew install mpv`), select "External" in settings, and Anicat will seamlessly route streams to it.*
 
 ---
 
 ### 3. The Terminal TUI & Developer CLI
-For developers and those who live in the terminal. Fast, keyboard-driven, and lightweight.
+For developers and keyboard-driven power users. Fast, fully customizable, and lightweight.
 
-#### Run instantly (CLI/TUI)
+#### A. Run the CLI / TUI Instantly
+If you are inside the cloned repository root, you can run the interactive CLI interface instantly using `uv`:
 ```bash
 uv run anicat
 ```
-*Requires [uv](https://github.com/astral-sh/uv) to be installed.*
+*(Requires [uv](https://github.com/astral-sh/uv) to be installed on your system.)*
 
-#### Developer / Advanced Local Installation
-If you want to build the entire suite (CLI, TUI, and App) locally from the source:
-```bash
-./scripts/install.sh
-```
-*This script automatically checks/installs Homebrew, `mpv`, `ffmpeg`, `chafa`, `uv`, Node.js, builds the static frontends, and registers persistent system LaunchAgents.*
+#### B. Local Developer / Advanced Installation
+To compile the Python backend server sidecar, build the native Tauri macOS bundle, and install the **global `anicat` command** globally under your terminal PATH:
 
----
+1. Open your terminal.
+2. Navigate into your cloned repository root folder:
+   ```bash
+   cd /path/to/your/cloned/anicat
+   ```
+3. Run the advanced installation script:
+   ```bash
+   ./scripts/install.sh
+   ```
+This script automatically:
+* Installs system tools (like `mpv`, `ffmpeg`, and `chafa` for TUI image rendering).
+* Configures the local Python environment.
+* Installs the global `anicat` wrapper command at `~/.local/bin/anicat`.
+* Compiles the native desktop application and puts it in `~/Applications/Anicat.app`.
 
-### 4. Web Dashboard
-Access the Anicat interface from any browser on your local network.
-* Launch the app/server and visit http://localhost:13370 in your browser.
+*Once installed, you can launch the TUI by typing `anicat` anywhere in your terminal!*
 
 ---
 
 ---
 
 ## Power User Guide
-Anicat uses **mpv** for high-quality playback. To unlock features like Anime4K upscaling, custom skins (ModernX), and advanced keyboard shortcuts, see our:
+Anicat uses **mpv** for high-quality playback. To unlock features like Anime4K upscaling, custom skins (ModernZ), and advanced keyboard shortcuts, see our:
 - [MPV Customization Guide](MPV_GUIDE.md)
 
 ---
@@ -103,7 +107,7 @@ Anicat uses **mpv** for high-quality playback. To unlock features like Anime4K u
 - **Real-Time Data Sync**: Instant UI updates across all views powered by TanStack Query.
 - **Airing Schedules**: Live relative countdowns for currently releasing series.
 - **Premium Design**: Fluid Framer Motion transitions, glassmorphism, and a sleek media drawer layout.
-- **Cross-Platform Access**: Switch between the Native macOS App, TUI/CLI, or Web Dashboard.
+- **Interface Flexibility**: Switch seamlessly between the premium native macOS App or the keyboard-driven terminal TUI/CLI.
 
 ---
 

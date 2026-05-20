@@ -40,6 +40,12 @@ class PlayerService:
         local: bool = False,
     ) -> PlayerResult:
         self.local = local
+
+        # Inject the active shader profile configuration from stream config dynamically
+        if hasattr(params, "shader_profile") and params.shader_profile is None:
+            from dataclasses import replace
+            params = replace(params, shader_profile=self.app_config.stream.shader_profile)
+
         if self.app_config.stream.use_ipc:
             if anime or self.registry:
                 return self._play_with_ipc(params, anime, media_item)

@@ -1,6 +1,6 @@
 import os
 import sys
-from importlib import metadata, resources
+from importlib import resources
 from pathlib import Path
 
 PLATFORM = sys.platform
@@ -12,27 +12,22 @@ APP_NAME = os.environ.get(f"{CLI_NAME}_APP_NAME", CLI_NAME_LOWER)
 USER_NAME = os.environ.get("USERNAME", os.environ.get("USER", "User"))
 
 
+# Single source of truth: version.txt at project root
+# In PyInstaller bundles, use sys._MEIPASS (the extraction directory).
+# In normal Python, resolve relative to this file's location.
+if getattr(sys, 'frozen', False):
+    _version_file = Path(sys._MEIPASS) / "version.txt"
+else:
+    _version_file = Path(__file__).resolve().parent.parent.parent / "version.txt"
 try:
-    __version__ = metadata.version("anicat")
+    if _version_file.is_file():
+        __version__ = _version_file.read_text().strip()
+    else:
+        # PyInstaller sometimes bundles version.txt as version.txt/version.txt
+        _nested = _version_file / "version.txt"
+        __version__ = _nested.read_text().strip()
 except Exception:
-    try:
-        # Fallback for standalone/dev builds
-        project_root = Path(__file__).resolve().parent.parent.parent
-        version_file = project_root / "version.txt"
-        if version_file.exists():
-            content = version_file.read_text().split('\n')[0]
-            # Extract "1.2.5" from "# Version 1.2.5 - ..."
-            import re
-            match = re.search(r"(\d+\.\d+\.\d+)", content)
-            if match:
-                __version__ = match.group(1)
-            else:
-                __version__ = "4.0.0"
-        else:
-            __version__ = "4.0.0"
-    except Exception:
-        __version__ = "4.0.0"
-
+    __version__ = "0.0.0"
 VERSION = __version__
 
 AUTHOR = "bonkedbythonk"
@@ -41,6 +36,7 @@ GIT_PROTOCOL = "https://"
 REPO_HOME = f"https://{GIT_REPO}/{AUTHOR}/anicat"
 
 DISCORD_INVITE = "https://discord.gg/C4rhMA4mmK"
+DISCORD_CLIENT_ID = "1241198642738987158"
 
 ANILIST_AUTH = (
     "https://anilist.co/api/v2/oauth/authorize?client_id=20148&response_type=token"
@@ -113,3 +109,4 @@ LOG_FILE = LOG_FOLDER / "app.log"
 SUPPORT_PROJECT_URL = "https://github.com/bonkedbythonk/anicat"
 UPDATE_STATUS_FILE = APP_CACHE_DIR / ".update_status"
 LAST_COMMIT_FILE = APP_CACHE_DIR / ".last_commit"
+UPDATE_IN_PROGRESS_FILE = APP_CACHE_DIR / ".update_in_progress"

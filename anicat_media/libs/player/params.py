@@ -33,3 +33,6 @@ class PlayerParams:
     subtitles: list[str] | None = None
     headers: dict[str, str] | None = None
     start_time: str | None = None
+    shader_profile: str | None = None
+    skip_times: list[dict] | None = None
+    fullscreen: bool = False

@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
+from typing import Optional
 from ....utils.subprocess import run_cmd
 
 from ....core.config import MpvConfig
@@ -32,7 +33,7 @@ class MpvPlayer(BasePlayer):
     Provides playback functionality using the MPV media player, supporting desktop, mobile, torrents, and syncplay.
     """
 
-    def __init__(self, config: MpvConfig):
+    def __init__(self, config: MpvConfig, player_type: str = "external"):
         """
         Initialize the MpvPlayer with the given MPV configuration.
 
@@ -42,43 +43,59 @@ class MpvPlayer(BasePlayer):
         self.config = config
         self.executable = None
 
-        # macOS specific: Prioritize bundled MPV inside the app resources first
-        if sys.platform == "darwin":
-            # For packaged Tauri apps, sys.executable is Anicat.app/Contents/MacOS/anicat-server
-            app_dir = os.path.dirname(sys.executable)
-            bundled_paths = [
-                # Inside Tauri v2 resources folder
-                os.path.abspath(os.path.join(app_dir, "..", "Resources", "resources", "mpv")),
-                # Directly in Resources folder
-                os.path.abspath(os.path.join(app_dir, "..", "Resources", "mpv")),
-            ]
-            for path in bundled_paths:
-                if os.path.exists(path):
-                    self.executable = path
-                    logger.info(f"Bundled MPV discovered inside app resources at: {self.executable}")
-                    break
+        # Determine bundled paths:
+        app_dir = os.path.dirname(sys.executable)
+        bundled_paths = [
+            os.path.abspath(os.path.join(app_dir, "..", "Resources", "resources", "mpv")),
+            os.path.abspath(os.path.join(app_dir, "..", "Resources", "mpv")),
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "web", "src-tauri", "resources", "mpv")),
+        ]
 
-        # Fallback to system-wide PATH lookup if not bundled
+        # Always search for and prioritize the bundled MPV shipped with AniCat to ensure consistent UX/shaders/ModernZ theme.
+        for path in bundled_paths:
+            if os.path.exists(path):
+                self.executable = path
+                logger.info(f"Bundled MPV selected: {self.executable}")
+                # Try to remove macOS quarantine flag on the bundled resources if present
+                try:
+                    resources_dir = os.path.dirname(self.executable)
+                    if sys.platform == "darwin":
+                        subprocess.run(
+                            ["xattr", "-r", "-d", "com.apple.quarantine", resources_dir],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                        )
+                        logger.info("Cleared macOS quarantine on bundled resources.")
+                except Exception as e:
+                    logger.warning(f"Could not clear macOS quarantine dynamically: {e}")
+                break
+
+        # Only check system-installed MPV locations if no bundled MPV was found (e.g. running in CLI dev mode)
         if not self.executable:
-            self.executable = shutil.which("mpv")
-        
-        # macOS specific fallback for background services/native apps
-        if not self.executable and sys.platform == "darwin":
-            common_paths = [
-                "/opt/homebrew/bin/mpv",
-                "/usr/local/bin/mpv",
-                "/Applications/mpv.app/Contents/MacOS/mpv",
-                os.path.expanduser("~/Applications/mpv.app/Contents/MacOS/mpv")
-            ]
-            for path in common_paths:
-                if os.path.exists(path):
-                    self.executable = path
-                    break
-        
+            logger.info("Bundled MPV not found. Checking system-installed MPV for compatibility.")
+            if sys.platform == "darwin":
+                self.executable = shutil.which("mpv")
+                if not self.executable:
+                    common_paths = [
+                        "/opt/homebrew/bin/mpv",
+                        "/usr/local/bin/mpv",
+                        "/Applications/mpv.app/Contents/MacOS/mpv",
+                        os.path.expanduser("~/Applications/mpv.app/Contents/MacOS/mpv"),
+                    ]
+                    for path in common_paths:
+                        if os.path.exists(path):
+                            self.executable = path
+                            break
+                if self.executable:
+                    logger.info(f"System-installed MPV discovered at: {self.executable}")
+            else:
+                # Non-macOS standard PATH lookup
+                self.executable = shutil.which("mpv")
+
         if self.executable:
-            logger.info(f"MPV executable discovered at: {self.executable}")
+            logger.info(f"MPV executable resolved to: {self.executable}")
         else:
-            logger.warning("MPV executable NOT FOUND in standard locations.")
+            logger.warning("MPV executable NOT FOUND on the system.")
 
     def play(self, params):
         """
@@ -242,14 +259,31 @@ class MpvPlayer(BasePlayer):
             mpv_log_file = subprocess.DEVNULL
 
         full_cmd = pre_args + mpv_args
+        
+        # Isolated standalone Vulkan ICD resolution for Mac out-of-the-box compatibility
+        process_env = detect.get_clean_env().copy()
+        
+        # In development mode, prioritize the dynamically located resources_dir over sys.executable paths if vk_icd.json exists there
+        if sys.platform == "darwin":
+            resources_dir = self._find_resources_dir()
+            if resources_dir:
+                dev_icd = os.path.abspath(os.path.join(resources_dir, "lib", "vk_icd.json"))
+                if os.path.exists(dev_icd):
+                    process_env["VK_ICD_FILENAMES"] = dev_icd
+                    process_env["VK_DRIVER_FILES"] = dev_icd
+
+            if process_env.get("VK_ICD_FILENAMES"):
+                logger.info(f"Vulkan ICD dynamic loader isolation active: {process_env.get('VK_ICD_FILENAMES')}")
+
+
         logger.info(f"Starting MPV with IPC socket: {socket_path}")
         logger.info(f"MPV Command: {' '.join(full_cmd)}")
-        logger.info(f"MPV Environment (clean): {detect.get_clean_env()}")
+        logger.info(f"MPV Environment: {process_env}")
 
         try:
             process = subprocess.Popen(
                 full_cmd,
-                env=detect.get_clean_env(),
+                env=process_env,
                 stdout=mpv_log_file,
                 stderr=mpv_log_file,
             )
@@ -317,12 +351,73 @@ class MpvPlayer(BasePlayer):
             list[str]: List of MPV CLI arguments.
         """
         mpv_args = []
+
+        if sys.platform == "darwin":
+            mpv_args.append("--vo=gpu")
+
+        if getattr(params, "fullscreen", False):
+            mpv_args.append("--fs")
+            logger.info("AniCat is in fullscreen. Requesting MPV to launch in fullscreen mode (--fs).")
+
+        # Dynamically locate isolated configs and shaders from resources, regardless of whether system or bundled MPV is used
+        resources_dir = self._find_resources_dir()
+        if resources_dir:
+            bundled_config = os.path.abspath(os.path.join(resources_dir, "mpv_config"))
+            if os.path.exists(bundled_config):
+                # Enforce native OSC disable explicitly to override any global/fallback settings
+                mpv_args.append("--osc=no")
+                # Point config-dir to our isolated, custom-themed settings to load mpv.conf, input.conf, and modernz.lua
+                mpv_args.append(f"--config-dir={bundled_config}")
+                logger.info(f"Using isolated premium MPV configuration from: {bundled_config}")
+                # If we ship a custom AniCat UI script, prefer loading it explicitly
+                ani_ui = os.path.abspath(os.path.join(bundled_config, "scripts", "anicat_ui", "main.lua"))
+                if os.path.exists(ani_ui):
+                    # Pass script explicitly in case MPV's auto-loading is affected by user settings
+                    mpv_args.append(f"--script={ani_ui}")
+                    logger.info(f"Injecting AniCat custom UI script: {ani_ui}")
+
+            # Dynamically map and inject real-time upscaling shaders based on user's performance preference
+            shader_profile = getattr(params, "shader_profile", "balanced") or "balanced"
+            if shader_profile != "off":
+                bundled_shaders_dir = os.path.join(bundled_config, "shaders")
+                if os.path.exists(bundled_shaders_dir):
+                    # Maps standard/balanced (or any legacy presets) directly to our highly-optimized VL shader pipeline
+                    clamp_path = os.path.join(bundled_shaders_dir, "Anime4K_Clamp_Highlights.glsl")
+                    restore_path = os.path.join(bundled_shaders_dir, "Anime4K_Deblur_DoG.glsl")
+                    upscale_path = os.path.join(bundled_shaders_dir, "Anime4K_Upscale_DoG_x2.glsl")
+                    downscale_x2 = os.path.join(bundled_shaders_dir, "Anime4K_AutoDownscalePre_x2.glsl")
+                    downscale_x4 = os.path.join(bundled_shaders_dir, "Anime4K_AutoDownscalePre_x4.glsl")
+                    shaders_to_load = []
+                    for p in [clamp_path, restore_path, upscale_path, downscale_x2, downscale_x4]:
+                        if os.path.exists(p):
+                            shaders_to_load.append(p)
+                    if shaders_to_load:
+                        mpv_args.append(f"--glsl-shaders={':'.join(shaders_to_load)}")
+                        logger.info("Using standard high-efficiency Anime4K upscaling shaders (Tier VL).")
+            else:
+                logger.info("GPU upscaling shaders are disabled (Battery Saver / Low-End profile).")
+
+        # Pass AniSkip skip times to the AniCat UI script if available
+        if getattr(params, 'skip_times', None):
+            try:
+                parts = []
+                for s in params.skip_times:
+                    t = s.get('type')
+                    start = int(s.get('start') or 0)
+                    end = int(s.get('end') or 0)
+                    parts.append(f"{t},{start},{end}")
+                encoded = ";".join(parts)
+                mpv_args.append(f"--script-opts=anicat_ui-skip_times={encoded}")
+                logger.debug(f"Injected AniCat skip_times script-opts: {encoded}")
+            except Exception:
+                logger.debug("Failed to append AniCat skip_times to MPV args")
+
         if params.headers:
             # mpv prefers no spaces after commas and colons in http-header-fields
             headers_list = []
             for k, v in params.headers.items():
                 # Clean value of newlines and extra spaces
-                clean_v = str(v).strip().replace("\n", "").replace("\r", "")
+                clean_v = v.strip().replace("\n", "").replace("\r", "")
                 headers_list.append(f"{k}:{clean_v}")
             
             header_str = ",".join(headers_list)
@@ -341,6 +436,42 @@ class MpvPlayer(BasePlayer):
         if self.config.args:
             mpv_args.extend(self.config.args.split(","))
         return mpv_args
+
+    def _find_resources_dir(self) -> Optional[str]:
+        """Locates the application's resources directory dynamically."""
+        # Prefer common packaged locations, then fall back to development resources.
+        app_dir = os.path.dirname(sys.executable)
+        candidate_paths = []
+        if sys.platform == "darwin":
+            candidate_paths.extend([
+                os.path.abspath(os.path.join(app_dir, "..", "Resources", "resources")),
+                os.path.abspath(os.path.join(app_dir, "..", "Resources")),
+            ])
+        else:
+            candidate_paths.extend([
+                os.path.abspath(os.path.join(app_dir, "resources")),
+            ])
+
+        # Explicit development fallback relative to the package
+        dev_fallback = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "web", "src-tauri", "resources"))
+        candidate_paths.append(dev_fallback)
+
+        # Try to detect a repository root (look for .git or pyproject.toml) and prefer its web/src-tauri/resources
+        cur = os.path.abspath(os.path.dirname(__file__))
+        for _ in range(6):
+            if os.path.exists(os.path.join(cur, ".git")) or os.path.exists(os.path.join(cur, "pyproject.toml")):
+                repo_resources = os.path.join(cur, "web", "src-tauri", "resources")
+                candidate_paths.append(os.path.abspath(repo_resources))
+                break
+            parent = os.path.dirname(cur)
+            if parent == cur:
+                break
+            cur = parent
+
+        for p in candidate_paths:
+            if p and os.path.exists(p):
+                return p
+        return None
 
 
 if __name__ == "__main__":

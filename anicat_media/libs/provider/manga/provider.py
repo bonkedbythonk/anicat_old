@@ -45,7 +45,11 @@ class MangaProviderFactory:
 
         # Each provider class requires an httpx.Client, which we set up here.
         client = Client(
-            headers={"User-Agent": random_user_agent(), **getattr(provider_class, "HEADERS", {})}
+            headers={
+                "User-Agent": random_user_agent(),
+                "Accept-Encoding": "identity",
+                **getattr(provider_class, "HEADERS", {})
+            }
         )
 
         return provider_class(client)

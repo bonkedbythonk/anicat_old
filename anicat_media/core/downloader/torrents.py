@@ -295,10 +295,6 @@ class TorrentDownloader:
         except Exception as e:
             # Normalize errors into TorrentDownloadError for upstream handling
             raise TorrentDownloadError(f"webtorrent CLI failed: {e}") from e
-        except Exception as e:
-            raise TorrentDownloadError(
-                f"Failed to download with webtorrent: {str(e)}"
-            ) from e
 
     def download(
         self, torrent_source: str, prefer_libtorrent: bool = True, **kwargs

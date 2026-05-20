@@ -24,6 +24,7 @@ if sys.platform == "darwin":
         if p not in current_paths:
             current_paths.append(p)
     os.environ["PATH"] = os.pathsep.join(current_paths)
+from typing import Any
 from ..core.config import AppConfig
 from ..core.constants import VERSION
 from ..cli.config import ConfigLoader
@@ -39,9 +40,9 @@ class _ContextProxy:
         return getattr(sys, "_anicat_ctx", None)
 
     @_ctx.setter
-    def _ctx(self, val: Context | None) -> None:
+    def _ctx(self, val: Any) -> None:
         import sys
-        sys._anicat_ctx = val
+        setattr(sys, "_anicat_ctx", val)
 
     def set(self, ctx: Context) -> None:
         self._ctx = ctx
@@ -58,7 +59,7 @@ class _ContextProxy:
             return loader.load(allow_setup=False)
         return ctx_val.config
 
-    def __getattr__(self, name):
+    def __getattr__(self, name) -> Any:
         # Allow safe access to `config` even before the interactive Context
         # has been created. This prevents endpoints and utilities that only
         # need read access from raising during early initialization.
@@ -72,7 +73,7 @@ class _ContextProxy:
     def __setattr__(self, name, value):
         if name == "_ctx":
             import sys
-            sys._anicat_ctx = value
+            setattr(sys, "_anicat_ctx", value)
             return
         ctx_val = self._ctx
         if ctx_val is None:
@@ -102,6 +103,39 @@ def setup_logging():
     
     logger.info(f"Logging initialized at {LOG_FILE}")
 
+def _cleanup_stale_resources():
+    """Remove stale resources left by force-closed previous runs.
+
+    - Orphaned MPV IPC sockets in /tmp
+    - Stale playback status from the status router module
+    """
+    import glob
+
+    # Clean up stale MPV IPC sockets
+    for sock in glob.glob("/tmp/anicat-mpv-*.sock"):
+        try:
+            os.unlink(sock)
+            logger.info(f"Cleaned up stale MPV socket: {sock}")
+        except OSError:
+            pass
+
+    # Reset stale playback status so the NowPlaying bar doesn't show
+    # a phantom episode from a previous session.
+    try:
+        from .routers.status import _clear_playback
+        _clear_playback()
+    except Exception:
+        pass
+
+    # Clear the "update in progress" flag. The new process has started.
+    try:
+        from anicat_media.core.constants import UPDATE_IN_PROGRESS_FILE
+        if UPDATE_IN_PROGRESS_FILE.exists():
+            UPDATE_IN_PROGRESS_FILE.unlink()
+    except Exception:
+        pass
+
+
 def create_app(config: AppConfig | None = None) -> FastAPI:
     setup_logging()
     if config is None:
@@ -109,6 +143,9 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
         config = loader.load()
 
     ctx.set(Context(config))
+
+    # --- Startup cleanup: remove stale resources from previous runs ---
+    _cleanup_stale_resources()
 
     app = FastAPI(title="Anicat API", version=VERSION)
 

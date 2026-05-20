@@ -1,38 +1,118 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #050505;
-  --color-foreground: #ffffff;
-  --color-accent: #6366f1;
-  --color-accent-light: #818cf8;
-  --color-secondary: #a78bfa;
-  --color-card: #0c0c0f;
-  --color-surface: #111116;
-  --color-border: rgba(255, 255, 255, 0.06);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--accent-color);
+  --color-accent-light: var(--accent-light);
+  --color-secondary: var(--secondary-color);
+  --color-card: var(--card-color);
+  --color-surface: var(--surface-color);
+  --color-border: var(--border-color);
+  --color-white: var(--dynamic-white);
+  --color-black: var(--dynamic-black);
 }
 
 :root {
   --background: #050505;
   --foreground: #ffffff;
+  --accent-color: #6366f1;
+  --accent-light: #818cf8;
+  --secondary-color: #a78bfa;
+  --card-color: #0c0c0f;
+  --surface-color: #111116;
+  --border-color: rgba(255, 255, 255, 0.06);
+  --dynamic-white: #ffffff;
+  --dynamic-black: #000000;
+  --glass-bg: rgba(10, 10, 15, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.06);
+}
+
+/* Light mode overrides */
+html.light,
+html.system:not(.dark) {
+  @media (prefers-color-scheme: light) {
+    --background: #f8fafc;
+    --foreground: #0f172a;
+    --accent-color: #4f46e5;
+    --accent-light: #6366f1;
+    --secondary-color: #7c3aed;
+    --card-color: #ffffff;
+    --surface-color: #f1f5f9;
+    --border-color: rgba(15, 23, 42, 0.08);
+    --dynamic-white: #0f172a;
+    --dynamic-black: #ffffff;
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(15, 23, 42, 0.08);
+  }
+}
+
+html.light {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --accent-color: #4f46e5;
+  --accent-light: #6366f1;
+  --secondary-color: #7c3aed;
+  --card-color: #ffffff;
+  --surface-color: #f1f5f9;
+  --border-color: rgba(15, 23, 42, 0.08);
+  --dynamic-white: #0f172a;
+  --dynamic-black: #ffffff;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(15, 23, 42, 0.08);
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    overscroll-behavior: none;
+  }
+  
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    transform: translateZ(0);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  
+  /* Add smooth transition to interactive/hover states without affecting layouts on initial page load */
+  button, input, select, textarea, a, [role="button"] {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  }
+}
+
+/* Premium theme transition wrapper active only during dynamic toggle theme actions */
+.theme-transition,
+.theme-transition * {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, fill 0.3s ease, stroke 0.3s ease, box-shadow 0.3s ease !important;
 }
 
 /* Glassmorphism */
 .glass {
-  background: rgba(10, 10, 15, 0.85);
+  background: var(--glass-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  transform: translateZ(0);
-  will-change: backdrop-filter, transform;
+  border-color: var(--glass-border);
+}
+
+/* Glass variant for fixed-position elements (sidebar, etc.).
+   backdrop-filter on fixed elements is extremely expensive at 120Hz because
+   the browser must recapture + blur background content on every scroll frame.
+   This variant uses a darker solid background instead. */
+.glass-fixed {
+  background: rgb(10, 10, 15);
+  border-color: var(--glass-border);
+}
+
+html.light .glass-fixed,
+html.system:not(.dark) .glass-fixed {
+  background: rgb(248, 250, 252);
+}
+
+/* Scroll container — apply to the main scrollable area for 120Hz performance */
+.scroll-container {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Card hover glow */
@@ -111,8 +191,8 @@ select {
   background-position: right 16px center;
 }
 select option {
-  background: #111116;
-  color: #fff;
+  background: var(--surface-color);
+  color: var(--foreground);
 }
 
 /* Slide up animation (Now Playing bar) */
@@ -150,5 +230,13 @@ select option {
 }
 .animate-shake {
   animation: shake 0.2s ease-in-out 0s 2;
+}
+
+/* Fix Safari 1px vertical white lines / border artifacts on <video> elements */
+video {
+  isolation: isolate;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  outline: none;
 }
 

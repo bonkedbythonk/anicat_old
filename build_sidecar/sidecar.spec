@@ -11,6 +11,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('../anicat_media', 'anicat_media'),
+        ('../version.txt', 'version.txt'),
     ],
     hiddenimports=[
         'uvicorn.protocols.http.h11_impl',
@@ -23,6 +24,13 @@ a = Analysis(
         'pydantic_core._pydantic_core',
         'email_validator',
         'starlette',
+        # Config modules (imported via re-exports in model.py)
+        'anicat_media.core.config.base',
+        'anicat_media.core.config.general',
+        'anicat_media.core.config.stream',
+        'anicat_media.core.config.downloads',
+        'anicat_media.core.config.api',
+        'anicat_media.core.config.infrastructure',
     ],
     hookspath=[],
     hooksconfig={},

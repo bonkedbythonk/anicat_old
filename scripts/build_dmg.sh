@@ -15,8 +15,12 @@ echo "🏗️ Starting Full Production Build of Anicat..."
 echo "📡 Step 1: Building Python Sidecar..."
 bash "$SCRIPT_DIR/build_sidecar.sh"
 
-# 2. Build Frontend & Tauri App
-echo "💻 Step 2: Building Frontend and Bundling App..."
+# 2. Setup Portable Companion Player
+echo "🎬 Step 2: Configuring Portable Companion Player..."
+bash "$SCRIPT_DIR/setup_bundled_player.sh"
+
+# 3. Build Frontend & Tauri App
+echo "💻 Step 3: Building Frontend and Bundling App..."
 cd "$PROJECT_ROOT/web"
 
 # Ensure dependencies are installed

@@ -20,23 +20,25 @@ Anicat synchronizes your progress automatically when you use these shortcuts.
 
 ---
 
-## Modern UI Skin (Recommended)
+## AniCat UI Overlay
 
-The default mpv interface is basic. We highly recommend installing **[ModernX](https://github.com/cyl0/ModernX)** for a premium macOS-native feel.
+AniCat ships its own mpv overlay so the external player matches the built-in viewer instead of relying on a third-party skin. The overlay is bundled with the app, but if you are configuring a standalone mpv install you can copy `web/src-tauri/resources/mpv_config/scripts/anicat_ui/main.lua` into your mpv `scripts/` folder.
 
-### Step-by-Step Installation
+### Included Controls
 
-1.  **Create the Scripts folder**:
+Shift + N plays the next episode, Shift + P goes back, Shift + R reloads the current episode, Shift + A toggles auto-play, Shift + T switches dub / sub audio tracks, and Ctrl + S jumps the active skip segment when one is available.
+
+### Optional Manual Install
+
+1.  **Create the scripts folder**:
     Open your Terminal and run:
     ```bash
-    mkdir -p ~/.config/mpv/scripts
+    mkdir -p ~/.config/mpv/scripts/anicat_ui
     ```
-2.  **Download the Skin**:
-    Go to the [ModernX Releases](https://github.com/cyl0/ModernX/releases) and download the `modernx.lua` file.
-3.  **Place the file**:
-    Move `modernx.lua` into the `~/.config/mpv/scripts/` folder you just created.
-4.  **Restart MPV**:
-    Close any open videos and play a new one. You should see the new sleek interface!
+2.  **Copy the overlay**:
+    Place AniCat's `main.lua` in `~/.config/mpv/scripts/anicat_ui/main.lua`.
+3.  **Restart MPV**:
+    Close any open videos and play a new one. You should see AniCat's custom overlay instead of a generic skin.
 
 ---
 
@@ -90,7 +92,8 @@ When finished, your configuration should look exactly like this:
 ~/.config/mpv/
 ├── mpv.conf (your settings)
 ├── scripts/
-│   └── modernx.lua (the skin)
+│   └── anicat_ui/
+│       └── main.lua (AniCat's custom overlay)
 └── shaders/
     └── Anime4K_... .glsl (the shaders)
 ```

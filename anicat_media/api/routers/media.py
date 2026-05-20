@@ -36,10 +36,7 @@ async def get_schedule(
         logger.error(f"Failed to fetch schedule: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Use lazy import for ctx to avoid circular dependency
-def get_ctx():
-    from ..main import ctx
-    return ctx
+from ..deps import get_ctx
 
 def _get_current_anime_season() -> tuple[MediaSeason, int]:
     """Determine the current anime season and year."""
@@ -181,8 +178,13 @@ async def get_media_details(media_id: int):
                 if local_entry.progress.isdigit():
                     local_progress = int(local_entry.progress)
                     if local_progress != media.user_status.progress:
-                        logger.info(f"Overriding AniList progress ({media.user_status.progress}) with local progress ({local_progress}) for media {media_id}")
-                        media.user_status.progress = local_progress
+                        if media.user_status.progress > local_progress:
+                            logger.info(f"Syncing local registry progress up to higher AniList progress for media {media_id}: {local_progress} -> {media.user_status.progress}")
+                            local_entry.progress = str(media.user_status.progress)
+                            ctx.media_registry.save_media_index_entry(local_entry)
+                        else:
+                            logger.info(f"Overriding AniList progress ({media.user_status.progress}) with higher local progress ({local_progress}) for media {media_id}")
+                            media.user_status.progress = local_progress
                 
                 if local_entry.status != media.user_status.status:
                     media.user_status.status = local_entry.status
@@ -195,6 +197,50 @@ async def get_media_details(media_id: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+async def get_anime_ref(ctx, media, media_id: int):
+    """Get the anime reference from registry or search."""
+    record = ctx.media_registry.get_media_record(media_id)
+    provider_name = ctx.config.general.provider.value
+    
+    if record and record.provider_mapping and provider_name in record.provider_mapping:
+        provider_id = record.provider_mapping[provider_name]
+        return provider_id, record
+
+    # Search for the anime
+    title = media.title.romaji or media.title.english
+    from ...core.utils.normalizer import normalize_title
+    from ...libs.provider.anime.params import SearchParams as AnimeSearchParams
+    
+    search_results = ctx.provider.search(
+        AnimeSearchParams(
+            query=normalize_title(title, provider_name, True),
+            translation_type=ctx.config.stream.translation_type
+        )
+    )
+    
+    if not search_results or not search_results.results:
+        return None, record
+        
+    from ...cli.utils.search import find_best_match_title
+    results_map = {r.title: r for r in search_results.results}
+    try:
+        best_title = find_best_match_title(results_map, ctx.config.general.provider, media)
+        anime_ref = results_map[best_title]
+    except Exception:
+        anime_ref = search_results.results[0]
+        
+    # Cache the result
+    if not record:
+        record = ctx.media_registry.get_or_create_record(media)
+        
+    if not record.provider_mapping:
+        record.provider_mapping = {}
+        
+    record.provider_mapping[provider_name] = anime_ref.id
+    ctx.media_registry.save_media_record(record)
+    
+    return anime_ref.id, record
 
 async def get_manga_ref(ctx, media, media_id: int):
     """Get the manga reference from registry or search."""
@@ -276,34 +322,17 @@ async def get_media_episodes(media_id: int):
             return result
         else:
             # --- Anime Logic ---
-            from ...libs.provider.anime.params import AnimeParams, SearchParams as AnimeSearchParams
-            # Ensure we have a normalized title for searching
+            from ...libs.provider.anime.params import AnimeParams
+            
+            anime_id, record = await get_anime_ref(ctx, media, media_id)
+            if not anime_id:
+                return []
+                
             title = media.title.romaji or media.title.english
-            from ...core.utils.normalizer import normalize_title
-            from ...cli.utils.search import find_best_match_title
-
-            search_results = ctx.provider.search(
-                AnimeSearchParams(
-                    query=normalize_title(title, ctx.config.general.provider.value, True),
-                    translation_type=ctx.config.stream.translation_type
-                )
-            )
-            
-            if not search_results or not search_results.results:
-                 return []
-                 
-            results_map = {r.title: r for r in search_results.results}
-            try:
-                best_title = find_best_match_title(results_map, ctx.config.general.provider, media)
-                anime_ref = results_map[best_title]
-            except Exception:
-                anime_ref = search_results.results[0]
-            
-            full_anime = ctx.provider.get(AnimeParams(id=anime_ref.id, query=title))
+            full_anime = ctx.provider.get(AnimeParams(id=anime_id, query=title))
             if not full_anime:
                 return []
                 
-            record = ctx.media_registry.get_media_record(media_id)
             local_episodes = {e.episode_number: e for e in record.media_episodes} if record else {}
             
             trans_type = ctx.config.stream.translation_type
@@ -376,6 +405,19 @@ async def get_chapter_pages(media_id: int, chapter_number: str):
         media = ctx.media_api.get_media_item(media_id)
         if not media:
             raise HTTPException(status_code=404, detail="Media not found")
+        
+        # Trigger Discord Rich Presence update in the background if enabled
+        try:
+            if ctx.config.general.discord:
+                import asyncio
+                from ...core.utils.discord_rpc import discord_rpc
+                asyncio.create_task(discord_rpc.update_reading(
+                    title=media.title.english or media.title.romaji,
+                    chapter=chapter_number,
+                    media_id=media_id
+                ))
+        except Exception as e:
+            logger.debug(f"Failed to schedule Discord RPC manga update: {e}")
         
         from ...libs.provider.manga.params import MangaParams
         

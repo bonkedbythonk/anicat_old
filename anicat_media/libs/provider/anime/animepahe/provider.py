@@ -27,10 +27,32 @@ class AnimePahe(BaseAnimeProvider):
 
     def __init__(self, client):
         super().__init__(client)
-        self._solve_ddos_guard()
+        self._available = True
+        self._last_error: Optional[str] = None
+        try:
+            self._solve_ddos_guard()
+        except Exception as e:
+            self._available = False
+            self._last_error = f"AnimePahe is unavailable — {e}"
+            logger.error(self._last_error)
+
+    @property
+    def is_available(self) -> bool:
+        """Whether the provider is currently reachable."""
+        return self._available
+
+    @property
+    def status_message(self) -> Optional[str]:
+        """Human-readable status, or None if operating normally."""
+        if self._available:
+            return None
+        return self._last_error or "AnimePahe is unavailable"
 
     def _solve_ddos_guard(self):
-        """Solve DDoS-Guard challenge to get required session cookies."""
+        """Solve DDoS-Guard challenge to get required session cookies.
+
+        Raises RuntimeError on total failure so callers get a clear message.
+        """
         import time
         max_retries = 3
         for attempt in range(max_retries):
@@ -59,7 +81,10 @@ class AnimePahe(BaseAnimeProvider):
                 if attempt < max_retries - 1:
                     time.sleep(1)
                 else:
-                    logger.error("Failed to solve DDoS-Guard challenge after all retries")
+                    raise RuntimeError(
+                        "AnimePahe DDoS-Guard bypass failed after 3 attempts. "
+                        "The provider may be temporarily blocking automated access."
+                    )
 
     @debug_provider
     def search(self, params: SearchParams) -> SearchResults | None:
@@ -106,8 +131,20 @@ class AnimePahe(BaseAnimeProvider):
 
         search_result = self._get_search_result(params)
         if not search_result:
-            logger.error(f"No search result found for ID {params.id}")
-            return None
+            logger.warning(f"No search result found for ID {params.id} using query '{params.query}'. Creating fallback SearchResult.")
+            from ..types import AnimeEpisodes
+            search_result = SearchResult(
+                id=params.id,
+                title=params.query,
+                episodes=AnimeEpisodes(sub=[], dub=[]),
+                other_titles=[],
+                media_type="Anime",
+                score=0.0,
+                status="Releasing",
+                season="Unknown",
+                poster="",
+                year="Unknown"
+            )
 
         anime: Optional[AnimePaheAnimePage] = None
 
@@ -142,13 +179,35 @@ class AnimePahe(BaseAnimeProvider):
 
     @lru_cache()
     def _get_search_result(self, params: AnimeParams) -> Optional[SearchResult]:
+        from anicat_media.core.utils.normalizer import normalize_title
+        
+        # Try 1: Normalized query
+        normalized_query = normalize_title(params.query, "animepahe", True)
+        search_results = self._search(SearchParams(query=normalized_query))
+        if search_results and search_results.results:
+            for search_result in search_results.results:
+                if search_result.id == params.id:
+                    return search_result
+
+        # Try 2: Simplified query (first 4 words)
+        words = params.query.split()
+        if len(words) > 4:
+            simplified_query = " ".join(words[:4])
+            search_results = self._search(SearchParams(query=simplified_query))
+            if search_results and search_results.results:
+                for search_result in search_results.results:
+                    if search_result.id == params.id:
+                        return search_result
+
+        # Try 3: Original raw query
         search_results = self._search(SearchParams(query=params.query))
-        if not search_results or not search_results.results:
-            logger.error(f"No search results found for ID {params.id}")
-            return None
-        for search_result in search_results.results:
-            if search_result.id == params.id:
-                return search_result
+        if search_results and search_results.results:
+            for search_result in search_results.results:
+                if search_result.id == params.id:
+                    return search_result
+
+        logger.error(f"No search results matched ID {params.id} for query '{params.query}'")
+        return None
 
     @lru_cache()
     def _anime_page_loader(self, m, id, sort, page) -> AnimePaheAnimePage:

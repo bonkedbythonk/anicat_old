@@ -8,7 +8,11 @@ import MediaDetail from "@/components/media/MediaDetail";
 import MangaReader from "@/components/media/MangaReader";
 import AnimePlayer from "@/components/media/AnimePlayer";
 import useKeyboardShortcuts from "@/lib/useKeyboardShortcuts";
-import { mediaApi, type MediaItem, type HealthStatus, API_BASE_ORIGIN } from "@/lib/api";
+import { useRemoteLogging } from "@/lib/useRemoteLogging";
+import { useTheme } from "@/lib/useTheme";
+import { useHealthPolling } from "@/lib/useHealthPolling";
+import { AppStateProvider, useAppState } from "@/lib/AppStateContext";
+import { mediaApi, API_BASE_ORIGIN } from "@/lib/api";
 import { dispatchRefresh } from "@/lib/events";
 import Onboarding from "@/components/layout/Onboarding";
 import { X, WifiOff, RotateCw } from "lucide-react";
@@ -27,204 +31,64 @@ import ProfileView from "@/components/views/ProfileView";
 import HelpModal from "@/components/modals/HelpModal";
 
 export default function App() {
-  // Remote WebView debugging logging bridge
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  // --- Extracted side-effect hooks (replace 2 large useEffect blocks) ---
+  useRemoteLogging();
+  useTheme();
 
-    const safeStringify = (val: any): string => {
-      try {
-        if (val === null) return "null";
-        if (val === undefined) return "undefined";
-        if (typeof val === "object") {
-          if (val instanceof Error) {
-            return `${val.name}: ${val.message}\n${val.stack || ""}`;
-          }
-          // Safe circular checker
-          const seen = new WeakSet();
-          return JSON.stringify(val, (key, value) => {
-            if (typeof value === "object" && value !== null) {
-              if (seen.has(value)) return "[Circular]";
-              seen.add(value);
-            }
-            return value;
-          });
-        }
-        return String(val);
-      } catch (e) {
-        return `[Unstringifiable Object: ${val?.constructor?.name || typeof val}]`;
-      }
-    };
+  const {
+    connectionStatus,
+    connectionError,
+    healthStatus,
+    isOffline,
+    dismissedOffline,
+    notificationCount,
+    dismissOffline,
+  } = useHealthPolling();
 
-    const logToBackend = async (level: string, message: string, data?: any) => {
-      try {
-        await fetch("http://127.0.0.1:13370/api/actions/log", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            level,
-            message,
-            data: data ? { detail: safeStringify(data) } : undefined
-          })
-        });
-      } catch (e) {
-        // Silence fallback
-      }
-    };
-
-    const handleError = (event: ErrorEvent) => {
-      logToBackend("error", `Uncaught Error: ${event.message} at ${event.filename}:${event.lineno}:${event.colno}`, event.error);
-    };
-
-    const handleRejection = (event: PromiseRejectionEvent) => {
-      logToBackend("error", `Unhandled Rejection: ${event.reason}`, event.reason);
-    };
-
-    const originalConsoleError = console.error;
-    const originalConsoleWarn = console.warn;
-    const originalConsoleLog = console.log;
-
-    console.error = (...args: any[]) => {
-      originalConsoleError.apply(console, args);
-      logToBackend("error", args.map(safeStringify).join(" "));
-    };
-
-    console.warn = (...args: any[]) => {
-      originalConsoleWarn.apply(console, args);
-      logToBackend("warn", args.map(safeStringify).join(" "));
-    };
-
-    console.log = (...args: any[]) => {
-      originalConsoleLog.apply(console, args);
-      logToBackend("info", args.map(safeStringify).join(" "));
-    };
-
-    window.addEventListener("error", handleError);
-    window.addEventListener("unhandledrejection", handleRejection);
-
-    logToBackend("info", "--- REMOTE WEBVIEW LOGGING BRIDGE INITIALIZED ---");
-    logToBackend("info", `WebView User Agent: ${navigator.userAgent}`);
-
-    return () => {
-      window.removeEventListener("error", handleError);
-      window.removeEventListener("unhandledrejection", handleRejection);
-      console.error = originalConsoleError;
-      console.warn = originalConsoleWarn;
-      console.log = originalConsoleLog;
-    };
-  }, []);
-
+  // --- App UI state ---
   const [activeView, setActiveView] = useState<ViewName>("home");
-  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
-  const [initialAction, setInitialAction] = useState<"play" | null>(null);
-  const [readingItem, setReadingItem] = useState<MediaItem | null>(null);
-  const [readingChapter, setReadingChapter] = useState<string | null>(null);
-  const [playingItem, setPlayingItem] = useState<MediaItem | null>(null);
-  const [playingEpisode, setPlayingEpisode] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
-  const [isOffline, setIsOffline] = useState(false);
-  const [dismissedOffline, setDismissedOffline] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem("anicat_offline_dismissed") === "true";
-    }
-    return false;
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !localStorage.getItem("anicat_onboarding_seen");
   });
+  const [activeUpdateOverlay, setActiveUpdateOverlay] = useState<{
+    active: boolean;
+    message: string;
+    isNative: boolean;
+  } | null>(null);
 
-  const handleDismissOffline = () => {
-    setDismissedOffline(true);
-    sessionStorage.setItem("anicat_offline_dismissed", "true");
+  // Media item state lives in AppStateContext
+  const appState = useAppState();
+
+  const updateOverlayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const updateStartedAtRef = useRef<number | null>(null);
+  const updateDismissedRef = useRef(false);
+
+  const clearUpdateOverlayTimeout = () => {
+    if (updateOverlayTimeoutRef.current) {
+      clearTimeout(updateOverlayTimeoutRef.current);
+      updateOverlayTimeoutRef.current = null;
+    }
   };
-  const [notificationCount, setNotificationCount] = useState(0);
-  const [connectionStatus, setConnectionStatus] = useState<"checking" | "connected" | "failed">("checking");
-  const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [activeUpdateOverlay, setActiveUpdateOverlay] = useState<{ active: boolean; message: string; isNative: boolean } | null>(null);
 
-  const lastDataVersion = useRef<number | null>(null);
-  
-  // Poll health for offline banner, notifications, and live sync
+  // Reset the stale-update tracker when updating flag goes away
   useEffect(() => {
-    let failedAttempts = 0;
-    let isInitial = true;
-    let checkInterval: NodeJS.Timeout;
-    
-    async function checkSystem() {
-      try {
-        const status = await mediaApi.getHealthStatus();
-        setHealthStatus(status);
-        setConnectionStatus("connected");
-        setConnectionError(null);
-        failedAttempts = 0;
-        
-        // 1. Live Sync Detection
-        if (status.data_version !== undefined) {
-          if (lastDataVersion.current !== null && status.data_version > lastDataVersion.current) {
-            console.log("Live Sync: Data changed (version " + lastDataVersion.current + " -> " + status.data_version + "). Refreshing views...");
-            dispatchRefresh();
-          }
-          lastDataVersion.current = status.data_version;
-        }
-
-        // 2. Offline Detection
-        const shouldBeOffline = status.api_authenticated && (status.is_offline || !status.api_connected);
-        setIsOffline(shouldBeOffline);
-        
-        if (!shouldBeOffline) setDismissedOffline(false);
-        setNotificationCount(status.unread_notifications || 0);
-
-        // Connection succeeded, transition to normal 10s polling interval
-        if (isInitial) {
-          isInitial = false;
-          clearInterval(checkInterval);
-          checkInterval = setInterval(checkSystem, 10000);
-        }
-      } catch (err: any) {
-        failedAttempts++;
-        console.error("Health check failed (attempt " + failedAttempts + "):", err);
-        
-        if (isInitial) {
-          // In the initial boot phase, we show "checking" status and retry quickly (every 1s)
-          setConnectionStatus("checking");
-          
-          if (failedAttempts >= 8) {
-            isInitial = false;
-            clearInterval(checkInterval);
-            setConnectionStatus("failed");
-            setConnectionError(err?.message || "Connection refused (backend sidecar unreachable on port 13370).");
-            // Transition to slow polling so we can try to recover if they click retry
-            checkInterval = setInterval(checkSystem, 10000);
-          }
-        } else {
-          // If we were already connected and it suddenly failed, we wait for 6 consecutive failed 10s polls before failing
-          if (failedAttempts >= 6) {
-            setConnectionStatus("failed");
-            setConnectionError(err?.message || "Connection refused (backend sidecar unreachable on port 13370).");
-          }
-        }
-      }
+    if (healthStatus?.updating && !updateStartedAtRef.current && !updateDismissedRef.current) {
+      updateStartedAtRef.current = Date.now();
+    } else if (!healthStatus?.updating) {
+      updateStartedAtRef.current = null;
+      updateDismissedRef.current = false;
     }
-    
-    // Start initial fast polling (every 1s)
-    checkSystem();
-    checkInterval = setInterval(checkSystem, 1000);
+  }, [healthStatus?.updating]);
 
+  // Cleanup update overlay timeout on unmount
+  useEffect(() => {
     return () => {
-      clearInterval(checkInterval);
+      clearUpdateOverlayTimeout();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Check if onboarding should be shown
-  useEffect(() => {
-    // Only show onboarding if user hasn't seen it yet
-    const hasSeenOnboarding = localStorage.getItem("anicat_onboarding_seen");
-    // Show onboarding if user hasn't seen it yet regardless of healthStatus.
-    // Health checks may be slow or fail on first startup; onboarding should still appear.
-    if (!hasSeenOnboarding) {
-      setShowOnboarding(true);
-    } else {
-      setShowOnboarding(false);
-    }
-  }, [healthStatus]);
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
@@ -239,29 +103,24 @@ export default function App() {
 
   useKeyboardShortcuts({
     onNavigate: setActiveView,
-    onCloseDetail: () => setSelectedItem(null),
+    onCloseDetail: appState.closeDetail,
     onToggleHelp: () => setShowHelp(h => !h),
   });
-
-  const handleSelect = (item: MediaItem, action?: "play") => {
-    setSelectedItem(item);
-    setInitialAction(action || null);
-  };
 
   const renderView = () => {
     switch (activeView) {
       case "home":
-        return <HomeView onSelect={handleSelect} />;
+        return <HomeView onSelect={appState.selectItem} />;
       case "manga":
-        return <MangaView onSelect={handleSelect} />;
+        return <MangaView onSelect={appState.selectItem} />;
       case "search":
-        return <SearchView onSelect={handleSelect} />;
+        return <SearchView onSelect={appState.selectItem} />;
       case "lists":
-        return <ListsView onSelect={handleSelect} />;
+        return <ListsView onSelect={appState.selectItem} />;
       case "downloads":
         return <DownloadsView />;
       case "library":
-        return <LibraryView onSelect={handleSelect} />;
+        return <LibraryView onSelect={appState.selectItem} />;
       case "settings":
         return (
           <SettingsView
@@ -269,6 +128,7 @@ export default function App() {
             onUpdateStarted={(msg) => {
               const message = msg || "Update in progress...";
               const isNative = message.toLowerCase().includes("restart") || message.toLowerCase().includes("native");
+              clearUpdateOverlayTimeout();
               setActiveUpdateOverlay({ active: true, message, isNative });
               
               if (!isNative) {
@@ -276,16 +136,21 @@ export default function App() {
                 setTimeout(() => {
                   window.location.reload();
                 }, 7000);
+              } else {
+                updateOverlayTimeoutRef.current = setTimeout(() => {
+                  setActiveUpdateOverlay(null);
+                  updateOverlayTimeoutRef.current = null;
+                }, 120000);
               }
             }}
           />
         );
       case "notifications":
-        return <NotificationsView onSelect={handleSelect} />;
+        return <NotificationsView onSelect={appState.selectItem} />;
       case "schedule":
-        return <ScheduleView onSelect={handleSelect} />;
+        return <ScheduleView onSelect={appState.selectItem} />;
       case "profile":
-        return <ProfileView onSelect={handleSelect} />;
+        return <ProfileView onSelect={appState.selectItem} />;
     }
   };
 
@@ -296,17 +161,18 @@ export default function App() {
         `Generated: ${new Date().toISOString()}`,
         `Platform: ${typeof window !== "undefined" ? window.navigator.userAgent : "Server"}`,
         `Client Origin: ${typeof window !== "undefined" ? window.location.origin : "Unknown"}`,
-        `API Target: ${API_BASE_ORIGIN}`,
+        `Server Address: ${API_BASE_ORIGIN}`,
         `Connection Status: FAILED`,
         `Connection Error: ${connectionError || "None"}`,
+        `App Version: ${healthStatus?.current_version || "Unknown"}`,
         `Onboarding Seen: ${localStorage.getItem("anicat_onboarding_seen") || "false"}`,
-        `\n## Common Resolution Steps:`,
-        `1. A port conflict on 13370 is the most common cause. Close any other running instances.`,
-        `2. On macOS, ensure Gatekeeper didn't block the sidecar by checking: System Settings -> Privacy & Security.`,
-        `3. Check the detailed backend logs inside the application cache log folder.`
+        `\n## Common Fixes:`,
+        `1. Restart the app from your Applications folder.`,
+        `2. On macOS, go to System Settings > Privacy & Security and check for blocked apps.`,
+        `3. If the issue persists, try restarting your Mac.`
       ].join("\n");
       await navigator.clipboard.writeText(report);
-      alert("Diagnostics report copied to your clipboard! Please send this to the developer.");
+      alert("Diagnostic report copied to clipboard. Please send this to the developer for help.");
     } catch (e) {
       alert("Failed to copy report: " + String(e));
     }
@@ -322,7 +188,7 @@ export default function App() {
     }
   };
 
-  if (connectionStatus === "checking") {
+  if (connectionStatus === "checking" && !healthStatus?.updating) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#050505] text-white p-6 font-sans">
         <style>{`
@@ -335,7 +201,6 @@ export default function App() {
           }
         `}</style>
         <div className="max-w-md w-full text-center space-y-6">
-          {/* Spinning Logo / Icon */}
           <div className="relative flex justify-center">
             <div className="absolute -inset-4 bg-accent/20 rounded-full blur-xl animate-pulse" />
             <div className="relative p-6 bg-white/[0.02] border border-white/[0.08] rounded-full shadow-2xl">
@@ -343,26 +208,55 @@ export default function App() {
             </div>
           </div>
 
-          {/* Title & Description */}
           <div className="space-y-3">
             <h2 className="text-2xl font-black tracking-tight text-white animate-pulse">
-              Starting up the services...
+              Starting up...
             </h2>
             <p className="text-sm text-gray-400 leading-relaxed px-4">
-              Initializing the local Python media server sidecar. Please wait a moment.
+              Anicat is preparing everything. This usually only takes a moment.
             </p>
           </div>
 
-          {/* Loader Bar */}
           <div className="w-48 mx-auto h-1.5 bg-white/[0.04] border border-white/[0.08] rounded-full overflow-hidden">
             <div className="h-full bg-accent rounded-full" style={{
               animation: 'progress-fill-startup 8s linear forwards'
             }} />
           </div>
+        </div>
+      </div>
+    );
+  }
 
-          {/* Tiny Status Indicator */}
-          <p className="text-[10px] text-gray-500 font-medium font-mono">
-            Connecting to {API_BASE_ORIGIN}...
+  // Show a friendly "Updating..." screen when the background process restarts
+  // during an update, instead of the scary "Connection Failed" error.
+  // Auto-dismiss if the flag has been stuck for >2 minutes (update likely failed).
+  const isUpdatingStale = updateStartedAtRef.current && (Date.now() - updateStartedAtRef.current) > 120000;
+  if (isUpdatingStale) {
+    updateDismissedRef.current = true;
+  }
+  if (healthStatus?.updating && !isUpdatingStale && !updateDismissedRef.current) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#050505] text-white p-6 font-sans">
+        <div className="max-w-md w-full text-center space-y-6 animate-fade-in">
+          <div className="relative flex justify-center">
+            <div className="absolute -inset-4 bg-accent/20 rounded-full blur-xl animate-pulse" />
+            <div className="relative p-6 bg-white/[0.02] border border-white/[0.08] rounded-full shadow-2xl">
+              <RotateCw size={48} className="text-accent animate-spin-slow" />
+            </div>
+          </div>
+          <div className="space-y-3">
+            <h2 className="text-2xl font-black tracking-tight text-white">
+              Updating Anicat...
+            </h2>
+            <p className="text-sm text-gray-400 leading-relaxed px-4">
+              Installing the latest version. This will only take a few moments.
+            </p>
+          </div>
+          <div className="w-48 mx-auto h-1.5 bg-white/[0.04] border border-white/[0.08] rounded-full overflow-hidden">
+            <div className="h-full bg-accent rounded-full animate-pulse" style={{ width: '60%' }} />
+          </div>
+          <p className="text-[11px] text-gray-500 font-medium">
+            Anicat will restart automatically when ready.
           </p>
         </div>
       </div>
@@ -373,66 +267,57 @@ export default function App() {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#050505] text-white p-6 font-sans">
         <div className="max-w-md w-full bg-white/[0.02] border border-white/[0.08] backdrop-blur-xl rounded-3xl p-8 space-y-6 shadow-2xl shadow-black/80 animate-fade-in">
-          {/* Header */}
           <div className="space-y-2 text-center">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 mb-2 animate-pulse">
               <WifiOff size={28} />
             </div>
-            <h2 className="text-2xl font-black tracking-tight">Sidecar Connection Failed</h2>
+            <h2 className="text-2xl font-black tracking-tight">Connection Lost</h2>
             <p className="text-sm text-gray-400">
-              The AniCat frontend could not establish a connection with the local Python API service.
+              Anicat couldn't reach its background service. This usually means the app needs to be restarted.
             </p>
           </div>
 
-          {/* Diagnostic Details */}
           <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05] space-y-3.5 text-xs">
             <div className="flex justify-between items-center">
-              <span className="text-gray-500 font-medium">Frontend Client</span>
-              <span className="px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20 font-bold">Online</span>
+              <span className="text-gray-500 font-medium">Anicat Window</span>
+              <span className="px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20 font-bold">Ready</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-500 font-medium">Backend Sidecar</span>
-              <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 font-bold">Unreachable</span>
+              <span className="text-gray-500 font-medium">Background Service</span>
+              <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 font-bold">Not Responding</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-500 font-medium">API Endpoint</span>
-              <span className="font-mono text-gray-400">{API_BASE_ORIGIN}</span>
-            </div>
-            <div className="pt-2 border-t border-white/5 text-[10px] text-red-300/80 leading-relaxed font-mono whitespace-pre-wrap break-all">
-              Error: {connectionError || "Failed to fetch"}
-            </div>
+            {healthStatus?.current_version && (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 font-medium">Version</span>
+                <span className="font-mono text-gray-400">{healthStatus.current_version}</span>
+              </div>
+            )}
+            {connectionError && (
+              <div className="pt-2 border-t border-white/5 text-[10px] text-red-300/80 leading-relaxed font-mono whitespace-pre-wrap break-all">
+                Details: {connectionError}
+              </div>
+            )}
           </div>
 
-          {/* Action Steps */}
           <div className="space-y-3">
             <button
-              onClick={handleCopyDiagnostics}
+              onClick={() => window.location.reload()}
               className="w-full py-3 bg-accent hover:bg-accent-light text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-accent/20 active:scale-95 flex items-center justify-center space-x-2"
             >
-              <span>Copy Diagnostics Report</span>
-            </button>
-            
-            <button
-              onClick={handleOpenLogs}
-              className="w-full py-3 bg-white/[0.04] hover:bg-white/[0.08] text-white/80 border border-white/10 font-bold rounded-xl text-sm transition-all active:scale-95 flex items-center justify-center space-x-2"
-            >
-              <span>Open Application Logs</span>
+              <RotateCw size={16} />
+              <span>Try Again</span>
             </button>
 
             <button
-              onClick={() => {
-                setConnectionStatus("checking");
-                window.location.reload();
-              }}
-              className="w-full py-2.5 text-xs font-semibold text-gray-500 hover:text-white transition-colors"
+              onClick={handleCopyDiagnostics}
+              className="w-full py-3 bg-white/[0.04] hover:bg-white/[0.08] text-white/80 border border-white/10 font-bold rounded-xl text-sm transition-all active:scale-95 flex items-center justify-center space-x-2"
             >
-              Retry Connection
+              <span>Copy Report for Support</span>
             </button>
           </div>
 
-          {/* Footer Info */}
           <p className="text-[10px] text-center text-gray-600 leading-normal">
-            A port conflict (another process on port 13370) or Gatekeeper quarantine is the most common cause on macOS.
+            Try restarting the app from your Applications folder. If the problem keeps happening, send the report above to the developer.
           </p>
         </div>
       </div>
@@ -444,18 +329,22 @@ export default function App() {
       <Sidebar activeView={activeView} onNavigate={setActiveView} notificationCount={notificationCount} health={healthStatus} />
 
       {/* Main content */}
-      <main className="flex-1 ml-[72px] lg:ml-60 overflow-y-auto scrollbar-hide relative">
-        {/* Offline Banner */}
+      <main className="flex-1 ml-[72px] lg:ml-60 overflow-y-auto scrollbar-hide scroll-container relative">
+        {/* Offline / Provider-Status Banner */}
         {isOffline && !dismissedOffline && (
           <div className="absolute top-0 left-0 right-0 z-[300] animate-slide-down">
-            <div className="mx-6 mt-6 lg:mx-10 bg-red-500/10 border border-red-500/20 backdrop-blur-md rounded-2xl p-4 flex items-center justify-between shadow-xl">
-              <div className="flex items-center space-x-3 text-red-400">
-                <WifiOff size={18} />
-                <span className="text-sm font-bold">
-                  AniList API unreachable. Browsing local library mode.
-                </span>
+            <div className="mx-6 mt-6 lg:mx-10 bg-amber-500/10 border border-amber-500/20 backdrop-blur-md rounded-2xl p-4 flex items-center justify-between shadow-xl">
+              <div className="flex items-center space-x-3 text-amber-400 min-w-0">
+                <WifiOff size={18} className="shrink-0" />
+                <div className="min-w-0">
+                  <span className="text-sm font-bold block truncate">
+                    {healthStatus?.provider_status
+                      ? healthStatus.provider_status
+                      : "Could not connect to AniList. You can still browse your local library."}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4 shrink-0">
                 <button 
                   onClick={async () => {
                     try {
@@ -465,12 +354,12 @@ export default function App() {
                       console.error("Reconnection failed:", err);
                     }
                   }}
-                  className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-bold transition-all border border-red-500/20"
+                  className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs font-bold transition-all border border-amber-500/20"
                 >
                   Retry Connection
                 </button>
                 <button 
-                  onClick={handleDismissOffline}
+                  onClick={dismissOffline}
                   className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
                 >
                   <X size={16} className="text-gray-400" />
@@ -535,79 +424,95 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className={`p-6 lg:p-10 max-w-[1600px] transform-gpu will-change-[transform,opacity] ${isOffline && !dismissedOffline ? 'pt-24 lg:pt-28' : ''}`}
+            className={`p-6 lg:p-10 max-w-[1600px] ${isOffline && !dismissedOffline ? 'pt-24 lg:pt-28' : ''}`}
           >
             {renderView()}
           </motion.div>
         </AnimatePresence>
       </main>
 
-      <NowPlaying />
+      <NowPlaying
+        onPlay={(mediaId, episode) => {
+          // Find a matching media item from appState to open the player
+          const item = appState.selectedItem;
+          if (item && item.id === mediaId) {
+            appState.startPlayback(item, episode);
+          }
+        }}
+      />
 
       {/* Media detail drawer */}
       <AnimatePresence>
-        {selectedItem && (
+        {appState.selectedItem && (
           <MediaDetail 
-            item={selectedItem} 
-            initialAction={initialAction || undefined}
+            item={appState.selectedItem} 
+            initialAction={appState.initialAction || undefined}
             onRead={(chapter) => {
-              setReadingItem(selectedItem);
-              setReadingChapter(chapter);
+              appState.startReading(appState.selectedItem!, chapter);
             }}
             onPlayEpisode={(episode) => {
-              setPlayingItem(selectedItem);
-              setPlayingEpisode(episode);
+              appState.startPlayback(appState.selectedItem!, episode);
             }}
-            onClose={() => {
-              setSelectedItem(null);
-              setInitialAction(null);
-            }} 
+            onClose={appState.closeDetail} 
           />
         )}
       </AnimatePresence>
 
-      {readingItem && readingChapter && (
+      {appState.readingItem && appState.readingChapter && (
         <MangaReader
-          mediaId={readingItem.id}
-          chapterNumber={readingChapter}
+          mediaId={appState.readingItem.id}
+          chapterNumber={appState.readingChapter}
+          hasPrevChapter={parseInt(appState.readingChapter) > 1}
+          hasNextChapter={appState.readingItem.chapters ? parseInt(appState.readingChapter) < appState.readingItem.chapters : true}
           onClose={() => {
-            setReadingChapter(null);
-            setReadingItem(null);
+            appState.closeReader();
             dispatchRefresh();
           }}
           onProgressUpdate={async (num) => {
             try {
-              await mediaApi.updateStatus(readingItem.id, undefined, undefined, parseInt(num));
+              await mediaApi.updateStatus(appState.readingItem!.id, undefined, undefined, parseInt(num));
               dispatchRefresh();
             } catch (error) {
               console.error("Failed to update manga progress:", error);
             }
           }}
+          onNavigateChapter={async (direction) => {
+            const current = parseInt(appState.readingChapter!);
+            const next = direction === "next" ? current + 1 : current - 1;
+            if (next < 1) return;
+            // Save progress on current chapter before navigating
+            try {
+              await mediaApi.updateStatus(appState.readingItem!.id, undefined, undefined, current);
+            } catch {}
+            appState.startReading(appState.readingItem!, String(next));
+            dispatchRefresh();
+          }}
         />
       )}
 
-      {playingItem && playingEpisode && (
+      {appState.playingItem && appState.playingEpisode && (
         <AnimePlayer
-          mediaId={playingItem.id}
-          episodeNumber={playingEpisode}
+          mediaId={appState.playingItem.id}
+          malId={appState.playingItem.id_mal}
+          episodeNumber={appState.playingEpisode}
+          totalEpisodes={appState.playingItem.episodes || undefined}
           onClose={() => {
-            setPlayingEpisode(null);
-            setPlayingItem(null);
+            appState.closePlayback();
             dispatchRefresh();
           }}
           onEpisodeCompleted={async (num) => {
             try {
-              await mediaApi.updateStatus(playingItem.id, undefined, undefined, parseInt(num));
+              await mediaApi.updateStatus(appState.playingItem!.id, undefined, undefined, parseInt(num));
               dispatchRefresh();
             } catch (error) {
               console.error("Failed to update watch progress:", error);
             }
           }}
           onPlayNextEpisode={() => {
-            const nextEp = String(parseInt(playingEpisode) + 1);
-            setPlayingEpisode(nextEp);
+            const nextEp = String(parseInt(appState.playingEpisode!) + 1);
+            appState.setEpisode(nextEp);
           }}
-          hasNextEpisode={playingItem.episodes ? parseInt(playingEpisode) < playingItem.episodes : true}
+          hasNextEpisode={appState.playingItem.episodes ? parseInt(appState.playingEpisode!) < appState.playingItem.episodes : true}
         />
       )}
 

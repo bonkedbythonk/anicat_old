@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Search, Loader2, Monitor, BookOpen, SlidersHorizontal, Activity } from "lucide-react";
-import MediaCard from "@/components/media/MediaCard";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { Search, Loader2, SlidersHorizontal, Activity } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import LazyCard from "@/components/media/LazyCard";
 import InfiniteScroll from "@/components/shared/InfiniteScroll";
+import MediaTypeToggle from "@/components/shared/MediaTypeToggle";
+import { usePaginatedList } from "@/lib/usePaginatedList";
 import { mediaApi, type MediaItem, type SearchFilters } from "@/lib/api";
 
 interface SearchViewProps {
@@ -13,92 +16,101 @@ interface SearchViewProps {
 export default function SearchView({ onSelect }: SearchViewProps) {
   const [query, setQuery] = useState("");
   const [type, setType] = useState<"ANIME" | "MANGA">("ANIME");
-  const [results, setResults] = useState<MediaItem[]>([]);
   const [suggestions, setSuggestions] = useState<MediaItem[]>([]);
-  const [discovery, setDiscovery] = useState<MediaItem[]>([]);
-  const [randomList, setRandomList] = useState<MediaItem[]>([]);
+  const [shuffleKey, setShuffleKey] = useState(0); // triggers client-side re-shuffle
   const [loading, setLoading] = useState(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-  const [loadingDiscovery, setLoadingDiscovery] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<SearchFilters>({});
+  const debouncedQueryRef = useRef("");
+  const queryClient = useQueryClient();
 
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
+  // Paginated search results — only active when there's a query
+  const {
+    items: results,
+    loading: loadingResults,
+    loadingMore,
+    hasMore,
+    loadMore,
+  } = usePaginatedList<MediaItem>({
+    fetchFn: async (page) => {
+      const data = await mediaApi.search(debouncedQueryRef.current, type, page, filters);
+      return {
+        items: data.media || [],
+        hasNextPage: data.page_info?.has_next_page || false,
+      };
+    },
+    deps: [debouncedQueryRef.current, type, filters],
+  });
 
-  const seedDiscovery = useCallback(async (active = true) => {
-    setLoadingDiscovery(true);
-    try {
+  // Debounce the search query (400ms) so usePaginatedList only fires after settling
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      debouncedQueryRef.current = "";
+      return;
+    }
+    const timer = setTimeout(() => {
+      debouncedQueryRef.current = trimmed;
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  // Track loading state for the spinner in the search input
+  useEffect(() => {
+    if (!debouncedQueryRef.current) {
+      setLoading(false);
+      return;
+    }
+    setLoading(loadingResults);
+  }, [loadingResults, debouncedQueryRef.current]);
+
+  // Cached discovery feed — refetches silently every 5 min, not on every mount
+  const {
+    data: discoveryRaw,
+    isLoading: loadingDiscovery,
+    isError: discoveryError,
+  } = useQuery({
+    queryKey: ["search-discovery", type],
+    queryFn: async () => {
       const [trending, seasonal, recent] = await Promise.all([
         mediaApi.getTrending(type),
         mediaApi.getSeasonal(type),
         mediaApi.getRecent(type, 12),
       ]);
+      return { trending: trending.media || [], seasonal: seasonal.media || [], recent: recent.media || [] };
+    },
+    staleTime: 300_000, // 5 minutes
+  });
 
-      const pool = [...(trending.media || []), ...(seasonal.media || []), ...(recent.media || [])];
-      const shuffled = pool
-        .sort(() => Math.random() - 0.5)
-        .filter((item, index, array) => array.findIndex(other => other.id === item.id) === index)
-        .slice(0, 18);
-
-      if (active) {
-        setDiscovery(shuffled);
-      }
-
-      // Fetch truly random items by picking a random page (1-100)
+  // Random picks — cached per type, re-fetched with "New Random" button
+  const {
+    data: randomListRaw = [],
+    isFetching: fetchingRandom,
+    refetch: refetchRandom,
+  } = useQuery({
+    queryKey: ["search-random", type],
+    queryFn: async () => {
       const randomPage = Math.floor(Math.random() * 100) + 1;
-      const randomData = await mediaApi.search("", type, randomPage);
-      if (active) {
-        setRandomList(randomData.media || []);
-      }
-    } catch (err) {
-      console.error("Discovery seeding failed:", err);
-      if (active) {
-        setDiscovery([]);
-        setRandomList([]);
-      }
-    } finally {
-      if (active) setLoadingDiscovery(false);
-    }
-  }, [type]);
+      const data = await mediaApi.search("", type, randomPage);
+      return data.media || [];
+    },
+    staleTime: 300_000,
+  });
 
-  useEffect(() => {
-    let active = true;
-    seedDiscovery(active);
-    return () => {
-      active = false;
-    };
-  }, [seedDiscovery]);
+  // Client-side shuffle of discovery pool
+  const discovery = useMemo(() => {
+    if (!discoveryRaw) return [];
+    const pool = [...discoveryRaw.trending, ...discoveryRaw.seasonal, ...discoveryRaw.recent];
+    return pool
+      .sort(() => Math.random() - 0.5)
+      .filter((item, index, array) => array.findIndex(other => other.id === item.id) === index)
+      .slice(0, 18);
+    // shuffleKey triggers a new client-side random sort
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discoveryRaw, shuffleKey]);
 
-  useEffect(() => {
-    const trimmedQuery = query.trim();
-
-    if (!trimmedQuery) {
-      setResults([]);
-      setHasMore(false);
-      // Auto-reseed if empty
-      if (discovery.length === 0) {
-        seedDiscovery();
-      }
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const data = await mediaApi.search(trimmedQuery, type, 1, filters);
-        setResults(data.media || []);
-        setHasMore(data.page_info?.has_next_page || false);
-        setPage(1);
-      } catch {
-        console.error("Search failed");
-      } finally {
-        setLoading(false);
-      }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [query, type, filters, seedDiscovery, discovery.length]);
+  const randomList = useMemo(() => randomListRaw, [randomListRaw]);
 
   useEffect(() => {
     const trimmedQuery = query.trim();
@@ -122,48 +134,13 @@ export default function SearchView({ onSelect }: SearchViewProps) {
     return () => clearTimeout(timer);
   }, [query, type, filters]);
 
-  const loadMore = async () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    try {
-      const nextPage = page + 1;
-      const data = await mediaApi.search(query, type, nextPage, filters);
-      setResults(prev => [...prev, ...(data.media || [])]);
-      setHasMore(data.page_info?.has_next_page || false);
-      setPage(nextPage);
-    } catch {
-      console.error("Load more failed");
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Search header */}
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white">Search</h1>
-          <div className="flex bg-white/[0.04] p-1 rounded-xl border border-white/[0.06] w-fit">
-            <button
-              onClick={() => setType("ANIME")}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-                type === "ANIME" ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-gray-500 hover:text-white"
-              }`}
-            >
-              <Monitor size={16} />
-              <span>Anime</span>
-            </button>
-            <button
-              onClick={() => setType("MANGA")}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-                type === "MANGA" ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-gray-500 hover:text-white"
-              }`}
-            >
-              <BookOpen size={16} />
-              <span>Manga</span>
-            </button>
-          </div>
+          <MediaTypeToggle value={type} onChange={setType} />
         </div>
 
         <div className="relative group">
@@ -311,7 +288,7 @@ export default function SearchView({ onSelect }: SearchViewProps) {
                           <p className="text-sm text-gray-500">A rotating mix of trending, seasonal, and recent picks.</p>
                         </div>
                         <button
-                          onClick={() => setDiscovery([...discovery].sort(() => Math.random() - 0.5))}
+                          onClick={() => setShuffleKey(k => k + 1)}
                           className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-sm font-semibold text-gray-300 transition-colors hover:border-accent/30 hover:text-white"
                         >
                           Shuffle
@@ -319,7 +296,7 @@ export default function SearchView({ onSelect }: SearchViewProps) {
                       </div>
                       <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                         {discovery.map((item) => (
-                          <MediaCard key={item.id} item={item} onSelect={onSelect} />
+                          <LazyCard key={item.id} item={item} onSelect={onSelect} />
                         ))}
                       </div>
                     </div>
@@ -333,24 +310,16 @@ export default function SearchView({ onSelect }: SearchViewProps) {
                           <p className="text-sm text-gray-500">Completely random picks from across the database.</p>
                         </div>
                         <button
-                          onClick={async () => {
-                            setLoadingDiscovery(true);
-                            const randomPage = Math.floor(Math.random() * 100) + 1;
-                            try {
-                              const data = await mediaApi.search("", type, randomPage);
-                              setRandomList(data.media || []);
-                            } finally {
-                              setLoadingDiscovery(false);
-                            }
-                          }}
-                          className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-sm font-semibold text-gray-300 transition-colors hover:border-accent/30 hover:text-white"
+                          onClick={() => { refetchRandom(); }}
+                          disabled={fetchingRandom}
+                          className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-sm font-semibold text-gray-300 transition-colors hover:border-accent/30 hover:text-white disabled:opacity-50"
                         >
-                          New Random
+                          {fetchingRandom ? "Loading..." : "New Random"}
                         </button>
                       </div>
                       <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                         {randomList.map((item) => (
-                          <MediaCard key={item.id} item={item} onSelect={onSelect} />
+                          <LazyCard key={item.id} item={item} onSelect={onSelect} />
                         ))}
                       </div>
                     </div>
@@ -361,7 +330,7 @@ export default function SearchView({ onSelect }: SearchViewProps) {
                       <Activity size={40} className="mx-auto text-gray-800 mb-4" />
                       <p className="text-gray-500 font-semibold">Unable to load discovery feed.</p>
                       <button 
-                        onClick={() => window.location.reload()}
+                        onClick={() => { queryClient.invalidateQueries({ queryKey: ["search-discovery"] }); }}
                         className="mt-4 text-accent text-sm font-bold hover:underline"
                       >
                         Try Refreshing
@@ -378,7 +347,7 @@ export default function SearchView({ onSelect }: SearchViewProps) {
           return (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
               {results.map((item) => (
-                <MediaCard key={item.id} item={item} onSelect={onSelect} />
+                <LazyCard key={item.id} item={item} onSelect={onSelect} />
               ))}
             </div>
           );
@@ -405,7 +374,9 @@ export default function SearchView({ onSelect }: SearchViewProps) {
         return null;
       })()}
 
-      <InfiniteScroll hasMore={hasMore} loading={loadingMore} onLoadMore={loadMore} />
+      {debouncedQueryRef.current && (
+        <InfiniteScroll hasMore={hasMore} loading={loadingMore} onLoadMore={loadMore} />
+      )}
     </div>
   );
 }

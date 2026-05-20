@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional, TypedDict
+from typing import List, Literal, Optional, TypedDict, NotRequired
 
 
 class AnilistPageInfo(TypedDict):
@@ -9,8 +9,9 @@ class AnilistPageInfo(TypedDict):
 
 
 class AnilistMediaTitle(TypedDict):
-    english: str
-    romaji: str
+    english: Optional[str]
+    romaji: Optional[str]
+    native: NotRequired[Optional[str]]
 
 
 class AnilistImage(TypedDict):
@@ -26,9 +27,9 @@ class AnilistCurrentlyLoggedInUser(TypedDict):
     bannerImage: Optional[str]
     avatar: AnilistImage
     token: str
-    about: Optional[str]
-    statistics: Optional[dict]
-    favourites: Optional[dict]
+    about: NotRequired[Optional[str]]
+    statistics: NotRequired[Optional[dict]]
+    favourites: NotRequired[Optional[dict]]
 
 
 class AnilistViewer(TypedDict):
@@ -57,6 +58,7 @@ class AnilistUserData(TypedDict):
 class AnilistMediaTrailer(TypedDict):
     id: str
     site: str
+    thumbnail: NotRequired[Optional[str]]
 
 
 class AnilistStudio(TypedDict):
@@ -134,6 +136,11 @@ class AnilistMediaList_(TypedDict):
     progress: int
     status: AnilistMediaListStatus
     score: float | int | None
+    repeat: NotRequired[int]
+    notes: NotRequired[str]
+    startDate: NotRequired[AnilistDateObject]
+    completedAt: NotRequired[AnilistDateObject]
+    createdAt: NotRequired[str]
 
 
 class AnilistMediaListProperties(TypedDict):
@@ -232,9 +239,10 @@ class AnilistDataSchema(TypedDict):
 
 class AnilistMediaList(TypedDict):
     media: AnilistBaseMediaDataSchema
+    id: NotRequired[int]
     status: AnilistMediaListStatus
     progress: int
-    score: int
+    score: float | int | None
     repeat: int
     notes: str
     startDate: AnilistDateObject

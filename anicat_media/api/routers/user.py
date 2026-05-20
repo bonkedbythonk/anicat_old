@@ -1,14 +1,12 @@
 from typing import Optional
-from fastapi import APIRouter, HTTPException
-from ...libs.media_api.types import MediaSearchResult, MediaType, UserMediaListStatus, UserProfile
+from fastapi import APIRouter, Depends, HTTPException
+from ...libs.media_api.types import MediaSearchResult, MediaType, UserMediaListStatus, UserMediaListSort, UserProfile
 from ...libs.media_api.params import UserMediaListSearchParams
 from pydantic import BaseModel
 
 router = APIRouter()
 
-def get_ctx():
-    from ..main import ctx
-    return ctx
+from ..deps import get_ctx, get_media_api
 
 class ListUpdateRequest(BaseModel):
     media_id: int
@@ -17,34 +15,38 @@ class ListUpdateRequest(BaseModel):
     score: Optional[float] = None
 
 @router.get("/profile", response_model=Optional[UserProfile])
-async def get_profile():
+async def get_profile(api = Depends(get_media_api)):
     """Get the authenticated user's profile."""
     try:
-        ctx = get_ctx()
-        if not ctx.media_api.is_authenticated():
+        if not api.is_authenticated():
             return None
-        return ctx.media_api.get_viewer_profile()
+        return api.get_viewer_profile()
     except Exception:
         return None
 
 @router.get("/list", response_model=MediaSearchResult)
 async def get_user_list(
+    api = Depends(get_media_api),
     status: Optional[UserMediaListStatus] = None,
     type: Optional[MediaType] = None,
     page: int = 1
 ):
     """Get the authenticated user's media list."""
     try:
-        ctx = get_ctx()
-        if not ctx.media_api.is_authenticated():
+        if not api.is_authenticated():
             from ...libs.media_api.types import PageInfo
             return MediaSearchResult(
                 page_info=PageInfo(total=0, current_page=1, has_next_page=False, per_page=15),
                 media=[]
             )
             
-        params = UserMediaListSearchParams(status=status or UserMediaListStatus.WATCHING, type=type, page=page)
-        result = ctx.media_api.search_media_list(params)
+        params = UserMediaListSearchParams(
+            status=status or UserMediaListStatus.WATCHING,
+            type=type,
+            page=page,
+            sort=UserMediaListSort.UPDATED_TIME_DESC
+        )
+        result = api.search_media_list(params)
         if not result:
             from ...libs.media_api.types import PageInfo
             return MediaSearchResult(

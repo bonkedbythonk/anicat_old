@@ -1,7 +1,9 @@
 "use client";
 
-import { Play } from "lucide-react";
-import { type MediaItem } from "@/lib/api";
+import { useCallback, useRef } from "react";
+import { Play, BookOpen } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { type MediaItem, mediaApi } from "@/lib/api";
 
 interface MediaCardProps {
   item: MediaItem;
@@ -9,6 +11,8 @@ interface MediaCardProps {
 }
 
 export default function MediaCard({ item, onSelect }: MediaCardProps) {
+  const queryClient = useQueryClient();
+
   const handlePlay = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -16,6 +20,32 @@ export default function MediaCard({ item, onSelect }: MediaCardProps) {
       onSelect(item, "play");
     }
   };
+
+  // Smart pre-fetch: when user hovers for 300ms+, pre-load the detail
+  // and episode list so the detail drawer opens instantly.
+  const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseEnter = useCallback(() => {
+    prefetchTimerRef.current = setTimeout(() => {
+      queryClient.prefetchQuery({
+        queryKey: ["media-detail", item.id],
+        queryFn: () => mediaApi.getDetails(item.id),
+        staleTime: 60_000,
+      });
+      queryClient.prefetchQuery({
+        queryKey: ["media-episodes", item.id],
+        queryFn: () => mediaApi.getEpisodes(item.id),
+        staleTime: 60_000,
+      });
+    }, 300);
+  }, [item.id, queryClient]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (prefetchTimerRef.current) {
+      clearTimeout(prefetchTimerRef.current);
+      prefetchTimerRef.current = null;
+    }
+  }, []);
 
   const title = item.title.english || item.title.romaji || "Media";
   const isManga = item.type === 'MANGA';
@@ -47,6 +77,8 @@ export default function MediaCard({ item, onSelect }: MediaCardProps) {
   return (
     <div 
       onClick={() => onSelect?.(item)} 
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className="group cursor-pointer flex flex-col space-y-2.5 w-full text-left"
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-surface card-glow">
@@ -54,8 +86,9 @@ export default function MediaCard({ item, onSelect }: MediaCardProps) {
         <img 
           src={item.cover_image.large} 
           alt={title} 
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          style={{ transform: 'translateZ(0)' }}
         />
         
         {/* Play overlay */}
@@ -64,7 +97,11 @@ export default function MediaCard({ item, onSelect }: MediaCardProps) {
             onClick={handlePlay}
             className="bg-accent p-3.5 rounded-full hover:scale-110 active:scale-95 transition-transform duration-200 shadow-xl shadow-accent/30 text-white"
           >
-            <Play fill="currentColor" size={22} className="ml-0.5" />
+            {isManga ? (
+              <BookOpen size={22} className="text-white" />
+            ) : (
+              <Play fill="currentColor" size={22} className="ml-0.5" />
+            )}
           </button>
         </div>
 
@@ -90,7 +127,7 @@ export default function MediaCard({ item, onSelect }: MediaCardProps) {
         {hasNewEpisodes && (
           <div 
             className="absolute top-2 left-2 bg-accent text-white px-1.5 py-0.5 rounded text-[9px] font-black z-50 shadow-lg"
-            style={{ transform: 'translateZ(10px)', pointerEvents: 'none' }}
+            style={{ pointerEvents: 'none' }}
           >
             NEW
           </div>

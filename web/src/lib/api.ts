@@ -18,7 +18,12 @@ export async function fetchFromApi(endpoint: string, options: RequestInit = {}) 
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    let errorData: any = {};
+    try {
+      errorData = await response.json();
+    } catch (e) {
+      // Ignored
+    }
     // Prefer structured detail (FastAPI uses `detail`) then `message`, else fallback
     const detail = errorData.detail ?? errorData.message ?? errorData ?? null;
     const message = detail ? (typeof detail === 'string' ? detail : JSON.stringify(detail)) : `API error: ${response.status} ${response.statusText}`;
@@ -28,13 +33,18 @@ export async function fetchFromApi(endpoint: string, options: RequestInit = {}) 
     throw new Error(`${endpoint} - ${message}`);
   }
 
-  return response.json();
+  try {
+    return await response.json();
+  } catch (e) {
+    return {};
+  }
 }
 
 // ─── Types ────────────────────────────────────────────
 
 export type MediaItem = {
   id: number;
+  id_mal?: number;
   type?: "ANIME" | "MANGA";
   title: {
     english?: string;
@@ -83,6 +93,7 @@ export type QueueItem = {
   episode_number: string;
   status: string;
   error_message?: string;
+  cover_image?: string;
 };
 
 export type Character = {
@@ -147,9 +158,11 @@ export type HealthStatus = {
   worker_running: boolean;
   is_offline: boolean;
   update_available?: boolean;
+  updating?: boolean;
   unread_notifications?: number;
   current_version?: string;
   data_version?: number;
+  provider_status?: string | null;
 };
 
 export type SearchFilters = {
@@ -245,8 +258,13 @@ export const mediaApi = {
     fetchFromApi(`/media/${mediaId}/chapter/${chapterNumber}/pages`),
 
   // ─── Playback ───────────────────────────────────────
-  play: (mediaId: number, episode?: string) =>
-    fetchFromApi(`/actions/play/${mediaId}${episode ? `?episode=${episode}` : ''}`, { method: 'POST' }),
+  play: async (mediaId: number, episode?: string) => {
+    const params = new URLSearchParams();
+    if (episode) params.append('episode', episode);
+    params.append('fullscreen', 'true');
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    return fetchFromApi(`/actions/play/${mediaId}${queryString}`, { method: 'POST' });
+  },
 
   resolveStream: (mediaId: number, episode?: string): Promise<{
     stream_url: string;
@@ -269,8 +287,9 @@ export const mediaApi = {
       body: JSON.stringify({ media_id: mediaId, episode, current_time: currentTime, total_time: totalTime })
     }),
 
-  playNext: (mediaId: number) =>
-    fetchFromApi(`/actions/play/${mediaId}`, { method: 'POST' }),
+  playNext: async (mediaId: number) => {
+    return fetchFromApi(`/actions/play/${mediaId}?fullscreen=true`, { method: 'POST' });
+  },
 
   getPlaybackStatus: (): Promise<PlaybackStatus> =>
     fetchFromApi('/status/playback'),
@@ -327,8 +346,11 @@ export const mediaApi = {
   checkUpdate: (): Promise<{ status: string; update_available: boolean; message: string }> =>
     fetchFromApi('/status/check-update', { method: 'POST' }),
 
-  triggerUpdate: (): Promise<{ status: string; message: string }> =>
-    fetchFromApi('/status/update', { method: 'POST' }),
+  triggerUpdate: (branch?: 'stable' | 'nightly'): Promise<{ status: string; message: string }> =>
+    fetchFromApi('/status/update', {
+      method: 'POST',
+      body: branch ? JSON.stringify({ branch }) : undefined
+    }),
 
   getHealthStatus: (): Promise<HealthStatus> =>
     fetchFromApi('/status/health'),

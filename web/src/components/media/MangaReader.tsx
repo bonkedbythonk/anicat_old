@@ -10,21 +10,36 @@ interface MangaReaderProps {
   initialPage?: number;
   onClose: () => void;
   onProgressUpdate?: (chapterNum: string) => void;
+  onNavigateChapter?: (direction: "prev" | "next") => void;
+  hasPrevChapter?: boolean;
+  hasNextChapter?: boolean;
 }
 
 type ReadingMode = "single" | "double" | "vertical";
 
-export default function MangaReader({ mediaId, chapterNumber, initialPage = 0, onClose, onProgressUpdate }: MangaReaderProps) {
+export default function MangaReader({ mediaId, chapterNumber, initialPage = 0, onClose, onProgressUpdate, onNavigateChapter, hasPrevChapter, hasNextChapter }: MangaReaderProps) {
   const [pages, setPages] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [readingMode, setReadingMode] = useState<ReadingMode>("single");
+  const [readingDirection, setReadingDirection] = useState<"ltr" | "rtl">("rtl");
   const [showControls, setShowControls] = useState(true);
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
   
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Load reading direction preference on mount and clear presence on unmount
+  useEffect(() => {
+    const savedDirection = localStorage.getItem("anicat_manga_reading_direction");
+    if (savedDirection === "ltr" || savedDirection === "rtl") {
+      setReadingDirection(savedDirection);
+    }
+    return () => {
+      mediaApi.clearPlaybackStatus().catch(() => {/* ignore */});
+    };
+  }, []);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActionRef = useRef<number>(0);
 
@@ -127,13 +142,24 @@ export default function MangaReader({ mediaId, chapterNumber, initialPage = 0, o
     const handleKeyDown = (e: KeyboardEvent) => {
       switch (e.key) {
         case "ArrowRight":
+          e.preventDefault();
+          if (readingDirection === "rtl") {
+            handlePrev();
+          } else {
+            handleNext();
+          }
+          break;
         case " ":
           e.preventDefault();
-          handleNext();
+          handleNext(); // Spacebar always moves forward in standard flows
           break;
         case "ArrowLeft":
           e.preventDefault();
-          handlePrev();
+          if (readingDirection === "rtl") {
+            handleNext();
+          } else {
+            handlePrev();
+          }
           break;
         case "f":
         case "F":
@@ -151,7 +177,7 @@ export default function MangaReader({ mediaId, chapterNumber, initialPage = 0, o
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleNext, handlePrev, onClose]);
+  }, [handleNext, handlePrev, onClose, readingDirection]);
 
   const toggleFullscreen = async () => {
     try {
@@ -239,11 +265,49 @@ export default function MangaReader({ mediaId, chapterNumber, initialPage = 0, o
             </button>
             <div>
               <h2 className="text-xs font-bold text-accent uppercase tracking-[0.2em] mb-1">Chapter</h2>
-              <p className="text-xl font-black text-white">{chapterNumber}</p>
+              <div className="flex items-center space-x-2">
+                {onNavigateChapter && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onNavigateChapter("prev"); }}
+                    disabled={!hasPrevChapter}
+                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                    title="Previous Chapter"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                )}
+                <p className="text-xl font-black text-white">{chapterNumber}</p>
+                {onNavigateChapter && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onNavigateChapter("next"); }}
+                    disabled={!hasNextChapter}
+                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                    title="Next Chapter"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="flex items-center space-x-3 bg-black/60 backdrop-blur-xl p-1.5 rounded-2xl border border-white/10 shadow-2xl">
+            {/* Reading Direction Selector */}
+            {readingMode !== "vertical" && (
+              <button 
+                onClick={() => {
+                  const newDir = readingDirection === "ltr" ? "rtl" : "ltr";
+                  setReadingDirection(newDir);
+                  localStorage.setItem("anicat_manga_reading_direction", newDir);
+                }} 
+                className="px-3.5 py-2.5 rounded-xl text-[10px] font-black tracking-widest text-accent hover:bg-white/5 transition-all uppercase cursor-pointer"
+                title="Toggle Reading Direction (RTL/LTR)"
+              >
+                {readingDirection === "rtl" ? "RTL 📖" : "LTR ➡️"}
+              </button>
+            )}
+            {readingMode !== "vertical" && <div className="w-px h-6 bg-white/10" />}
+
             <button onClick={() => setReadingMode("single")} className={`p-2.5 rounded-xl transition-all ${readingMode === "single" ? "bg-accent text-white" : "text-gray-500 hover:text-white"}`}><FileText size={18} /></button>
             <button onClick={() => setReadingMode("double")} className={`p-2.5 rounded-xl transition-all ${readingMode === "double" ? "bg-accent text-white" : "text-gray-500 hover:text-white"}`}><Book size={18} /></button>
             <button onClick={() => setReadingMode("vertical")} className={`p-2.5 rounded-xl transition-all ${readingMode === "vertical" ? "bg-accent text-white" : "text-gray-500 hover:text-white"}`}><ScrollText size={18} /></button>
@@ -282,35 +346,74 @@ export default function MangaReader({ mediaId, chapterNumber, initialPage = 0, o
           </div>
         ) : (
           <div className="relative w-full h-full flex items-center justify-center p-4 lg:p-8">
-            <div className="absolute inset-y-0 left-0 w-1/4 z-10 cursor-w-resize" onClick={handlePrev} />
-            <div className="absolute inset-y-0 right-0 w-1/4 z-10 cursor-e-resize" onClick={handleNext} />
+            {/* Tap Zones: Left Zone (Next in RTL, Prev in LTR) */}
+            <div 
+              className={`absolute inset-y-0 left-0 w-1/4 z-10 ${readingDirection === 'rtl' ? 'cursor-e-resize' : 'cursor-w-resize'}`} 
+              onClick={readingDirection === "rtl" ? handleNext : handlePrev} 
+            />
+            {/* Right Zone (Prev in RTL, Next in LTR) */}
+            <div 
+              className={`absolute inset-y-0 right-0 w-1/4 z-10 ${readingDirection === 'rtl' ? 'cursor-w-resize' : 'cursor-e-resize'}`} 
+              onClick={readingDirection === "rtl" ? handlePrev : handleNext} 
+            />
 
             <div className={`flex items-center justify-center h-full gap-1 transition-all ${readingMode === "double" ? "w-full" : "max-w-3xl"}`}>
               {readingMode === "double" ? (
-                <>
-                  <div className="flex-1 h-full flex items-center justify-end">
-                    <div className="relative max-h-full">
-                      {!loadedImages.has(currentPage) && <div className="absolute inset-0 flex items-center justify-center bg-white/[0.02]"><Loader2 className="animate-spin text-white/10" size={32} /></div>}
-                      <img 
-                        key={pages[currentPage]} 
-                        src={getProxyUrl(pages[currentPage])} 
-                        className={`transition-all duration-500 object-contain bg-black shadow-2xl ${showControls ? "max-h-[calc(100vh-220px)]" : "max-h-screen"}`} 
-                      />
+                readingDirection === "rtl" ? (
+                  <>
+                    {/* RTL Left Box (Higher Index Page B: currentPage + 1) */}
+                    <div className="flex-1 h-full flex items-center justify-end">
+                      {currentPage + 1 < pages.length && (
+                        <div className="relative max-h-full">
+                          {!loadedImages.has(currentPage + 1) && <div className="absolute inset-0 flex items-center justify-center bg-white/[0.02]"><Loader2 className="animate-spin text-white/10" size={32} /></div>}
+                          <img 
+                            key={pages[currentPage + 1]} 
+                            src={getProxyUrl(pages[currentPage + 1])} 
+                            className={`transition-all duration-500 object-contain bg-black shadow-2xl ${showControls ? "max-h-[calc(100vh-220px)]" : "max-h-screen"}`} 
+                          />
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  {currentPage + 1 < pages.length && (
+                    {/* RTL Right Box (Lower Index Page A: currentPage) */}
                     <div className="flex-1 h-full flex items-center justify-start border-l border-white/5">
                       <div className="relative max-h-full">
-                        {!loadedImages.has(currentPage + 1) && <div className="absolute inset-0 flex items-center justify-center bg-white/[0.02]"><Loader2 className="animate-spin text-white/10" size={32} /></div>}
+                        {!loadedImages.has(currentPage) && <div className="absolute inset-0 flex items-center justify-center bg-white/[0.02]"><Loader2 className="animate-spin text-white/10" size={32} /></div>}
                         <img 
-                          key={pages[currentPage + 1]} 
-                          src={getProxyUrl(pages[currentPage + 1])} 
+                          key={pages[currentPage]} 
+                          src={getProxyUrl(pages[currentPage])} 
                           className={`transition-all duration-500 object-contain bg-black shadow-2xl ${showControls ? "max-h-[calc(100vh-220px)]" : "max-h-screen"}`} 
                         />
                       </div>
                     </div>
-                  )}
-                </>
+                  </>
+                ) : (
+                  <>
+                    {/* LTR Left Box (Lower Index Page A: currentPage) */}
+                    <div className="flex-1 h-full flex items-center justify-end">
+                      <div className="relative max-h-full">
+                        {!loadedImages.has(currentPage) && <div className="absolute inset-0 flex items-center justify-center bg-white/[0.02]"><Loader2 className="animate-spin text-white/10" size={32} /></div>}
+                        <img 
+                          key={pages[currentPage]} 
+                          src={getProxyUrl(pages[currentPage])} 
+                          className={`transition-all duration-500 object-contain bg-black shadow-2xl ${showControls ? "max-h-[calc(100vh-220px)]" : "max-h-screen"}`} 
+                        />
+                      </div>
+                    </div>
+                    {/* LTR Right Box (Higher Index Page B: currentPage + 1) */}
+                    {currentPage + 1 < pages.length && (
+                      <div className="flex-1 h-full flex items-center justify-start border-l border-white/5">
+                        <div className="relative max-h-full">
+                          {!loadedImages.has(currentPage + 1) && <div className="absolute inset-0 flex items-center justify-center bg-white/[0.02]"><Loader2 className="animate-spin text-white/10" size={32} /></div>}
+                          <img 
+                            key={pages[currentPage + 1]} 
+                            src={getProxyUrl(pages[currentPage + 1])} 
+                            className={`transition-all duration-500 object-contain bg-black shadow-2xl ${showControls ? "max-h-[calc(100vh-220px)]" : "max-h-screen"}`} 
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )
               ) : (
                 <div className="relative h-full flex items-center justify-center">
                   {!loadedImages.has(currentPage) && <div className="absolute inset-0 flex items-center justify-center bg-white/[0.02]"><Loader2 className="animate-spin text-white/10" size={32} /></div>}
@@ -330,18 +433,47 @@ export default function MangaReader({ mediaId, chapterNumber, initialPage = 0, o
       {readingMode !== "vertical" && (
         <div className={`fixed bottom-0 inset-x-0 z-50 bg-gradient-to-t from-black/95 to-transparent p-8 transition-opacity duration-300 ${showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
           <div className="max-w-5xl mx-auto flex flex-col space-y-6">
-            <input type="range" min="0" max={pages.length - 1} value={currentPage} onChange={(e) => setCurrentPage(parseInt(e.target.value))} className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-accent" />
+            {/* In RTL, the range slider is visually reversed to match page numbering right-to-left */}
+            <input 
+              type="range" 
+              min="0" 
+              max={pages.length - 1} 
+              value={currentPage} 
+              onChange={(e) => setCurrentPage(parseInt(e.target.value))} 
+              className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-accent transform-gpu"
+              style={{ direction: readingDirection === "rtl" ? "rtl" : "ltr" }}
+            />
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <button onClick={handlePrev} disabled={currentPage === 0} className="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white disabled:opacity-20"><ChevronLeft size={24} /></button>
-                <button onClick={handleNext} disabled={currentPage >= pages.length - (readingMode === "double" ? 2 : 1)} className="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white disabled:opacity-20"><ChevronRight size={24} /></button>
+                <button 
+                  onClick={readingDirection === "rtl" ? handleNext : handlePrev} 
+                  disabled={readingDirection === "rtl" ? currentPage >= pages.length - (readingMode === "double" ? 2 : 1) : currentPage === 0} 
+                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white disabled:opacity-20 cursor-pointer"
+                  title={readingDirection === "rtl" ? "Next Page" : "Previous Page"}
+                >
+                  <ChevronLeft size={24} />
+                </button>
+                <button 
+                  onClick={readingDirection === "rtl" ? handlePrev : handleNext} 
+                  disabled={readingDirection === "rtl" ? currentPage === 0 : currentPage >= pages.length - (readingMode === "double" ? 2 : 1)} 
+                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white disabled:opacity-20 cursor-pointer"
+                  title={readingDirection === "rtl" ? "Previous Page" : "Next Page"}
+                >
+                  <ChevronRight size={24} />
+                </button>
                 <div className="text-sm font-black text-white/40 tabular-nums">
-                  <span className="text-white">{currentPage + 1}{readingMode === "double" && currentPage + 1 < pages.length ? `-${currentPage + 2}` : ""}</span> / {pages.length}
+                  <span className="text-white">
+                    {readingDirection === "rtl" && readingMode === "double" && currentPage + 1 < pages.length 
+                      ? `${currentPage + 2}-${currentPage + 1}` 
+                      : (readingMode === "double" && currentPage + 1 < pages.length 
+                          ? `${currentPage + 1}-${currentPage + 2}` 
+                          : `${currentPage + 1}`)}
+                  </span> / {pages.length}
                 </div>
               </div>
               {((readingMode === "single" && currentPage === pages.length - 1) || 
                 (readingMode === "double" && currentPage >= pages.length - 2)) && (
-                <button onClick={handleFinish} className="px-10 py-3.5 bg-accent text-white rounded-2xl font-black text-sm shadow-2xl animate-fade-in">Finish Reading</button>
+                <button onClick={handleFinish} className="px-10 py-3.5 bg-accent text-white rounded-2xl font-black text-sm shadow-2xl animate-fade-in cursor-pointer">Finish Reading</button>
               )}
             </div>
           </div>

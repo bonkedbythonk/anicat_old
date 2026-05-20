@@ -12,12 +12,30 @@ echo "Starting Anicat installation..."
 
 # 1. Get latest release version and download URL
 echo "Finding latest release..."
-LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases/latest")
+UPDATE_BRANCH="stable"
+if [ -f "$HOME/.config/anicat/config.toml" ]; then
+    if grep -q 'update_branch = "nightly"' "$HOME/.config/anicat/config.toml"; then
+        UPDATE_BRANCH="nightly"
+    fi
+fi
+
+if [ "$UPDATE_BRANCH" = "nightly" ]; then
+    echo "Tracking nightly branch update..."
+    LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases" | python3 -c "import sys, json; data=json.load(sys.stdin); print(json.dumps(data[0]) if data else '')" 2>/dev/null || curl -s "https://api.github.com/repos/$REPO/releases/latest")
+else
+    LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases/latest")
+fi
+
 DOWNLOAD_URL=$(echo "$LATEST_RELEASE" | grep -o "https://github.com/bonkedbythonk/anicat/releases/download/[^\"]*\.dmg" | head -n 1)
 
 if [ -z "$DOWNLOAD_URL" ]; then
     echo "Error: Could not find a DMG for the latest release."
     exit 1
+fi
+
+# Auto-detect nightly: if the download URL points to a nightly release, set the branch
+if echo "$DOWNLOAD_URL" | grep -q "nightly"; then
+    UPDATE_BRANCH="nightly"
 fi
 
 # 2. Download the DMG
@@ -56,15 +74,50 @@ rm -f "$TMP_DMG"
 echo "Configuring security permissions..."
 xattr -d com.apple.quarantine "$INSTALL_PATH" 2>/dev/null || true
 
-# 7. Automatically Restart the Application
+# 7. Write update branch to config so the app knows where to check for updates
+if [ "$UPDATE_BRANCH" = "nightly" ]; then
+    CONFIG_DIR="$HOME/Library/Application Support/anicat"
+    CONFIG_FILE="$CONFIG_DIR/config.toml"
+    mkdir -p "$CONFIG_DIR"
+    if [ -f "$CONFIG_FILE" ]; then
+        # Update existing config: replace or append update_branch setting
+        if grep -q '^update_branch' "$CONFIG_FILE"; then
+            sed -i '' 's/^update_branch = .*/update_branch = "nightly"/' "$CONFIG_FILE"
+        else
+            echo 'update_branch = "nightly"' >> "$CONFIG_FILE"
+        fi
+    else
+        cat > "$CONFIG_FILE" <<'TOML'
+[general]
+update_branch = "nightly"
+TOML
+    fi
+    echo "Configured update branch: nightly"
+
+    # Write nightly release commit SHA so the app knows which version is installed
+    LAST_COMMIT_FILE="$HOME/Library/Caches/anicat/.last_commit"
+    mkdir -p "$(dirname "$LAST_COMMIT_FILE")"
+    COMMIT_SHA=$(echo "$LATEST_RELEASE" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('target_commitish',''))" 2>/dev/null)
+    if [ -n "$COMMIT_SHA" ]; then
+        echo "$COMMIT_SHA" > "$LAST_COMMIT_FILE"
+        echo "Recorded nightly commit SHA: ${COMMIT_SHA:0:12}..."
+    else
+        echo "Warning: Could not determine nightly commit SHA. Update detection may be affected."
+    fi
+fi
+
+# 9. Automatically Restart the Application
 echo "Relaunching Anicat..."
 
-# Kill the old running instances first to unblock a clean relaunch
+# Kill all running Anicat instances and services to ensure a clean restart
 killall "Anicat" 2>/dev/null || true
 killall "Anicat Dev" 2>/dev/null || true
+killall "anicat-server" 2>/dev/null || true
+# Force-free port 13370 in case a dev uvicorn or stale sidecar is holding it
+lsof -ti :13370 | xargs kill -9 2>/dev/null || true
 
-# Wait a brief moment for processes to release resources, then boot it fresh
-sleep 1
+# Wait for processes to release resources, then boot fresh
+sleep 2
 open -a "$INSTALL_PATH"
 
 echo ""

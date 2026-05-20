@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import Hero from "@/components/media/Hero";
 import MediaRow from "@/components/media/MediaRow";
@@ -30,20 +30,27 @@ function MediaRowSkeleton({ title }: { title: string }) {
 }
 
 export default function HomeView({ onSelect }: HomeViewProps) {
-  // 1. Critical User-Specific Watch List
+  // 1. Local watch history — sorted by most recently watched (from media_registry)
+  const recentlyWatchedQuery = useQuery({
+    queryKey: ["home-recently-watched"],
+    queryFn: () => mediaApi.getRecent("ANIME", 20),
+  });
+
+  // 2. Playback Status — shared query key with NowPlaying component (deduped)
+  useQuery({
+    queryKey: ["playback-status"],
+    queryFn: () => mediaApi.getPlaybackStatus().catch(() => null),
+    refetchInterval: 5000,
+    staleTime: 4000,
+  });
+
+  // 3. AniList Watching List — used for hero fallback and "New for You"
   const watchingQuery = useQuery({
     queryKey: ["home-watching"],
     queryFn: () => mediaApi.getUserList("watching", "ANIME"),
   });
 
-  // 2. Playback Status (Polls to stay updated with player activities)
-  const playbackStatusQuery = useQuery({
-    queryKey: ["home-playback-status"],
-    queryFn: () => mediaApi.getPlaybackStatus().catch(() => null),
-    refetchInterval: 5000,
-  });
-
-  // 3. Background/Non-blocking Discovery Queries
+  // 4. Background/Non-blocking Discovery Queries
   const trendingQuery = useQuery({
     queryKey: ["home-trending"],
     queryFn: () => mediaApi.getTrending("ANIME"),
@@ -54,7 +61,22 @@ export default function HomeView({ onSelect }: HomeViewProps) {
     queryFn: () => mediaApi.getSeasonal("ANIME"),
   });
 
-  // 4. Secondary Query for Missed/Recent Releases
+  const newlyReleasingQuery = useQuery({
+    queryKey: ["home-newly-releasing"],
+    queryFn: () => mediaApi.search('', 'ANIME', 1, { status: 'RELEASING' }),
+  });
+
+  // 5. Continue Watching = local watch history filtered to only shows
+  //    currently on the user's AniList watching/repeating list
+  const continueWatchingList = useMemo(() => {
+    const recent = recentlyWatchedQuery.data?.media || [];
+    const watching = watchingQuery.data?.media || [];
+    // Build a set of watching media IDs for fast lookup
+    const watchingIds = new Set(watching.map((m) => m.id));
+    return recent.filter((m) => watchingIds.has(m.id));
+  }, [recentlyWatchedQuery.data, watchingQuery.data]);
+
+  // 6. "New for You" — based on AniList watching list + schedule
   const watchingMedia = watchingQuery.data?.media || [];
   const watchingIds = useMemo(() => watchingMedia.map((m) => m.id), [watchingMedia]);
 
@@ -62,7 +84,6 @@ export default function HomeView({ onSelect }: HomeViewProps) {
     queryKey: ["home-recent-releases", watchingIds],
     enabled: watchingQuery.isSuccess,
     queryFn: async () => {
-      // Calculate what's actually new based on user progress
       const missedEpisodes = watchingMedia.filter((item) => {
         const progress = item.user_status?.progress || 0;
         const nextEp = item.next_airing?.episode;
@@ -72,18 +93,14 @@ export default function HomeView({ onSelect }: HomeViewProps) {
         } else if (item.episodes) {
           currentReleased = item.episodes;
         }
-        
         const isFinished = item.status === 'FINISHED';
         return item.status === 'RELEASING' && !isFinished && progress < currentReleased;
       });
 
       const releases = [...missedEpisodes];
-
       if (watchingMedia.length > 0) {
         const schedule = await mediaApi.getSchedule(3, 0, 1, 10, watchingIds);
         const scheduledMedia = schedule.media || [];
-        
-        // Merge and de-duplicate
         const seenIds = new Set(releases.map((m) => m.id));
         for (const m of scheduledMedia) {
           if (!seenIds.has(m.id)) {
@@ -96,26 +113,11 @@ export default function HomeView({ onSelect }: HomeViewProps) {
     },
   });
 
-  // Re-order watching list based on local playback status if available
-  const continueWatchingList = useMemo(() => {
-    const list = [...watchingMedia];
-    const playbackStatus = playbackStatusQuery.data;
-    
-    if (playbackStatus && list.length > 0) {
-      const lastPlayedId = playbackStatus.media_id;
-      const lastPlayedIndex = list.findIndex((m) => m.id === lastPlayedId);
-      if (lastPlayedIndex > 0) {
-        const [lastPlayedItem] = list.splice(lastPlayedIndex, 1);
-        list.unshift(lastPlayedItem);
-      }
-    }
-    return list;
-  }, [watchingMedia, playbackStatusQuery.data]);
-
-  // Compute Hero Element
-  const heroItem = useMemo(() => {
+  // Compute candidate hero item — prefer recently watched (in-progress), then watching list, then trending
+  const candidateHeroItem = useMemo(() => {
+    // First: pick the most recently watched item that is still in progress
     if (continueWatchingList.length > 0) {
-      const availableToWatch = continueWatchingList.filter((item) => {
+      const inProgress = continueWatchingList.filter((item) => {
         const progress = item.user_status?.progress || 0;
         const total = item.episodes || 0;
         if (item.next_airing) {
@@ -123,17 +125,43 @@ export default function HomeView({ onSelect }: HomeViewProps) {
         }
         return total > 0 ? progress < total : true;
       });
+      if (inProgress.length > 0) return inProgress[0];
+    }
 
-      const pool = availableToWatch.length > 0 ? availableToWatch : continueWatchingList;
+    // Second: fall back to AniList watching list (first in-progress item)
+    if (watchingMedia.length > 0) {
+      const availableToWatch = watchingMedia.filter((item) => {
+        const progress = item.user_status?.progress || 0;
+        const total = item.episodes || 0;
+        if (item.next_airing) {
+          return progress < item.next_airing.episode - 1;
+        }
+        return total > 0 ? progress < total : true;
+      });
+      const pool = availableToWatch.length > 0 ? availableToWatch : watchingMedia;
       return pool[0];
-    } else if (trendingQuery.data?.media && trendingQuery.data.media.length > 0) {
+    }
+
+    // Third: trending
+    if (trendingQuery.data?.media && trendingQuery.data.media.length > 0) {
       return trendingQuery.data.media[0];
     }
     return null;
-  }, [continueWatchingList, trendingQuery.data]);
+  }, [continueWatchingList, watchingMedia, trendingQuery.data]);
 
-  // Global loading only until critical list is loaded
-  if (watchingQuery.isLoading) {
+  // Stabilize hero: only swap when the identity actually changes, preventing flicker
+  const stableHeroRef = useRef<MediaItem | null>(candidateHeroItem);
+  const heroItem = useMemo(() => {
+    const prev = stableHeroRef.current;
+    const next = candidateHeroItem;
+    if (prev && next && prev.id === next.id) return prev;
+    if (!next && prev) return prev;
+    stableHeroRef.current = next;
+    return next;
+  }, [candidateHeroItem]);
+
+  // Global loading only until critical data is loaded
+  if (recentlyWatchedQuery.isLoading && watchingQuery.isLoading) {
     return (
       <div className="flex items-center justify-center h-full min-h-[400px]">
         <Loader2 className="animate-spin text-accent" size={36} />
@@ -162,6 +190,14 @@ export default function HomeView({ onSelect }: HomeViewProps) {
       ) : (
         trendingQuery.data?.media && trendingQuery.data.media.length > 0 && (
           <MediaRow title="Trending Now" items={trendingQuery.data.media} onSelect={onSelect} />
+        )
+      )}
+      
+      {newlyReleasingQuery.isLoading ? (
+        <MediaRowSkeleton title="Newly Releasing" />
+      ) : (
+        newlyReleasingQuery.data?.media && newlyReleasingQuery.data.media.length > 0 && (
+          <MediaRow title="Newly Releasing" items={newlyReleasingQuery.data.media} onSelect={onSelect} />
         )
       )}
       

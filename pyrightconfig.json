@@ -5,5 +5,11 @@
   "reportMissingImports": "none",
   "reportPrivateImportUsage": "none",
   "reportUnsupportedDunderAll": "none",
-  "reportAttributeAccessIssue": "warning"
+  "reportAttributeAccessIssue": "warning",
+  "exclude": [
+    "**/node_modules",
+    "**/.venv",
+    "scratch",
+    "dev"
+  ]
 }

@@ -145,9 +145,17 @@ class Context:
                         logger.warning(
                             "Token was rejected by the API — it may be invalid or expired."
                         )
-                except httpx.ConnectError as e:
+                except httpx.RequestError as e:
                     logger.warning(f"It seems you are offline: {e}")
                     self.is_offline = True
+                except httpx.HTTPStatusError as e:
+                    # HTTP status errors like 400 Invalid token are not connectivity outages.
+                    status_code = e.response.status_code if e.response is not None else 0
+                    if status_code >= 500:
+                        logger.warning(f"It seems you are offline: {e}")
+                        self.is_offline = True
+                    else:
+                        logger.warning(f"Authentication request failed (HTTP {status_code}): {e}")
             else:
                 self.feedback.warning(
                     "You are not logged in.",
@@ -226,7 +234,7 @@ class Context:
         if not self._updater:
             from ..service.updater.service import UpdaterService
 
-            self._updater = UpdaterService()
+            self._updater = UpdaterService(self.config)
         return self._updater
 
 

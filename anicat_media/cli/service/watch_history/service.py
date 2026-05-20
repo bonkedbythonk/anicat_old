@@ -33,28 +33,52 @@ class WatchHistoryService:
             and media_item.user_status.status == UserMediaListStatus.COMPLETED
         ):
             status = UserMediaListStatus.REPEATING
+
+        # Calculate completion percentage if times are present
+        is_completed = False
+        completion_percentage = 0.0
+        if player_result.stop_time and player_result.total_time:
+            from ....core.utils.converter import calculate_completion_percentage
+            completion_percentage = calculate_completion_percentage(
+                player_result.stop_time, player_result.total_time
+            )
+            is_completed = completion_percentage >= self.config.stream.episode_complete_at
+
+        # Determine what progress to write to local registry
+        if is_completed:
+            progress_value = player_result.episode
+            # Clear watch position/duration since it is completed
+            last_watch_pos = None
+            total_dur = None
+        else:
+            # Not completed! Keep previous progress from registry or media_item
+            index_entry = self.media_registry.get_media_index_entry(media_item.id)
+            if index_entry and index_entry.progress:
+                progress_value = index_entry.progress
+            elif media_item.user_status and media_item.user_status.progress is not None:
+                progress_value = str(media_item.user_status.progress)
+            else:
+                progress_value = None
+            
+            last_watch_pos = player_result.stop_time
+            total_dur = player_result.total_time
+
         self.media_registry.update_media_index_entry(
             media_id=media_item.id,
             watched=True,
             media_item=media_item,
-            last_watch_position=player_result.stop_time,
-            total_duration=player_result.total_time,
-            progress=player_result.episode,
+            last_watch_position=last_watch_pos,
+            total_duration=total_dur,
+            progress=progress_value,
             status=status,
-            is_synced=False,
+            is_synced=False if is_completed else True,
         )
 
-        if player_result.stop_time and player_result.total_time:
-            from ....core.utils.converter import calculate_completion_percentage
-
-            completion_percentage = calculate_completion_percentage(
-                player_result.stop_time, player_result.total_time
+        if not is_completed:
+            logger.info(
+                f"Not updating remote watch history since completion percentage ({completion_percentage}) is not greater than episode complete at ({self.config.stream.episode_complete_at})"
             )
-            if completion_percentage < self.config.stream.episode_complete_at:
-                logger.info(
-                    f"Not updating remote watch history since completion percentage ({completion_percentage} is not greater than episode complete at ({self.config.stream.episode_complete_at}))"
-                )
-                return True
+            return True
 
         if self.media_api and self.media_api.is_authenticated():
             # --- Progress Regression Check ---

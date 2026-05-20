@@ -1,6 +1,7 @@
 "use client";
 
-import { Play, Maximize } from "lucide-react";
+import { useState } from "react";
+import { Play, Maximize, BookOpen, Loader2 } from "lucide-react";
 import { type MediaItem } from "@/lib/api";
 
 interface HeroProps {
@@ -9,6 +10,7 @@ interface HeroProps {
 }
 
 export default function Hero({ item, onSelect }: HeroProps) {
+  const [clicked, setClicked] = useState(false);
   const title = item.title.english || item.title.romaji || "Unknown";
   const currentProgress = item.user_status?.progress || 0;
   const total = item.episodes || item.chapters || 0;
@@ -21,7 +23,10 @@ export default function Hero({ item, onSelect }: HeroProps) {
 
   const handlePlay = () => {
     if (onSelect) {
+      setClicked(true);
       onSelect(item, "play");
+      // Reset after a timeout in case the drawer takes time to open
+      setTimeout(() => setClicked(false), 3000);
     }
   };
 
@@ -33,10 +38,12 @@ export default function Hero({ item, onSelect }: HeroProps) {
         <img 
           src={item.banner_image || item.cover_image.large} 
           alt={title} 
-          className="absolute inset-0 w-full h-full object-cover brightness-[0.3] scale-105 transition-all duration-[2s] group-hover:scale-100 group-hover:brightness-[0.4]"
+          className="absolute inset-0 w-full h-full object-cover brightness-[0.25] scale-105 will-change-[transform,filter] transition-[transform,filter] duration-[2s] group-hover:scale-100 group-hover:brightness-[0.35]"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent" />
+        {/* Vignette: darker at edges, lighter toward center */}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-transparent to-background/60" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-transparent to-transparent" />
       </div>
 
       <div className="relative h-full flex flex-col justify-end pb-10 lg:pb-14 px-6 lg:px-12 space-y-5 max-w-3xl z-10">
@@ -66,16 +73,24 @@ export default function Hero({ item, onSelect }: HeroProps) {
         <div className="flex items-center space-x-3 pt-2">
           <button 
             onClick={handlePlay}
-            disabled={isCaughtUp}
+            disabled={isCaughtUp || clicked}
             className="flex items-center space-x-3 bg-white text-black px-8 py-3.5 rounded-xl hover:bg-accent hover:text-white transition-all duration-300 font-bold text-sm active:scale-95 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-black"
           >
-            <Play fill="currentColor" size={18} />
+            {clicked ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : isManga ? (
+              <BookOpen size={18} />
+            ) : (
+              <Play fill="currentColor" size={18} />
+            )}
             <span>
-              {isFinished
-                ? (isManga ? "Read Again" : "Re-watch")
-                : isCaughtUp
-                  ? "Caught Up"
-                  : (item.user_status?.progress ? "Resume" : (isManga ? "Read Now" : "Play Now"))
+              {clicked
+                ? "Loading..."
+                : isFinished
+                  ? (isManga ? "Read Again" : "Re-watch")
+                  : isCaughtUp
+                    ? "Caught Up"
+                    : (item.user_status?.progress ? "Resume" : (isManga ? "Read Now" : "Play Now"))
               }
             </span>
           </button>

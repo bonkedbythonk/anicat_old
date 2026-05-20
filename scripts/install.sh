@@ -148,7 +148,7 @@ cd "$PROJECT_DIR/web"
 echo "   - Installing frontend dependencies..."
 npm install --quiet
 echo "   - Building static export..."
-if npm run build && npm run export; then
+if npm run build; then
     echo "   - Syncing static files to backend..."
     STATIC_DIR="$PROJECT_DIR/anicat_media/api/static"
     rm -rf "$STATIC_DIR"/*
@@ -212,115 +212,54 @@ fi
 
 echo "Global 'anicat' command installed at $HOME/.local/bin/anicat"
 
-# 9. Create macOS App Bundle
+# 9. Clean up legacy web dashboard configs & build native Tauri Desktop app on macOS
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    echo "Creating Anicat Dashboard.app for macOS..."
-    APP_PATH="$HOME/Applications/Anicat Dashboard.app"
-    mkdir -p "$APP_PATH/Contents/MacOS"
-    mkdir -p "$APP_PATH/Contents/Resources"
+    echo "Cleaning up any legacy web dashboard configurations..."
+    launchctl unload "$HOME/Library/LaunchAgents/com.bonkedbythonk.anicat.plist" 2>/dev/null || true
+    rm -f "$HOME/Library/LaunchAgents/com.bonkedbythonk.anicat.plist"
+    rm -rf "$HOME/Applications/Anicat Dashboard.app"
 
-    # Create Info.plist
-    cat > "$APP_PATH/Contents/Info.plist" << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>Anicat</string>
-    <key>CFBundleIconFile</key>
-    <string>logo.icns</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.bonkedbythonk.anicat-dashboard</string>
-    <key>CFBundleName</key>
-    <string>Anicat Dashboard</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
-    <key>LSUIElement</key>
-    <true/>
-</dict>
-</plist>
-EOF
-
-    # Create Launcher Script
-    cat > "$APP_PATH/Contents/MacOS/Anicat" << 'EOF'
-#!/bin/bash
-export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
-# Close any existing dashboard first
-pkill -f "anicat dashboard" || true
-# Launch in background and detach
-nohup anicat dashboard --no-browser > /dev/null 2>&1 &
-# Open the browser/PWA
-sleep 2
-open "http://localhost:13370"
-EOF
-    chmod +x "$APP_PATH/Contents/MacOS/Anicat"
-
-    # Copy Icon
-    if [ -f "$PROJECT_DIR/anicat_media/assets/icons/logo.icns" ]; then
-        cp "$PROJECT_DIR/anicat_media/assets/icons/logo.icns" "$APP_PATH/Contents/Resources/logo.icns"
+    echo ""
+    echo "🏗️ Building native macOS Tauri Desktop App..."
+    echo "   (This compiles the sidecar, frontend, and bundles the native App)"
+    
+    # Run build_dmg.sh
+    if ! bash "$PROJECT_DIR/scripts/build_dmg.sh"; then
+        echo "Error: Native Tauri app compilation failed."
+        exit 1
     fi
 
-    echo "Anicat Dashboard.app created in $HOME/Applications"
+    # Find the built .app
+    APP_SOURCE=""
+    if [ -d "$PROJECT_DIR/web/src-tauri/target/release/bundle/macos/Anicat.app" ]; then
+        APP_SOURCE="$PROJECT_DIR/web/src-tauri/target/release/bundle/macos/Anicat.app"
+    elif [ -d "$PROJECT_DIR/web/src-tauri/target/release/bundle/osx/Anicat.app" ]; then
+        APP_SOURCE="$PROJECT_DIR/web/src-tauri/target/release/bundle/osx/Anicat.app"
+    fi
 
-    # 10. Create macOS LaunchAgent for background persistence
-    echo "Setting up background service (LaunchAgent)..."
-    LAUNCH_AGENT_PATH="$HOME/Library/LaunchAgents/com.bonkedbythonk.anicat.plist"
-    mkdir -p "$(dirname "$LAUNCH_AGENT_PATH")"
-
-    cat > "$LAUNCH_AGENT_PATH" << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.bonkedbythonk.anicat</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>$HOME/.local/bin/anicat</string>
-        <string>dashboard</string>
-        <string>--no-browser</string>
-        <string>--host</string>
-        <string>127.0.0.1</string>
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-    <key>StandardOutPath</key>
-    <string>/tmp/anicat.log</string>
-    <key>StandardErrorPath</key>
-    <string>/tmp/anicat.err</string>
-</dict>
-</plist>
-EOF
-
-    # Load the agent
-    launchctl unload "$LAUNCH_AGENT_PATH" 2>/dev/null
-    launchctl load "$LAUNCH_AGENT_PATH"
-    echo "Background service installed and started."
+    if [ -n "$APP_SOURCE" ]; then
+        echo "🚚 Installing native Anicat.app to $HOME/Applications..."
+        mkdir -p "$HOME/Applications"
+        rm -rf "$HOME/Applications/Anicat.app"
+        cp -R "$APP_SOURCE" "$HOME/Applications/"
+        
+        echo "🛡️ Configuring security permissions (bypassing macOS Gatekeeper)..."
+        xattr -d com.apple.quarantine "$HOME/Applications/Anicat.app" 2>/dev/null || true
+        
+        echo "✅ Standalone desktop application installed!"
+    else
+        echo "Warning: Could not find compiled Anicat.app bundle to copy."
+    fi
 fi
 
-# 9. Success message
+# 10. Success message
 echo ""
-echo "Installation Complete!"
-echo "Anicat is now installed and ready to go."
+echo "✨ Installation Complete! ✨"
+echo "Anicat has been successfully installed."
 echo ""
-
-if [[ "$*" == *"--no-launch"* ]]; then
-    echo "Skipping dashboard launch as requested."
-    exit 0
+echo "💻 CLI / TUI: Run 'anicat' in your terminal to start the interactive interface."
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "🖥️  Desktop App: Open 'Anicat' in your Applications folder (~/Applications/Anicat.app)."
 fi
-
-echo "Launching Anicat Dashboard for you..."
 echo ""
-
-# Ensure the new PATH is available for this session
-export PATH="$HOME/.local/bin:$PATH"
-
-# Give a tiny delay so the user can read the success message
-sleep 2
-
-# Launch the dashboard
-anicat dashboard
+exit 0

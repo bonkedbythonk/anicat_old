@@ -81,6 +81,8 @@ class MediaRegistryService:
                 f"Incompatible registry version of {self._index.version}. Current registry supports version {REGISTRY_VERSION}. Please migrate your registry using the migrator"
             )
 
+        self._clean_ghost_entries(self._index)
+
         logger.debug(f"Loaded registry index with {self._index.media_count} entries")
         return self._index
 
@@ -186,6 +188,8 @@ class MediaRegistryService:
     ):
         if media_item:
             self.get_or_create_record(media_item)
+        else:
+            self.get_or_create_index_entry(media_id)
 
         index = self._load_index()
         index_entry = index.media_index[f"{self._media_api}_{media_id}"]
@@ -229,13 +233,44 @@ class MediaRegistryService:
         index.media_index[f"{self._media_api}_{media_id}"] = index_entry
         self._save_index(index)
 
+    def _clean_ghost_entries(self, index: MediaRegistryIndex) -> None:
+        """Reset last_watched for entries that were never actually watched.
+
+        Entries created by browsing/searching/detail views (before the fix)
+        got last_watched set via the old Field(default_factory=datetime.now).
+        These ghost entries have no actual watch activity — no watch position,
+        no completed episodes — yet they'd appear in Continue Watching.
+        """
+        cleaned = False
+        for key, entry in index.media_index.items():
+            has_watch_activity = (
+                entry.last_watch_position is not None
+                or (entry.progress or "0") != "0"
+            )
+            if entry.last_watched is not None and not has_watch_activity:
+                entry.last_watched = None
+                cleaned = True
+        if cleaned:
+            self._save_index(index)
+            logger.info("Cleaned ghost entries from registry (entries with last_watched but no watch activity)")
+
     # TODO: standardize params passed to this
     def get_recently_watched(self, limit: Optional[int] = None, type: Optional[MediaType] = None) -> MediaSearchResult:
         """Get recently watched anime or read manga."""
         index = self._load_index()
 
+        # Only include entries that were explicitly watched (last_watched not None)
+        # and have actual watch activity (watch position or completed episodes)
+        watched_entries = [
+            e for e in index.media_index.values()
+            if e.last_watched is not None
+            and (
+                e.last_watch_position is not None
+                or (e.progress or "0") != "0"
+            )
+        ]
         sorted_entries = sorted(
-            index.media_index.values(), key=lambda x: getattr(x, "last_watched", datetime.min) or datetime.min, reverse=True
+            watched_entries, key=lambda x: x.last_watched or datetime.min, reverse=True
         )
 
         recent_media: List[MediaItem] = []
@@ -246,7 +281,18 @@ class MediaRegistryService:
                     recent_media.append(record.media_item)
             except Exception as e:
                 logger.warning(f"Failed to load media record {entry.media_id}: {e}")
-                
+
+        # Exclude entries where the user's AniList status is completed/dropped/planning/paused.
+        # Include entries with no user_status (local-only watches) or status WATCHING/REPEATING.
+        recent_media = [
+            m for m in recent_media
+            if m.user_status is None
+            or m.user_status.status in (
+                UserMediaListStatus.WATCHING,
+                UserMediaListStatus.REPEATING,
+            )
+        ]
+
         if type:
             recent_media = [m for m in recent_media if m.type == type]
 
@@ -449,7 +495,7 @@ class MediaRegistryService:
                 # Sort by last watched time from registry
                 def get_last_watched(media):
                     entry = index.media_index.get(f"{self._media_api}_{media.id}")
-                    return entry.last_watched if entry else datetime.min
+                    return entry.last_watched if entry and entry.last_watched else datetime.min
 
                 return sorted(media_list, key=get_last_watched, reverse=True)
             else:
@@ -485,7 +531,7 @@ class MediaRegistryService:
             media_list,
             key=lambda media_item: next(
                 (
-                    entry.last_watched
+                    entry.last_watched or datetime.min
                     for entry in index.media_index.values()
                     if entry.media_id == media_item.id
                 ),
