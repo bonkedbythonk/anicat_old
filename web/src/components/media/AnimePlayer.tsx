@@ -789,13 +789,13 @@ export default function AnimePlayer({
             max={duration || 100}
             value={currentTime}
             onChange={(e) => handleSeek(parseFloat(e.target.value))}
-            className="flex-1 h-1.5 bg-white/10 hover:h-2 rounded-lg appearance-none cursor-pointer outline-none accent-accent transition-all progress-slider-accent"
+            className="flex-1 h-1.5 hover:h-2 rounded-lg appearance-none cursor-pointer outline-none accent-accent transition-all [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-0"
             style={{
               background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${
                 duration ? (currentTime / duration) * 100 : 0
-              }%, rgba(255,255,255,0.1) ${
+              }%, rgba(255,255,255,0.15) ${
                 duration ? (currentTime / duration) * 100 : 0
-              }%, rgba(255,255,255,0.1) 100%)`
+              }%, rgba(255,255,255,0.15) 100%)`
             }}
           />
 
