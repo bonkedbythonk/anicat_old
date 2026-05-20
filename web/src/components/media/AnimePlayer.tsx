@@ -649,6 +649,10 @@ export default function AnimePlayer({
       onMouseLeave={() => isPlaying && setShowControls(false)}
       className="fixed inset-0 z-[200] bg-[#050505] flex flex-col items-center justify-center select-none overflow-hidden transform-gpu will-change-[transform,opacity]"
     >
+      <style>{`
+        video::-webkit-media-controls { display: none !important; }
+        video::-webkit-media-controls-start-playback-button { display: none !important; }
+      `}</style>
       {loading && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 space-y-4 z-40">
           <Loader2 className="animate-spin text-accent" size={48} />
@@ -783,21 +787,26 @@ export default function AnimePlayer({
             {formatTime(currentTime)}
           </span>
 
-          <input
-            type="range"
-            min={0}
-            max={duration || 100}
-            value={currentTime}
-            onChange={(e) => handleSeek(parseFloat(e.target.value))}
-            className="flex-1 h-1.5 hover:h-2 rounded-lg appearance-none cursor-pointer outline-none accent-accent transition-all [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-0"
-            style={{
-              background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${
-                duration ? (currentTime / duration) * 100 : 0
-              }%, rgba(255,255,255,0.15) ${
-                duration ? (currentTime / duration) * 100 : 0
-              }%, rgba(255,255,255,0.15) 100%)`
-            }}
-          />
+          <div className="relative flex-1 h-1.5 hover:h-2 rounded-lg transition-all">
+            {/* Background track */}
+            <div className="absolute inset-0 rounded-lg bg-white/15" />
+            {/* Foreground fill */}
+            <div
+              className="absolute inset-y-0 left-0 rounded-lg bg-accent transition-[width] duration-100"
+              style={{
+                width: `${duration ? (currentTime / duration) * 100 : 0}%`
+              }}
+            />
+            {/* Invisible range input on top for clicks/drags */}
+            <input
+              type="range"
+              min={0}
+              max={duration || 100}
+              value={currentTime}
+              onChange={(e) => handleSeek(parseFloat(e.target.value))}
+              className="absolute inset-0 w-full h-full appearance-none cursor-pointer opacity-0"
+            />
+          </div>
 
           <span className="text-[10px] font-mono text-white/60 select-none">
             {formatTime(duration)}
