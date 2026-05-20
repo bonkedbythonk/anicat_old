@@ -30,6 +30,7 @@ bump_and_stage() {
     # Re-stage all version files so they're included in the commit
     git add "$PROJECT_ROOT/version.txt" \
             "$PROJECT_ROOT/pyproject.toml" \
+            "$PROJECT_ROOT/anicat_media/_version.py" \
             "$PROJECT_ROOT/web/package.json" \
             "$PROJECT_ROOT/web/src-tauri/tauri.conf.json" \
             "$PROJECT_ROOT/flake.nix"
