@@ -383,8 +383,8 @@ class MpvPlayer(BasePlayer):
                 if os.path.exists(bundled_shaders_dir):
                     # Maps standard/balanced (or any legacy presets) directly to our highly-optimized VL shader pipeline
                     clamp_path = os.path.join(bundled_shaders_dir, "Anime4K_Clamp_Highlights.glsl")
-                    restore_path = os.path.join(bundled_shaders_dir, "Anime4K_Restore_CNN_VL.glsl")
-                    upscale_path = os.path.join(bundled_shaders_dir, "Anime4K_Upscale_CNN_x2_VL.glsl")
+                    restore_path = os.path.join(bundled_shaders_dir, "Anime4K_Deblur_DoG.glsl")
+                    upscale_path = os.path.join(bundled_shaders_dir, "Anime4K_Upscale_DoG_x2.glsl")
                     downscale_x2 = os.path.join(bundled_shaders_dir, "Anime4K_AutoDownscalePre_x2.glsl")
                     downscale_x4 = os.path.join(bundled_shaders_dir, "Anime4K_AutoDownscalePre_x4.glsl")
                     shaders_to_load = []
