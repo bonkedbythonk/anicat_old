@@ -139,13 +139,10 @@ local function toggle_shaders()
     }
     local path_str = table.concat(shader_paths, ":")
     mp.commandv("change-list", "glsl-shaders", "set", path_str)
-    mp.osd_message("AniCat: Upscaling ON", 2.0)
   else
     mp.commandv("set", "glsl-shaders", "")
-    mp.osd_message("AniCat: Upscaling OFF", 2.0)
   end
   refresh_shaders_state()
-  render()
 end
 
 -- Draw a rounded pill button and return the label width
@@ -184,23 +181,6 @@ local function render()
   local pad = 20
   local btn_h = 36
 
-  -- ======== UPSCALING TOGGLE (top-right, persistent) ========
-  local hq_label = "Upscaling"
-  local hq_value = state.shaders_on and "ON" or "OFF"
-  local hq_text = hq_label .. " " .. hq_value
-  local hq_text_w = #hq_text * 8.5 + 32
-  local hq_x1 = w - hq_text_w - pad
-  local hq_y1 = pad + 4
-  local hq_x2 = w - pad
-  local hq_y2 = hq_y1 + btn_h
-  state.hq_button = { x1 = hq_x1, y1 = hq_y1, x2 = hq_x2, y2 = hq_y2 }
-
-  if state.shaders_on then
-    draw_button(ass, hq_x1, hq_y1, hq_x2, hq_y2, '0a0b10', '22c55e', hq_text, 13, 'ffffff')
-  else
-    draw_button(ass, hq_x1, hq_y1, hq_x2, hq_y2, '0a0b10', '555555', hq_text, 13, '888888')
-  end
-
   -- ======== SKIP BUTTON (bottom-right, only when active skip) ========
   if state.active_skip then
     local skip_label = 'Skip Intro'
@@ -238,12 +218,6 @@ local function on_left_click()
   end
   local x = mouse.x or 0
   local y = mouse.y or 0
-
-  -- Check upscaling toggle button
-  if state.hq_button and in_rect(x, y, state.hq_button.x1, state.hq_button.y1, state.hq_button.x2, state.hq_button.y2) then
-    toggle_shaders()
-    return
-  end
 
   -- Check skip button
   if state.skip_button and in_rect(x, y, state.skip_button.x1, state.skip_button.y1, state.skip_button.x2, state.skip_button.y2) then

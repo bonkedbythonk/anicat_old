@@ -50,8 +50,8 @@ class StreamConfig(BaseConfig):
         description=desc.STREAM_AUTO_SKIP,
     )
     shader_profile: Literal["off", "balanced", "high", "ultra"] = Field(
-        default="off",
-        description="The real-time GPU upscaling shader profile to use for anime playback. Set to balanced or higher for Anime4K neural upscaling.",
+        default="balanced",
+        description="The real-time GPU upscaling shader profile to use for anime playback.",
     )
     episode_complete_at: int = Field(
         default=defaults.STREAM_EPISODE_COMPLETE_AT,
