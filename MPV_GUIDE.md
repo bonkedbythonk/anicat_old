@@ -16,8 +16,11 @@ Anicat synchronizes your progress automatically when you use these shortcuts.
 | Shift + A | Toggle Auto-play |
 | Shift + T | Toggle Dub / Sub |
 | Ctrl + S | Skip Intro / Active Segment |
-| Ctrl + 1 | Enable Upscaling |
-| Ctrl + 2 | Disable Upscaling |
+| Ctrl + 1 | Upscaling: Mode A (Balanced — light CNN) |
+| Ctrl + 2 | Upscaling: OFF |
+| Ctrl + 3 | Upscaling: Mode C (HQ + Denoise) |
+| Ctrl + 4 | Upscaling: Mode A+A (Maximum sharpness) |
+| Ctrl + 0 | Upscaling: OFF (alternate) |
 | Space | Play / Pause |
 | f | Toggle Fullscreen |
 
@@ -25,22 +28,27 @@ Anicat synchronizes your progress automatically when you use these shortcuts.
 
 ## Upscaling
 
-Anicat enables lightweight GPU upscaling by default using non-CNN Anime4K shaders. These sharpen edges and reduce blur without the heavy GPU load of neural network shaders.
+Anicat uses **Anime4K CNN shaders** for high-quality GPU upscaling. Multiple presets let you balance quality and performance.
 
-- **Ctrl+1** — enable upscaling (shows a brief "Upscaling: ON" message)
-- **Ctrl+2** — disable upscaling (shows "Upscaling: OFF")
+| Preset | Shortcut | Description |
+| :--- | :--- | :--- |
+| **Mode A (Balanced)** | Ctrl+1 | Restore_CNN_L + Upscale_CNN_x2_L — light CNN, great for 720p->1080p |
+| **Mode C (HQ+Denoise)** | Ctrl+3 | Upscale_Denoise_CNN_x2_VL + Upscale_CNN_x2_M — adds denoising for cleaner output |
+| **Mode A+A (Maximum)** | Ctrl+4 | Dual-pass CNN (VL + M) — sharpest quality, heaviest GPU load |
+| **OFF** | Ctrl+2 / Ctrl+0 | Clears all shaders |
 
-You can change the default behavior in Settings > Player > Visual Quality.
+The default preset applied at playback start is **Mode A (Balanced)**. You can change this in Settings > Player > Visual Quality.
 
 ### Manual Shader Override
 
-If you want to use different shaders (e.g., the heavier CNN-based ones for better quality), edit the shader list in:
+If you want to use different shaders, the presets are defined in:
 
-**Bundle path:** `Anicat.app/Contents/Resources/resources/mpv_config/shaders/`
+**Bundle path:** `Anicat.app/Contents/Resources/resources/mpv_config/`
 
-The shaders loaded by `Ctrl+1` and by default are defined in:
-- `web/src-tauri/resources/mpv_config/input.conf` (fallback bindings)
-- `web/src-tauri/resources/mpv_config/scripts/anicat_ui/main.lua` (primary bindings)
+- `input.conf` — all preset keybindings with their shader chains
+- `scripts/anicat_ui/main.lua` — programmatic `enable_shaders()` function (used by auto-start)
+
+The shader files themselves are in `resources/mpv_config/shaders/`. To swap a preset's shaders, edit the `glsl-shaders` list in `input.conf` under the desired Ctrl+N binding.
 
 ---
 
