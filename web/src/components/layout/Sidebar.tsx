@@ -52,7 +52,7 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0,
         <img
           src="/anicat_logo.png"
           alt="Anicat Logo"
-          className="w-24 h-auto lg:w-32 opacity-95 hover:opacity-100 transition-opacity object-contain dark:invert-0 invert"
+          className="w-24 h-auto lg:w-32 opacity-95 hover:opacity-100 transition-opacity object-contain dark:[filter:brightness(0)_invert(1)] [filter:invert(1)]"
         />
         {process.env.NODE_ENV === "development" && (
           <span className="mt-1.5 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest bg-purple-500/10 text-purple-400 border border-purple-500/25 rounded-md select-none font-mono">

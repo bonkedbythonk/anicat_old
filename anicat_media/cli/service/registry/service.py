@@ -81,6 +81,8 @@ class MediaRegistryService:
                 f"Incompatible registry version of {self._index.version}. Current registry supports version {REGISTRY_VERSION}. Please migrate your registry using the migrator"
             )
 
+        self._clean_ghost_entries(self._index)
+
         logger.debug(f"Loaded registry index with {self._index.media_count} entries")
         return self._index
 
@@ -231,15 +233,41 @@ class MediaRegistryService:
         index.media_index[f"{self._media_api}_{media_id}"] = index_entry
         self._save_index(index)
 
+    def _clean_ghost_entries(self, index: MediaRegistryIndex) -> None:
+        """Reset last_watched for entries that were never actually watched.
+
+        Entries created by browsing/searching/detail views (before the fix)
+        got last_watched set via the old Field(default_factory=datetime.now).
+        These ghost entries have no actual watch activity — no watch position,
+        no completed episodes — yet they'd appear in Continue Watching.
+        """
+        cleaned = False
+        for key, entry in index.media_index.items():
+            has_watch_activity = (
+                entry.last_watch_position is not None
+                or (entry.progress or "0") != "0"
+            )
+            if entry.last_watched is not None and not has_watch_activity:
+                entry.last_watched = None
+                cleaned = True
+        if cleaned:
+            self._save_index(index)
+            logger.info("Cleaned ghost entries from registry (entries with last_watched but no watch activity)")
+
     # TODO: standardize params passed to this
     def get_recently_watched(self, limit: Optional[int] = None, type: Optional[MediaType] = None) -> MediaSearchResult:
         """Get recently watched anime or read manga."""
         index = self._load_index()
 
         # Only include entries that were explicitly watched (last_watched not None)
+        # and have actual watch activity (watch position or completed episodes)
         watched_entries = [
             e for e in index.media_index.values()
             if e.last_watched is not None
+            and (
+                e.last_watch_position is not None
+                or (e.progress or "0") != "0"
+            )
         ]
         sorted_entries = sorted(
             watched_entries, key=lambda x: x.last_watched or datetime.min, reverse=True
