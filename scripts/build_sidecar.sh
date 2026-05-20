@@ -33,6 +33,7 @@ fi
 uv run pyinstaller --noconfirm --onefile --clean \
     --paths "$PROJECT_ROOT" \
     --add-data "$PROJECT_ROOT/anicat_media:anicat_media" \
+    --add-data "$PROJECT_ROOT/version.txt:version.txt" \
     --hidden-import "uvicorn.protocols.http.h11_impl" \
     --hidden-import "uvicorn.protocols.http.httptools_impl" \
     --hidden-import "uvicorn.protocols.websockets.websockets_impl" \

@@ -15,17 +15,32 @@ USER_NAME = os.environ.get("USERNAME", os.environ.get("USER", "User"))
 # Single source of truth: version.txt at project root
 # In PyInstaller bundles, use sys._MEIPASS (the extraction directory).
 # In normal Python, resolve relative to this file's location.
-if getattr(sys, 'frozen', False):
-    _version_file = Path(sys._MEIPASS) / "version.txt"
+_version_file: Path | None = None
+if getattr(sys, "frozen", False):
+    candidates = [
+        Path(sys._MEIPASS) / "version.txt",
+        # Alongside the binary itself (e.g. /Applications/Anicat.app/Contents/MacOS/version.txt)
+        Path(sys.executable).parent / "version.txt",
+        # In the .app bundle Resources folder
+        Path(sys.executable).parent.parent / "Resources" / "version.txt",
+        # App support directory (user-writable, handy for manual fix of existing installs)
+        Path.home() / "Library" / "Application Support" / "anicat" / "version.txt",
+    ]
+    for _f in candidates:
+        if _f.is_file():
+            _version_file = _f
+            break
+    # PyInstaller sometimes bundles version.txt as version.txt/version.txt
+    if _version_file is None:
+        for _f in candidates:
+            _nested = _f / "version.txt"
+            if _nested.is_file():
+                _version_file = _nested
+                break
 else:
     _version_file = Path(__file__).resolve().parent.parent.parent / "version.txt"
 try:
-    if _version_file.is_file():
-        __version__ = _version_file.read_text().strip()
-    else:
-        # PyInstaller sometimes bundles version.txt as version.txt/version.txt
-        _nested = _version_file / "version.txt"
-        __version__ = _nested.read_text().strip()
+    __version__ = _version_file.read_text().strip() if _version_file else "0.0.0"
 except Exception:
     __version__ = "0.0.0"
 VERSION = __version__
