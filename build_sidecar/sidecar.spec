@@ -24,6 +24,7 @@ a = Analysis(
         'email_validator',
         'starlette',
         # Config modules (imported via re-exports in model.py)
+        'anicat_media.core.config.base',
         'anicat_media.core.config.general',
         'anicat_media.core.config.stream',
         'anicat_media.core.config.downloads',
