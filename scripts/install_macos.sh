@@ -118,6 +118,14 @@ lsof -ti :13370 | xargs kill -9 2>/dev/null || true
 
 # Wait for processes to release resources, then boot fresh
 sleep 2
+
+# Start the background service directly so the UI can connect immediately
+SIDECAR_PATH="$INSTALL_PATH/Contents/MacOS/anicat-server"
+if [ -f "$SIDECAR_PATH" ]; then
+    nohup "$SIDECAR_PATH" >/dev/null 2>&1 &
+    echo "Background service started."
+fi
+
 open -a "$INSTALL_PATH"
 
 echo ""
