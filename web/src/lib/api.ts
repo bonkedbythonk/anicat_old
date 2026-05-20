@@ -259,19 +259,9 @@ export const mediaApi = {
 
   // ─── Playback ───────────────────────────────────────
   play: async (mediaId: number, episode?: string) => {
-    let isFullscreen = false;
-    if (typeof window !== 'undefined' && (window as any).__TAURI__) {
-      try {
-        const { getCurrentWindow } = await import('@tauri-apps/api/window');
-        const currentWindow = getCurrentWindow();
-        isFullscreen = await currentWindow.isFullscreen();
-      } catch (e) {
-        console.error('Failed to detect fullscreen state', e);
-      }
-    }
     const params = new URLSearchParams();
     if (episode) params.append('episode', episode);
-    if (isFullscreen) params.append('fullscreen', 'true');
+    params.append('fullscreen', 'true');
     const queryString = params.toString() ? `?${params.toString()}` : '';
     return fetchFromApi(`/actions/play/${mediaId}${queryString}`, { method: 'POST' });
   },
@@ -298,18 +288,7 @@ export const mediaApi = {
     }),
 
   playNext: async (mediaId: number) => {
-    let isFullscreen = false;
-    if (typeof window !== 'undefined' && (window as any).__TAURI__) {
-      try {
-        const { getCurrentWindow } = await import('@tauri-apps/api/window');
-        const currentWindow = getCurrentWindow();
-        isFullscreen = await currentWindow.isFullscreen();
-      } catch (e) {
-        console.error('Failed to detect fullscreen state', e);
-      }
-    }
-    const queryString = isFullscreen ? '?fullscreen=true' : '';
-    return fetchFromApi(`/actions/play/${mediaId}${queryString}`, { method: 'POST' });
+    return fetchFromApi(`/actions/play/${mediaId}?fullscreen=true`, { method: 'POST' });
   },
 
   getPlaybackStatus: (): Promise<PlaybackStatus> =>
