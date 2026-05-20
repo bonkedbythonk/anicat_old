@@ -4,6 +4,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { mediaApi, type HealthStatus } from "@/lib/api";
 import { getQueryClient } from "@/components/Providers";
 
+// Frontend version from package.json — used to detect stale backend
+const FRONTEND_VERSION = "4.4.1";
+let _versionMismatchWarned = false;
+
 export interface HealthPollingState {
   /** Current backend connection status. */
   connectionStatus: "checking" | "connected" | "failed";
@@ -65,6 +69,20 @@ export function useHealthPolling(): HealthPollingState {
         setConnectionStatus("connected");
         setConnectionError(null);
         failedAttempts = 0;
+
+        // Version Mismatch Detection — warn if backend is older than frontend
+        if (
+          status.current_version &&
+          status.current_version !== "unknown" &&
+          status.current_version !== FRONTEND_VERSION &&
+          !_versionMismatchWarned
+        ) {
+          _versionMismatchWarned = true;
+          console.warn(
+            `Version mismatch: frontend ${FRONTEND_VERSION}, backend ${status.current_version}. ` +
+            "The backend may need to be rebuilt or restarted."
+          );
+        }
 
         // Live Sync Detection
         if (status.data_version !== undefined) {
