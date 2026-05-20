@@ -24,6 +24,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
   const [updateMessage, setUpdateMessage] = useState<{ text: string; type: "success" | "error" | null }>({ text: "", type: null });
   const [options, setOptions] = useState<Record<string, any> | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [autoSkip, setAutoSkip] = useState(false);
   const [theme, setTheme] = useState<"system" | "dark" | "light">("system");
   const hasUpdate = Boolean(health?.update_available || stagedHasUpdate);
@@ -110,7 +111,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
       }
     } catch (err) {
       console.error("Update failed:", err);
-      setUpdateMessage({ text: "Failed to process update action.", type: "error" });
+      setUpdateMessage({ text: "Something went wrong while checking for updates. Please try again.", type: "error" });
     } finally {
       setCheckingUpdate(false);
     }
@@ -138,16 +139,18 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
   const handleSave = async () => {
     if (!config) return;
     setSaving(true);
+    setSuccessMessage(null);
+    setErrorMessage(null);
     try {
       await mediaApi.updateConfig(config);
       setSaved(true);
+      setSuccessMessage("Settings saved successfully.");
       setTimeout(() => setSaved(false), 2000);
     } catch (err: any) {
       console.error("Save failed:", err);
       // Attempt to show structured server errors if present
       const msg = err?.message || "Unknown error";
-      setErrorMessage("Save failed: " + msg);
-      setTimeout(() => setErrorMessage(null), 6000);
+      setErrorMessage("Could not save settings. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -196,6 +199,15 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {successMessage && (
+        <div className="flex items-center space-x-3 px-5 py-3.5 rounded-2xl bg-green-500/10 border border-green-500/20 text-green-400 font-bold text-sm animate-fade-in shadow-lg">
+          <CheckCircle2 size={18} />
+          <span>{successMessage}</span>
+          <button onClick={() => setSuccessMessage(null)} className="ml-auto p-1 hover:bg-green-500/10 rounded-lg transition-colors">
+            <XCircle size={16} />
+          </button>
+        </div>
+      )}
       {errorMessage && <ErrorBanner message={errorMessage} />}
       <div className="flex items-end justify-between">
         <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white">Settings</h1>
@@ -461,7 +473,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                       className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white animate-fade-in"
                     >
                       <option value="stable" className="bg-[#121212] text-white">Stable (Official releases)</option>
-                      <option value="nightly" className="bg-[#121212] text-white">Nightly (Bleeding-edge developer branch)</option>
+                      <option value="nightly" className="bg-[#121212] text-white">Nightly (Early access, less stable)</option>
                     </select>
                   </div>
 
@@ -509,7 +521,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
               {/* Debugging & Logs */}
               <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-white">Technical Diagnostics</h3>
+                  <h3 className="text-lg font-bold text-white">Advanced</h3>
                   <button
                     onClick={async () => {
                       try {

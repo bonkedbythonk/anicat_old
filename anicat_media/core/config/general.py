@@ -6,7 +6,7 @@ from pydantic import Field
 
 from ...libs.provider.anime.types import ProviderName
 from ...libs.provider.manga.types import MangaProviderName
-from .model import BaseConfig
+from .base import BaseConfig
 from . import defaults
 from . import descriptions as desc
 

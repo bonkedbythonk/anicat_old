@@ -21,11 +21,26 @@ interface ListsViewProps {
   onSelect: (item: MediaItem) => void;
 }
 
+// Skeleton card grid shown during tab switches instead of a blinding spinner
+function ListSkeletonGrid() {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 animate-pulse">
+      {Array.from({ length: 12 }).map((_, i) => (
+        <div key={i} className="space-y-2.5">
+          <div className="aspect-[2/3] w-full rounded-lg bg-white/10" />
+          <div className="h-4 w-3/4 rounded-md bg-white/10" />
+          <div className="h-3 w-1/2 rounded-md bg-white/10" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function ListsView({ onSelect }: ListsViewProps) {
   const refreshKey = useRefreshTrigger();
   const [activeTab, setActiveTab] = useState("watching");
   const [type, setType] = useState<"ANIME" | "MANGA">("ANIME");
-  const [delayedLoading, setDelayedLoading] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const { items, loading, loadingMore, hasMore, loadMore } =
     usePaginatedList<MediaItem>({
@@ -39,17 +54,12 @@ export default function ListsView({ onSelect }: ListsViewProps) {
       deps: [activeTab, type, refreshKey],
     });
 
-  // Delayed loading UX — shows an overlay spinner during tab switches
-  // after a short delay so quick switches don't flash the spinner.
+  // Track first successful load so we can show skeleton instead of spinner on tab switches
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    if (loading) {
-      timer = setTimeout(() => setDelayedLoading(true), 400);
-    } else {
-      setDelayedLoading(false);
+    if (!loading && items.length > 0) {
+      setHasLoadedOnce(true);
     }
-    return () => clearTimeout(timer);
-  }, [loading]);
+  }, [loading, items.length]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -77,8 +87,8 @@ export default function ListsView({ onSelect }: ListsViewProps) {
       </div>
 
       {/* Grid */}
-      <div className={`relative transition-all duration-300 ${loading ? "opacity-50 pointer-events-none grayscale-[0.2]" : "opacity-100"}`}>
-        {delayedLoading && items.length > 0 && (
+      <div className="relative">
+        {loading && hasLoadedOnce && (
           <div className="absolute top-0 left-0 right-0 z-10 flex justify-center mt-12 animate-fade-in">
             <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10 flex items-center space-x-3 shadow-2xl">
               <Loader2 className="animate-spin text-accent" size={20} />
@@ -88,18 +98,13 @@ export default function ListsView({ onSelect }: ListsViewProps) {
         )}
 
         {items.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 animate-fade-in">
+          <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 animate-fade-in transition-opacity duration-200 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
             {items.map((item) => (
               <MediaCard key={item.id} item={item} onSelect={onSelect} />
             ))}
           </div>
-        ) : loading ? (
-          <div className="flex items-center justify-center py-48">
-            <div className="flex flex-col items-center space-y-4">
-              <Loader2 className="animate-spin text-accent" size={48} />
-              <p className="text-gray-500 font-bold uppercase tracking-[0.2em] text-[10px]">Synchronizing List</p>
-            </div>
-          </div>
+        ) : loading && !hasLoadedOnce ? (
+          <ListSkeletonGrid />
         ) : (
           <div className="text-center py-24 border-2 border-dashed border-white/[0.04] rounded-2xl">
             <Heart size={40} className="mx-auto text-gray-800 mb-4" />

@@ -5,7 +5,7 @@ import os
 from fastapi import APIRouter
 from pydantic import BaseModel
 import subprocess
-from anicat_media.core.constants import VERSION, LOG_FILE
+from anicat_media.core.constants import VERSION, LOG_FILE, UPDATE_IN_PROGRESS_FILE
 from anicat_media.cli.config import ConfigLoader
 import shutil
 import sys
@@ -69,6 +69,7 @@ class HealthInfo(BaseModel):
     worker_running: bool
     is_offline: bool
     update_available: bool = False
+    updating: bool = False
     unread_notifications: int = 0
     data_version: int = 0
     current_version: str = "unknown"
@@ -373,12 +374,16 @@ async def get_health():
         except Exception:
             pass
 
+        # Detect if an update is in progress (flag file set before the old process exits)
+        updating = UPDATE_IN_PROGRESS_FILE.exists()
+
         return HealthInfo(
             api_connected=api_connected,
             api_authenticated=api_authenticated,
             worker_running=ctx._download is not None,
             is_offline=ctx.is_offline,
             update_available=update_available,
+            updating=updating,
             unread_notifications=unread_notifications,
             data_version=ctx.data_version,
             current_version=VERSION,
@@ -391,6 +396,7 @@ async def get_health():
             worker_running=False,
             is_offline=True,
             update_available=False,
+            updating=UPDATE_IN_PROGRESS_FILE.exists(),
             current_version="unknown",
         )
 
@@ -473,6 +479,10 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
         # which downloads the latest release and replaces the binary.
         import platform
         if platform.system() == "Darwin":
+            # Signal to the frontend that an update is in progress so it shows a
+            # friendly "Updating..." screen instead of "Connection Failed".
+            UPDATE_IN_PROGRESS_FILE.write_text("1", encoding="utf-8")
+
             logger.info("[UPDATE] Triggering macOS native update via installer script")
             # If we are running in local dev and the local installer script exists, run it directly!
             repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))

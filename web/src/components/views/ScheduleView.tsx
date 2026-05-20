@@ -12,7 +12,17 @@ interface ScheduleViewProps {
 export default function ScheduleView({ onSelect }: ScheduleViewProps) {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [watchingOnly, setWatchingOnly] = useState(false);
+  const [watchingOnly, setWatchingOnly] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("anicat_schedule_watching_only") === "true";
+    }
+    return false;
+  });
+
+  const handleToggleWatchingOnly = (value: boolean) => {
+    setWatchingOnly(value);
+    localStorage.setItem("anicat_schedule_watching_only", String(value));
+  };
 
   const parseAiringAt = (airingAt?: string) => {
     if (!airingAt) return 0;
@@ -88,7 +98,7 @@ export default function ScheduleView({ onSelect }: ScheduleViewProps) {
         
         <div className="flex bg-white/[0.04] p-1 rounded-xl border border-white/[0.06] w-fit h-fit self-start sm:self-auto">
           <button
-            onClick={() => setWatchingOnly(false)}
+            onClick={() => handleToggleWatchingOnly(false)}
             className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
               !watchingOnly ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-gray-500 hover:text-white"
             }`}
@@ -97,7 +107,7 @@ export default function ScheduleView({ onSelect }: ScheduleViewProps) {
             <span>Global</span>
           </button>
           <button
-            onClick={() => setWatchingOnly(true)}
+            onClick={() => handleToggleWatchingOnly(true)}
             className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
               watchingOnly ? "bg-accent text-white shadow-lg shadow-accent/20" : "text-gray-500 hover:text-white"
             }`}

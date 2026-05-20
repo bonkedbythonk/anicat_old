@@ -158,6 +158,7 @@ export type HealthStatus = {
   worker_running: boolean;
   is_offline: boolean;
   update_available?: boolean;
+  updating?: boolean;
   unread_notifications?: number;
   current_version?: string;
   data_version?: number;

@@ -127,6 +127,14 @@ def _cleanup_stale_resources():
     except Exception:
         pass
 
+    # Clear the "update in progress" flag. The new process has started.
+    try:
+        from anicat_media.core.constants import UPDATE_IN_PROGRESS_FILE
+        if UPDATE_IN_PROGRESS_FILE.exists():
+            UPDATE_IN_PROGRESS_FILE.unlink()
+    except Exception:
+        pass
+
 
 def create_app(config: AppConfig | None = None) -> FastAPI:
     setup_logging()

@@ -17,18 +17,20 @@ import { mediaApi, type HealthStatus } from "@/lib/api";
 
 export type ViewName = "home" | "manga" | "search" | "lists" | "downloads" | "library" | "settings" | "notifications" | "profile" | "schedule";
 
-const navItems: { icon: typeof Home; label: string; view: ViewName }[] = [
-  { icon: Home, label: "Home", view: "home" },
+type NavItem = { icon: typeof Home; label: string; view: ViewName; shortcut?: string };
+
+const navItems: NavItem[] = [
+  { icon: Home, label: "Home", view: "home", shortcut: "H" },
   { icon: BookOpen, label: "Manga", view: "manga" },
-  { icon: Search, label: "Search", view: "search" },
-  { icon: Monitor, label: "My Lists", view: "lists" },
-  { icon: Download, label: "Downloads", view: "downloads" },
+  { icon: Search, label: "Search", view: "search", shortcut: "/" },
+  { icon: Monitor, label: "My Lists", view: "lists", shortcut: "L" },
+  { icon: Download, label: "Downloads", view: "downloads", shortcut: "D" },
   { icon: Library, label: "Library", view: "library" },
   { icon: Calendar, label: "Schedule", view: "schedule" },
 ];
 
-const secondaryItems: { icon: typeof Home; label: string; view: ViewName }[] = [
-  { icon: Bell, label: "Notifications", view: "notifications" },
+const secondaryItems: NavItem[] = [
+  { icon: Bell, label: "Notifications", view: "notifications", shortcut: "N" },
   { icon: User, label: "Profile", view: "profile" },
   { icon: Settings, label: "Settings", view: "settings" },
 ];
@@ -76,7 +78,14 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0,
                 }`}>
                 <item.icon size={18} />
               </div>
-              <span className="hidden lg:block text-[13px] font-semibold tracking-wide">{item.label}</span>
+              <span className="hidden lg:flex items-center justify-between flex-1 text-[13px] font-semibold tracking-wide">
+                <span>{item.label}</span>
+                {item.shortcut && (
+                  <kbd className="ml-auto text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-foreground/[0.06] text-muted-foreground border border-border/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {item.shortcut}
+                  </kbd>
+                )}
+              </span>
             </button>
           );
         })}
@@ -110,7 +119,14 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0,
                   </span>
                 )}
               </div>
-              <span className="hidden lg:block text-[13px] font-semibold tracking-wide">{item.label}</span>
+              <span className="hidden lg:flex items-center justify-between flex-1 text-[13px] font-semibold tracking-wide">
+                <span>{item.label}</span>
+                {item.shortcut && (
+                  <kbd className="ml-auto text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-foreground/[0.06] text-muted-foreground border border-border/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {item.shortcut}
+                  </kbd>
+                )}
+              </span>
             </button>
           );
         })}

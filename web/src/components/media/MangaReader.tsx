@@ -10,11 +10,14 @@ interface MangaReaderProps {
   initialPage?: number;
   onClose: () => void;
   onProgressUpdate?: (chapterNum: string) => void;
+  onNavigateChapter?: (direction: "prev" | "next") => void;
+  hasPrevChapter?: boolean;
+  hasNextChapter?: boolean;
 }
 
 type ReadingMode = "single" | "double" | "vertical";
 
-export default function MangaReader({ mediaId, chapterNumber, initialPage = 0, onClose, onProgressUpdate }: MangaReaderProps) {
+export default function MangaReader({ mediaId, chapterNumber, initialPage = 0, onClose, onProgressUpdate, onNavigateChapter, hasPrevChapter, hasNextChapter }: MangaReaderProps) {
   const [pages, setPages] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -262,7 +265,29 @@ export default function MangaReader({ mediaId, chapterNumber, initialPage = 0, o
             </button>
             <div>
               <h2 className="text-xs font-bold text-accent uppercase tracking-[0.2em] mb-1">Chapter</h2>
-              <p className="text-xl font-black text-white">{chapterNumber}</p>
+              <div className="flex items-center space-x-2">
+                {onNavigateChapter && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onNavigateChapter("prev"); }}
+                    disabled={!hasPrevChapter}
+                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                    title="Previous Chapter"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                )}
+                <p className="text-xl font-black text-white">{chapterNumber}</p>
+                {onNavigateChapter && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onNavigateChapter("next"); }}
+                    disabled={!hasNextChapter}
+                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                    title="Next Chapter"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

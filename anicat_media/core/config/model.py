@@ -1,18 +1,15 @@
 """Application configuration model — composition root.
 
-This module defines BaseConfig (the shared base with expand_path validator),
-OtherConfig (empty base for non-path-expanding configs), and AppConfig
-(the top-level composition root).
-
-Individual config groups live in their own modules and are re-exported
-here so existing imports continue to work unchanged.
+This module defines AppConfig (the top-level composition root) and
+re-exports all domain config classes so existing imports continue to
+work unchanged.
 """
 
-from pathlib import Path
-
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field
 
 from . import descriptions as desc
+from .base import BaseConfig  # noqa: F401  -- re-exported for backward compat
+from .base import OtherConfig  # noqa: F401  -- re-exported for backward compat
 
 # Re-export all config classes from their domain modules so existing
 # `from anicat_media.core.config.model import GeneralConfig` imports
@@ -28,27 +25,6 @@ from .infrastructure import (  # noqa: F401
     WorkerConfig,
     SessionsConfig,
 )
-
-
-# ---------------------------------------------------------------------------
-# Shared base classes
-# ---------------------------------------------------------------------------
-
-
-class BaseConfig(BaseModel):
-    """Base config with automatic `~` expansion in any string field."""
-
-    @field_validator("*", mode="before")
-    @classmethod
-    def expand_path(cls, v, info):
-        if isinstance(v, str) and "~" in v:
-            return Path(v).expanduser()
-        return v
-
-
-class OtherConfig(BaseConfig):
-    """Marker base for configs that don't need their own path expansion."""
-    pass
 
 
 # ---------------------------------------------------------------------------

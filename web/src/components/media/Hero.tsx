@@ -1,6 +1,7 @@
 "use client";
 
-import { Play, Maximize, BookOpen } from "lucide-react";
+import { useState } from "react";
+import { Play, Maximize, BookOpen, Loader2 } from "lucide-react";
 import { type MediaItem } from "@/lib/api";
 
 interface HeroProps {
@@ -9,6 +10,7 @@ interface HeroProps {
 }
 
 export default function Hero({ item, onSelect }: HeroProps) {
+  const [clicked, setClicked] = useState(false);
   const title = item.title.english || item.title.romaji || "Unknown";
   const currentProgress = item.user_status?.progress || 0;
   const total = item.episodes || item.chapters || 0;
@@ -21,7 +23,10 @@ export default function Hero({ item, onSelect }: HeroProps) {
 
   const handlePlay = () => {
     if (onSelect) {
+      setClicked(true);
       onSelect(item, "play");
+      // Reset after a timeout in case the drawer takes time to open
+      setTimeout(() => setClicked(false), 3000);
     }
   };
 
@@ -66,16 +71,24 @@ export default function Hero({ item, onSelect }: HeroProps) {
         <div className="flex items-center space-x-3 pt-2">
           <button 
             onClick={handlePlay}
-            disabled={isCaughtUp}
+            disabled={isCaughtUp || clicked}
             className="flex items-center space-x-3 bg-white text-black px-8 py-3.5 rounded-xl hover:bg-accent hover:text-white transition-all duration-300 font-bold text-sm active:scale-95 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-black"
           >
-            {isManga ? <BookOpen size={18} /> : <Play fill="currentColor" size={18} />}
+            {clicked ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : isManga ? (
+              <BookOpen size={18} />
+            ) : (
+              <Play fill="currentColor" size={18} />
+            )}
             <span>
-              {isFinished
-                ? (isManga ? "Read Again" : "Re-watch")
-                : isCaughtUp
-                  ? "Caught Up"
-                  : (item.user_status?.progress ? "Resume" : (isManga ? "Read Now" : "Play Now"))
+              {clicked
+                ? "Loading..."
+                : isFinished
+                  ? (isManga ? "Read Again" : "Re-watch")
+                  : isCaughtUp
+                    ? "Caught Up"
+                    : (item.user_status?.progress ? "Resume" : (isManga ? "Read Now" : "Play Now"))
               }
             </span>
           </button>

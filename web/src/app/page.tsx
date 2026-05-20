@@ -149,17 +149,18 @@ export default function App() {
         `Generated: ${new Date().toISOString()}`,
         `Platform: ${typeof window !== "undefined" ? window.navigator.userAgent : "Server"}`,
         `Client Origin: ${typeof window !== "undefined" ? window.location.origin : "Unknown"}`,
-        `API Target: ${API_BASE_ORIGIN}`,
+        `Server Address: ${API_BASE_ORIGIN}`,
         `Connection Status: FAILED`,
         `Connection Error: ${connectionError || "None"}`,
+        `App Version: ${healthStatus?.current_version || "Unknown"}`,
         `Onboarding Seen: ${localStorage.getItem("anicat_onboarding_seen") || "false"}`,
-        `\n## Common Resolution Steps:`,
-        `1. A port conflict on 13370 is the most common cause. Close any other running instances.`,
-        `2. On macOS, ensure Gatekeeper didn't block the sidecar by checking: System Settings -> Privacy & Security.`,
-        `3. Check the detailed backend logs inside the application cache log folder.`
+        `\n## Common Fixes:`,
+        `1. Restart the app from your Applications folder.`,
+        `2. On macOS, go to System Settings > Privacy & Security and check for blocked apps.`,
+        `3. If the issue persists, try restarting your Mac.`
       ].join("\n");
       await navigator.clipboard.writeText(report);
-      alert("Diagnostics report copied to your clipboard! Please send this to the developer.");
+      alert("Diagnostic report copied to clipboard. Please send this to the developer for help.");
     } catch (e) {
       alert("Failed to copy report: " + String(e));
     }
@@ -175,7 +176,7 @@ export default function App() {
     }
   };
 
-  if (connectionStatus === "checking") {
+  if (connectionStatus === "checking" && !healthStatus?.updating) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#050505] text-white p-6 font-sans">
         <style>{`
@@ -188,7 +189,6 @@ export default function App() {
           }
         `}</style>
         <div className="max-w-md w-full text-center space-y-6">
-          {/* Spinning Logo / Icon */}
           <div className="relative flex justify-center">
             <div className="absolute -inset-4 bg-accent/20 rounded-full blur-xl animate-pulse" />
             <div className="relative p-6 bg-white/[0.02] border border-white/[0.08] rounded-full shadow-2xl">
@@ -196,26 +196,50 @@ export default function App() {
             </div>
           </div>
 
-          {/* Title & Description */}
           <div className="space-y-3">
             <h2 className="text-2xl font-black tracking-tight text-white animate-pulse">
-              Starting up the services...
+              Starting up...
             </h2>
             <p className="text-sm text-gray-400 leading-relaxed px-4">
-              Initializing the local Python media server sidecar. Please wait a moment.
+              Anicat is preparing everything. This usually only takes a moment.
             </p>
           </div>
 
-          {/* Loader Bar */}
           <div className="w-48 mx-auto h-1.5 bg-white/[0.04] border border-white/[0.08] rounded-full overflow-hidden">
             <div className="h-full bg-accent rounded-full" style={{
               animation: 'progress-fill-startup 8s linear forwards'
             }} />
           </div>
+        </div>
+      </div>
+    );
+  }
 
-          {/* Tiny Status Indicator */}
-          <p className="text-[10px] text-gray-500 font-medium font-mono">
-            Connecting to {API_BASE_ORIGIN}...
+  // Show a friendly "Updating..." screen when the background process restarts
+  // during an update, instead of the scary "Connection Failed" error.
+  if (healthStatus?.updating) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#050505] text-white p-6 font-sans">
+        <div className="max-w-md w-full text-center space-y-6 animate-fade-in">
+          <div className="relative flex justify-center">
+            <div className="absolute -inset-4 bg-accent/20 rounded-full blur-xl animate-pulse" />
+            <div className="relative p-6 bg-white/[0.02] border border-white/[0.08] rounded-full shadow-2xl">
+              <RotateCw size={48} className="text-accent animate-spin-slow" />
+            </div>
+          </div>
+          <div className="space-y-3">
+            <h2 className="text-2xl font-black tracking-tight text-white">
+              Updating Anicat...
+            </h2>
+            <p className="text-sm text-gray-400 leading-relaxed px-4">
+              Installing the latest version. This will only take a few moments.
+            </p>
+          </div>
+          <div className="w-48 mx-auto h-1.5 bg-white/[0.04] border border-white/[0.08] rounded-full overflow-hidden">
+            <div className="h-full bg-accent rounded-full animate-pulse" style={{ width: '60%' }} />
+          </div>
+          <p className="text-[11px] text-gray-500 font-medium">
+            Anicat will restart automatically when ready.
           </p>
         </div>
       </div>
@@ -226,63 +250,57 @@ export default function App() {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#050505] text-white p-6 font-sans">
         <div className="max-w-md w-full bg-white/[0.02] border border-white/[0.08] backdrop-blur-xl rounded-3xl p-8 space-y-6 shadow-2xl shadow-black/80 animate-fade-in">
-          {/* Header */}
           <div className="space-y-2 text-center">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 mb-2 animate-pulse">
               <WifiOff size={28} />
             </div>
-            <h2 className="text-2xl font-black tracking-tight">Sidecar Connection Failed</h2>
+            <h2 className="text-2xl font-black tracking-tight">Connection Lost</h2>
             <p className="text-sm text-gray-400">
-              The AniCat frontend could not establish a connection with the local Python API service.
+              Anicat couldn't reach its background service. This usually means the app needs to be restarted.
             </p>
           </div>
 
-          {/* Diagnostic Details */}
           <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05] space-y-3.5 text-xs">
             <div className="flex justify-between items-center">
-              <span className="text-gray-500 font-medium">Frontend Client</span>
-              <span className="px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20 font-bold">Online</span>
+              <span className="text-gray-500 font-medium">Anicat Window</span>
+              <span className="px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20 font-bold">Ready</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-500 font-medium">Backend Sidecar</span>
-              <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 font-bold">Unreachable</span>
+              <span className="text-gray-500 font-medium">Background Service</span>
+              <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 font-bold">Not Responding</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-500 font-medium">API Endpoint</span>
-              <span className="font-mono text-gray-400">{API_BASE_ORIGIN}</span>
-            </div>
-            <div className="pt-2 border-t border-white/5 text-[10px] text-red-300/80 leading-relaxed font-mono whitespace-pre-wrap break-all">
-              Error: {connectionError || "Failed to fetch"}
-            </div>
+            {healthStatus?.current_version && (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 font-medium">Version</span>
+                <span className="font-mono text-gray-400">{healthStatus.current_version}</span>
+              </div>
+            )}
+            {connectionError && (
+              <div className="pt-2 border-t border-white/5 text-[10px] text-red-300/80 leading-relaxed font-mono whitespace-pre-wrap break-all">
+                Details: {connectionError}
+              </div>
+            )}
           </div>
 
-          {/* Action Steps */}
           <div className="space-y-3">
             <button
-              onClick={handleCopyDiagnostics}
+              onClick={() => window.location.reload()}
               className="w-full py-3 bg-accent hover:bg-accent-light text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-accent/20 active:scale-95 flex items-center justify-center space-x-2"
             >
-              <span>Copy Diagnostics Report</span>
-            </button>
-            
-            <button
-              onClick={handleOpenLogs}
-              className="w-full py-3 bg-white/[0.04] hover:bg-white/[0.08] text-white/80 border border-white/10 font-bold rounded-xl text-sm transition-all active:scale-95 flex items-center justify-center space-x-2"
-            >
-              <span>Open Application Logs</span>
+              <RotateCw size={16} />
+              <span>Try Again</span>
             </button>
 
             <button
-              onClick={() => window.location.reload()}
-              className="w-full py-2.5 text-xs font-semibold text-gray-500 hover:text-white transition-colors"
+              onClick={handleCopyDiagnostics}
+              className="w-full py-3 bg-white/[0.04] hover:bg-white/[0.08] text-white/80 border border-white/10 font-bold rounded-xl text-sm transition-all active:scale-95 flex items-center justify-center space-x-2"
             >
-              Retry Connection
+              <span>Copy Report for Support</span>
             </button>
           </div>
 
-          {/* Footer Info */}
           <p className="text-[10px] text-center text-gray-600 leading-normal">
-            A port conflict (another process on port 13370) or Gatekeeper quarantine is the most common cause on macOS.
+            Try restarting the app from your Applications folder. If the problem keeps happening, send the report above to the developer.
           </p>
         </div>
       </div>
@@ -305,7 +323,7 @@ export default function App() {
                   <span className="text-sm font-bold block truncate">
                     {healthStatus?.provider_status
                       ? healthStatus.provider_status
-                      : "AniList API unreachable. Browsing local library mode."}
+                      : "Could not connect to AniList. You can still browse your local library."}
                   </span>
                 </div>
               </div>
@@ -396,7 +414,15 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      <NowPlaying />
+      <NowPlaying
+        onPlay={(mediaId, episode) => {
+          // Find a matching media item from appState to open the player
+          const item = appState.selectedItem;
+          if (item && item.id === mediaId) {
+            appState.startPlayback(item, episode);
+          }
+        }}
+      />
 
       {/* Media detail drawer */}
       <AnimatePresence>
@@ -419,6 +445,8 @@ export default function App() {
         <MangaReader
           mediaId={appState.readingItem.id}
           chapterNumber={appState.readingChapter}
+          hasPrevChapter={parseInt(appState.readingChapter) > 1}
+          hasNextChapter={appState.readingItem.chapters ? parseInt(appState.readingChapter) < appState.readingItem.chapters : true}
           onClose={() => {
             appState.closeReader();
             dispatchRefresh();
@@ -430,6 +458,17 @@ export default function App() {
             } catch (error) {
               console.error("Failed to update manga progress:", error);
             }
+          }}
+          onNavigateChapter={async (direction) => {
+            const current = parseInt(appState.readingChapter!);
+            const next = direction === "next" ? current + 1 : current - 1;
+            if (next < 1) return;
+            // Save progress on current chapter before navigating
+            try {
+              await mediaApi.updateStatus(appState.readingItem!.id, undefined, undefined, current);
+            } catch {}
+            appState.startReading(appState.readingItem!, String(next));
+            dispatchRefresh();
           }}
         />
       )}

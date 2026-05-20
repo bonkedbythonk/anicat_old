@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import Field
 
 from ...libs.provider.anime.types import ProviderServer
-from .model import BaseConfig
+from .base import BaseConfig
 from . import defaults
 from . import descriptions as desc
 

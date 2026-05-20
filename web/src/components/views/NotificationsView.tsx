@@ -1,37 +1,43 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, CheckCircle2, Bell } from "lucide-react";
-import { mediaApi, type MediaItem, type Notification } from "@/lib/api";
+import { mediaApi, type MediaItem } from "@/lib/api";
 
 interface NotificationsViewProps {
   onSelect: (item: MediaItem) => void;
 }
 
 export default function NotificationsView({ onSelect }: NotificationsViewProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [config, setConfig] = useState<any>(null);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [notifs, cfg] = await Promise.all([
-          mediaApi.getNotifications(),
-          mediaApi.getConfig()
-        ]);
-        setNotifications(notifs || []);
-        setConfig(cfg);
-      } catch (err) {
-        console.error("Failed to load notifications:", err);
-      } finally {
-        setLoading(false);
-      }
+  const { data, isLoading } = useQuery({
+    queryKey: ["notifications", "config"],
+    queryFn: async () => {
+      const [notifs, cfg] = await Promise.all([
+        mediaApi.getNotifications(),
+        mediaApi.getConfig(),
+      ]);
+      return { notifications: notifs || [], config: cfg };
+    },
+    staleTime: 30_000,
+  });
+
+  const notifications = data?.notifications ?? [];
+  const config = data?.config ?? null;
+
+  const handleMarkAllRead = useCallback(async () => {
+    try {
+      await mediaApi.markNotificationsAsRead();
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["health"] });
+    } catch (err) {
+      console.error("Failed to mark notifications as read:", err);
     }
-    load();
-  }, []);
+  }, [queryClient]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="animate-spin text-accent" size={36} />
@@ -45,10 +51,7 @@ export default function NotificationsView({ onSelect }: NotificationsViewProps) 
         <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white">Notifications</h1>
         {notifications.length > 0 && (
           <button 
-            onClick={async () => {
-              await mediaApi.markNotificationsAsRead();
-              window.location.reload();
-            }}
+            onClick={handleMarkAllRead}
             className="flex items-center space-x-2 px-4 py-2 bg-white/[0.04] hover:bg-accent hover:text-white border border-white/[0.06] rounded-xl text-sm font-bold transition-all"
           >
             <CheckCircle2 size={16} />
@@ -78,7 +81,7 @@ export default function NotificationsView({ onSelect }: NotificationsViewProps) 
               />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors truncate">
-                  {notif.contexts[0]}{notif.episode || ""}{notif.contexts[1] || ""}{notif.media?.title?.english || notif.media?.title?.romaji || ""}{notif.contexts[2] || ""}
+                  {notif.contexts?.[0] ?? ""}{notif.episode || ""}{notif.contexts?.[1] ?? ""}{notif.media?.title?.english || notif.media?.title?.romaji || ""}{notif.contexts?.[2] ?? ""}
                 </div>
                 <div className="text-xs text-accent font-bold mt-1">
                   {new Date(notif.created_at + "Z").toLocaleString([], { 

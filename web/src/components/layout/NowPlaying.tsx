@@ -1,34 +1,36 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Play, X, CheckCircle2, Loader2, Music } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Play, X, CheckCircle2, Loader2, Music, ArrowRight } from "lucide-react";
 import { mediaApi, type PlaybackStatus } from "@/lib/api";
 import { dispatchRefresh } from "@/lib/events";
 
-export default function NowPlaying() {
-  const [playback, setPlayback] = useState<PlaybackStatus>(null);
+interface NowPlayingProps {
+  onPlay?: (mediaId: number, episode: string) => void;
+}
+
+export default function NowPlaying({ onPlay }: NowPlayingProps) {
+  const queryClient = useQueryClient();
   const [marking, setMarking] = useState(false);
   const [marked, setMarked] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
-  const fetchStatus = useCallback(async () => {
-    try {
-      const status = await mediaApi.getPlaybackStatus();
-      setPlayback(status);
-      if (status) {
-        setDismissed(false);
-        setMarked(false);
-      }
-    } catch {
-      // Status endpoint may not exist yet — silently ignore
-    }
-  }, []);
+  // Shared React Query key with HomeView — deduplicates the polling request
+  const { data: playback } = useQuery<PlaybackStatus>({
+    queryKey: ["playback-status"],
+    queryFn: () => mediaApi.getPlaybackStatus().catch(() => null),
+    refetchInterval: 5000,
+    staleTime: 4000,
+  });
 
+  // Reset dismissed/marked state when a new playback session starts
   useEffect(() => {
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 10000);
-    return () => clearInterval(interval);
-  }, [fetchStatus]);
+    if (playback) {
+      setDismissed(false);
+      setMarked(false);
+    }
+  }, [playback]);
 
   const handleMarkWatched = async () => {
     if (!playback) return;
@@ -52,6 +54,7 @@ export default function NowPlaying() {
     setDismissed(true);
     try {
       await mediaApi.clearPlaybackStatus();
+      queryClient.invalidateQueries({ queryKey: ["playback-status"] });
     } catch {}
   };
 
@@ -76,6 +79,16 @@ export default function NowPlaying() {
         </div>
 
         <div className="flex items-center space-x-2 shrink-0">
+          {onPlay && (
+            <button
+              onClick={() => onPlay(playback.media_id, playback.episode)}
+              className="flex items-center space-x-2 px-4 py-2.5 rounded-xl font-bold text-sm bg-white/[0.04] hover:bg-accent hover:text-white border border-white/[0.06] transition-all active:scale-95"
+              title="Jump to Player"
+            >
+              <ArrowRight size={14} />
+              <span className="hidden sm:inline">Continue</span>
+            </button>
+          )}
           <button
             onClick={handleMarkWatched}
             disabled={marking || marked}

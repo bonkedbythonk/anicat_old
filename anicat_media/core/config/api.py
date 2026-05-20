@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import Field
 
 from ...libs.media_api.types import MediaSort, UserMediaListSort
-from .model import BaseConfig
+from .base import BaseConfig
 from . import defaults
 from . import descriptions as desc
 

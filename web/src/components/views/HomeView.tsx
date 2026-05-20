@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import Hero from "@/components/media/Hero";
 import MediaRow from "@/components/media/MediaRow";
@@ -36,11 +36,12 @@ export default function HomeView({ onSelect }: HomeViewProps) {
     queryFn: () => mediaApi.getUserList("watching", "ANIME"),
   });
 
-  // 2. Playback Status (Polls to stay updated with player activities)
+  // 2. Playback Status — shared query key with NowPlaying component (deduped)
   const playbackStatusQuery = useQuery({
-    queryKey: ["home-playback-status"],
+    queryKey: ["playback-status"],
     queryFn: () => mediaApi.getPlaybackStatus().catch(() => null),
     refetchInterval: 5000,
+    staleTime: 4000,
   });
 
   // 3. Background/Non-blocking Discovery Queries
@@ -117,8 +118,8 @@ export default function HomeView({ onSelect }: HomeViewProps) {
     return list;
   }, [watchingMedia, playbackStatusQuery.data]);
 
-  // Compute Hero Element
-  const heroItem = useMemo(() => {
+  // Compute candidate hero item (may change on playback status refresh)
+  const candidateHeroItem = useMemo(() => {
     if (continueWatchingList.length > 0) {
       const availableToWatch = continueWatchingList.filter((item) => {
         const progress = item.user_status?.progress || 0;
@@ -136,6 +137,26 @@ export default function HomeView({ onSelect }: HomeViewProps) {
     }
     return null;
   }, [continueWatchingList, trendingQuery.data]);
+
+  // Stabilize hero: only swap when the identity actually changes, preventing
+  // flicker when playback-status polls update the sort order but the hero
+  // item itself stays the same.
+  const stableHeroRef = useRef<MediaItem | null>(candidateHeroItem);
+  const heroItem = useMemo(() => {
+    const prev = stableHeroRef.current;
+    const next = candidateHeroItem;
+
+    // Keep previous hero if it's still the same media item
+    if (prev && next && prev.id === next.id) {
+      return prev;
+    }
+    // Keep previous hero if candidate went null transiently (loading blink)
+    if (!next && prev) {
+      return prev;
+    }
+    stableHeroRef.current = next;
+    return next;
+  }, [candidateHeroItem]);
 
   // Global loading only until critical list is loaded
   if (watchingQuery.isLoading) {

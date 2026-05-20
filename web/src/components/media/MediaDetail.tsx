@@ -27,13 +27,7 @@ type DetailConfig = {
 };
 
 export default function MediaDetail({ item, onClose, initialAction, onRead, onPlayEpisode }: MediaDetailProps) {
-  const [episodes, setEpisodes] = useState<Episode[]>([]);
-  const [characters, setCharacters] = useState<Character[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [recommendations, setRecommendations] = useState<MediaItem[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [loadingEps, setLoadingEps] = useState(false);
-  const [loadingChars, setLoadingChars] = useState(false);
   const [isPlayingNext, setIsPlayingNext] = useState(false);
   const [activeTab, setActiveTab] = useState<"episodes" | "characters" | "reviews" | "recommendations">("episodes");
 
@@ -69,59 +63,43 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   const ambientColor = useAmbientColor(banner);
   const progressEditor = useProgressEditor();
 
-  useEffect(() => {
-    let isCancelled = false;
+  // Tab data loaded via React Query — cached, deduped, refetched on tab switch
+  const {
+    data: episodes = [],
+    isLoading: loadingEps,
+  } = useQuery({
+    queryKey: ["media-episodes", item.id],
+    queryFn: () => mediaApi.getEpisodes(item.id),
+    staleTime: 60_000,
+  });
 
-    const loadTabData = async () => {
-      if (activeTab === "episodes") {
-        await Promise.resolve();
-        if (isCancelled) return;
+  const {
+    data: characters = [],
+    isLoading: loadingChars,
+  } = useQuery({
+    queryKey: ["media-characters", item.id],
+    queryFn: async () => {
+      const res = await mediaApi.getCharacters(item.id);
+      return res.characters ?? [];
+    },
+    staleTime: 60_000,
+  });
 
-        setLoadingEps(true);
-        try {
-          const episodeData = await mediaApi.getEpisodes(item.id);
-          if (!isCancelled) setEpisodes(episodeData);
-        } catch (err) {
-          console.error("Failed to load episodes:", err);
-        } finally {
-          if (!isCancelled) setLoadingEps(false);
-        }
-      } else if (activeTab === "characters" && characters.length === 0) {
-        await Promise.resolve();
-        if (isCancelled) return;
+  const {
+    data: reviews = [],
+  } = useQuery({
+    queryKey: ["media-reviews", item.id],
+    queryFn: () => mediaApi.getReviews(item.id),
+    staleTime: 60_000,
+  });
 
-        setLoadingChars(true);
-        try {
-          const res = await mediaApi.getCharacters(item.id);
-          if (!isCancelled) setCharacters(res.characters);
-        } catch (err) {
-          console.error("Failed to load characters:", err);
-        } finally {
-          if (!isCancelled) setLoadingChars(false);
-        }
-      } else if (activeTab === "reviews" && reviews.length === 0) {
-        try {
-          const reviewData = await mediaApi.getReviews(item.id);
-          if (!isCancelled) setReviews(reviewData);
-        } catch (err) {
-          console.error("Failed to load reviews:", err);
-        }
-      } else if (activeTab === "recommendations" && recommendations.length === 0) {
-        try {
-          const recommendationData = await mediaApi.getRecommendations(item.id);
-          if (!isCancelled) setRecommendations(recommendationData);
-        } catch (err) {
-          console.error("Failed to load recommendations:", err);
-        }
-      }
-    };
-
-    void loadTabData();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [item.id, activeTab, characters.length, reviews.length, recommendations.length]);
+  const {
+    data: recommendations = [],
+  } = useQuery({
+    queryKey: ["media-recommendations", item.id],
+    queryFn: () => mediaApi.getRecommendations(item.id),
+    staleTime: 60_000,
+  });
 
   const [hasTriggeredInitial, setHasTriggeredInitial] = useState(false);
 

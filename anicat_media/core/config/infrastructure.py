@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import Field
 
 from ..constants import APP_ASCII_ART
-from .model import BaseConfig, OtherConfig
+from .base import BaseConfig, OtherConfig
 from . import defaults
 from . import descriptions as desc
 
