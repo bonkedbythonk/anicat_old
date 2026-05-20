@@ -125,16 +125,12 @@ def _check_github_update(update_branch: str) -> bool:
             return False
 
         if update_branch == "nightly" and latest_tag.lower() == "nightly":
-            # For nightly, query commit hash to be precise
+            # Use the release's target_commitish (the commit the DMG was built from)
+            # instead of raw testbranch HEAD, so we don't falsely detect an update
+            # when commits were pushed but CI hasn't built a DMG yet.
             remote_sha = ""
-            try:
-                commit_url = "https://api.github.com/repos/bonkedbythonk/anicat/commits/testbranch"
-                commit_req = urllib.request.Request(commit_url, headers={"User-Agent": "Anicat-App"})
-                with urllib.request.urlopen(commit_req, timeout=5, context=ctx_ssl) as commit_resp:
-                    commit_data = json.loads(commit_resp.read().decode())
-                    remote_sha = commit_data.get("sha", "")
-            except Exception:
-                pass
+            if isinstance(res_data, list) and res_data:
+                remote_sha = res_data[0].get("target_commitish", "") or ""
 
             if remote_sha:
                 local_sha = ""
@@ -532,6 +528,26 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
         import platform
         if platform.system() == "Darwin":
             UPDATE_IN_PROGRESS_FILE.write_text("1", encoding="utf-8")
+
+            # Reset LAST_COMMIT_FILE to the current release's SHA so the next
+            # update check compares against this newly-installed version, not an old baseline.
+            from anicat_media.core.constants import LAST_COMMIT_FILE
+            try:
+                import urllib.request
+                import json
+                import ssl
+                ctx_ssl = ssl._create_unverified_context()
+                rel_url = "https://api.github.com/repos/bonkedbythonk/anicat/releases"
+                rel_req = urllib.request.Request(rel_url, headers={"User-Agent": "Anicat-App"})
+                with urllib.request.urlopen(rel_req, timeout=5, context=ctx_ssl) as rel_resp:
+                    rel_data = json.loads(rel_resp.read().decode())
+                    if isinstance(rel_data, list) and rel_data:
+                        commit_sha = rel_data[0].get("target_commitish", "")
+                        if commit_sha:
+                            LAST_COMMIT_FILE.write_text(commit_sha, encoding="utf-8")
+                            logger.info(f"Reset LAST_COMMIT_FILE to nightly release SHA: {commit_sha[:12]}...")
+            except Exception as e:
+                logger.warning(f"Failed to reset LAST_COMMIT_FILE before update: {e}")
 
             logger.info("[UPDATE] Triggering macOS native update via installer script")
             local_script = os.path.join(repo_root, "scripts", "install_macos.sh")
