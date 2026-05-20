@@ -1,6 +1,6 @@
 # MPV Customization Guide
 
-Anicat uses the powerful **mpv** media player for high-performance playback. This guide will help you unlock its full potential with shaders, skins, and power-user shortcuts.
+Anicat bundles a standalone **mpv** player for high-performance playback with GPU upscaling, modern controls, and automatic skip detection. This guide covers the keyboard shortcuts and how everything works out of the box.
 
 ---
 
@@ -10,93 +10,58 @@ Anicat synchronizes your progress automatically when you use these shortcuts.
 
 | Command | Action |
 | :--- | :--- |
-| Shift + N | **Play Next Episode** |
+| Shift + N | Play Next Episode |
 | Shift + P | Play Previous Episode |
 | Shift + R | Reload Current Episode |
 | Shift + A | Toggle Auto-play |
 | Shift + T | Toggle Dub / Sub |
+| Ctrl + S | Skip Intro / Active Segment |
+| Ctrl + 1 | Enable Upscaling |
+| Ctrl + 2 | Disable Upscaling |
 | Space | Play / Pause |
 | f | Toggle Fullscreen |
 
 ---
 
-## AniCat UI Overlay
+## Upscaling
 
-AniCat ships its own mpv overlay so the external player matches the built-in viewer instead of relying on a third-party skin. The overlay is bundled with the app, but if you are configuring a standalone mpv install you can copy `web/src-tauri/resources/mpv_config/scripts/anicat_ui/main.lua` into your mpv `scripts/` folder.
+Anicat enables lightweight GPU upscaling by default using non-CNN Anime4K shaders. These sharpen edges and reduce blur without the heavy GPU load of neural network shaders.
 
-### Included Controls
+- **Ctrl+1** — enable upscaling (shows a brief "Upscaling: ON" message)
+- **Ctrl+2** — disable upscaling (shows "Upscaling: OFF")
 
-Shift + N plays the next episode, Shift + P goes back, Shift + R reloads the current episode, Shift + A toggles auto-play, Shift + T switches dub / sub audio tracks, and Ctrl + S jumps the active skip segment when one is available.
+You can change the default behavior in Settings > Player > Visual Quality.
 
-### Optional Manual Install
+### Manual Shader Override
 
-1.  **Create the scripts folder**:
-    Open your Terminal and run:
-    ```bash
-    mkdir -p ~/.config/mpv/scripts/anicat_ui
-    ```
-2.  **Copy the overlay**:
-    Place AniCat's `main.lua` in `~/.config/mpv/scripts/anicat_ui/main.lua`.
-3.  **Restart MPV**:
-    Close any open videos and play a new one. You should see AniCat's custom overlay instead of a generic skin.
+If you want to use different shaders (e.g., the heavier CNN-based ones for better quality), edit the shader list in:
 
----
+**Bundle path:** `Anicat.app/Contents/Resources/resources/mpv_config/shaders/`
 
-## High-Quality Shaders (Anime4K)
-
-Anime4K uses your GPU to upscale anime in real-time, making it look crisp on high-resolution screens.
-
-### Installation
-
-1.  **Create the Shaders folder**:
-    Open Terminal and run:
-    ```bash
-    mkdir -p ~/.config/mpv/shaders
-    ```
-2.  **Download Shaders**:
-    Download the `.glsl` files from the [Anime4K GitHub](https://github.com/bloc97/Anime4K/releases).
-3.  **Place the files**:
-    Move all the downloaded `.glsl` files into `~/.config/mpv/shaders/`.
-4.  **Configure MPV**:
-    You need to tell MPV to use these shaders. Create or edit your config file:
-    ```bash
-    nano ~/.config/mpv/mpv.conf
-    ```
-    Copy and paste **one** of the following blocks based on your Mac:
-
-### Hardware Settings for mpv.conf
-
-#### Tier 1: Low-End (Base M1/M2/M3, MacBook Air, Intel iGPU)
-```conf
-# Add to mpv.conf
-glsl-shaders="~/.config/mpv/shaders/Anime4K_Upscale_CNN_M_x2_Fast.glsl"
-```
-
-#### Tier 2: Mid-Range (M1/M2 Pro, RTX 3060)
-```conf
-# Add to mpv.conf
-glsl-shaders="~/.config/mpv/shaders/Anime4K_Upscale_CNN_L_x2_HQ.glsl;~/.config/mpv/shaders/Anime4K_Auto_Restore_VL.glsl"
-```
-
-#### Tier 3: High-End (M1/M2/M3 Max/Ultra, Dedicated GPU)
-```conf
-# Add to mpv.conf
-glsl-shaders="~/.config/mpv/shaders/Anime4K_Upscale_CNN_UL_x2_Thin.glsl;~/.config/mpv/shaders/Anime4K_Restore_CNN_UL.glsl"
-```
+The shaders loaded by `Ctrl+1` and by default are defined in:
+- `web/src-tauri/resources/mpv_config/input.conf` (fallback bindings)
+- `web/src-tauri/resources/mpv_config/scripts/anicat_ui/main.lua` (primary bindings)
 
 ---
 
-## Folder Structure Reference
-When finished, your configuration should look exactly like this:
-```text
-~/.config/mpv/
-├── mpv.conf (your settings)
-├── scripts/
-│   └── anicat_ui/
-│       └── main.lua (AniCat's custom overlay)
-└── shaders/
-    └── Anime4K_... .glsl (the shaders)
-```
+## Skip Intro / Outro
+
+When an OP or ED is detected, a skip button appears. You can also press Ctrl+S to skip immediately. Enable Auto-skip in Settings to skip without the button.
+
+---
+
+## Volume & Language
+
+- **Shift+T** cycles between sub and dub audio tracks.
+- Adjust volume with your system volume keys or via the ModernZ on-screen controls.
+
+---
+
+## Compatibility
+
+Anicat's bundled mpv is configured for macOS with hardware decoding (`videotoolbox-copy`), smooth 24fps playback interpolation, and debanding. Everything is pre-configured — no manual mpv.conf editing needed.
+
+If you prefer your own system mpv installation (e.g., from Homebrew), select "External Player - MPV" in Settings > Player. Anicat will route streams to it with the same keyboard shortcuts.
 
 
 ---

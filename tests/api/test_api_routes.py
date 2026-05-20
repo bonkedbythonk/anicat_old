@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import platform
 from pathlib import Path
 from types import SimpleNamespace
@@ -194,6 +195,8 @@ def test_trigger_update_clears_cached_update_state(client_and_ctx, monkeypatch):
     monkeypatch.setattr(status_router, "_cached_update_available", True)
     monkeypatch.setattr(status_router, "_last_update_check", datetime.now())
     monkeypatch.setattr(platform, "system", lambda: "Darwin")
+    # Simulate a release install (no .git) so the Darwin release path runs
+    monkeypatch.setattr(os.path, "exists", lambda p: False if p.endswith("/.git") else True)
     monkeypatch.setattr(status_router.subprocess, "Popen", lambda *args, **kwargs: None)
 
     response = client.post("/api/status/update")
