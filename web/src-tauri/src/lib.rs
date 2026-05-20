@@ -3,8 +3,6 @@ use tauri::{
     tray::TrayIconBuilder,
     Manager,
 };
-use tauri_plugin_shell::process::CommandEvent;
-use tauri_plugin_shell::ShellExt;
 
 #[tauri::command]
 async fn open_logs_folder(app: tauri::AppHandle) -> Result<(), String> {
@@ -74,39 +72,32 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            let shell = app.shell();
-            let sidecar_name = "anicat-server";
-            
-            match shell.sidecar(sidecar_name) {
-                Ok(sidecar) => {
-                    match sidecar.spawn() {
-                        Ok((mut rx, child)) => {
+            // Spawn sidecar directly from the app bundle's MacOS directory.
+            // Avoids Tauri v2 sidecar name/triple resolution issues.
+            let exe_dir = std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|d| d.to_path_buf()));
+            if let Some(bin_dir) = exe_dir {
+                let sidecar_path = bin_dir.join("anicat-server");
+                if sidecar_path.exists() {
+                    match std::process::Command::new(&sidecar_path)
+                        .stdout(std::process::Stdio::piped())
+                        .stderr(std::process::Stdio::piped())
+                        .spawn()
+                    {
+                        Ok(child) => {
                             app.manage(child);
-                            tauri::async_runtime::spawn(async move {
-                                while let Some(event) = rx.recv().await {
-                                    match event {
-                                        CommandEvent::Stdout(line) => {
-                                            log::info!("sidecar-out: {}", String::from_utf8_lossy(&line).trim());
-                                        }
-                                        CommandEvent::Stderr(line) => {
-                                            log::error!("sidecar-err: {}", String::from_utf8_lossy(&line).trim());
-                                        }
-                                        CommandEvent::Terminated(payload) => {
-                                            log::warn!("sidecar-terminated: {:?}", payload);
-                                        }
-                                        _ => {}
-                                    }
-                                }
-                            });
+                            log::info!("Sidecar started from: {}", sidecar_path.display());
                         }
                         Err(e) => {
-                            log::error!("Failed to spawn sidecar {}: {}", sidecar_name, e);
+                            log::error!("Failed to spawn sidecar from {}: {}", sidecar_path.display(), e);
                         }
                     }
+                } else {
+                    log::error!("Sidecar binary not found at: {}", sidecar_path.display());
                 }
-                Err(e) => {
-                    log::error!("Failed to find sidecar {}: {}", sidecar_name, e);
-                }
+            } else {
+                log::error!("Could not determine executable directory for sidecar launch");
             }
 
             Ok(())
