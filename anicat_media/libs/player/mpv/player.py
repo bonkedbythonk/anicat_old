@@ -381,10 +381,10 @@ class MpvPlayer(BasePlayer):
             if shader_profile != "off":
                 bundled_shaders_dir = os.path.join(bundled_config, "shaders")
                 if os.path.exists(bundled_shaders_dir):
-                    # Maps standard/balanced (or any legacy presets) directly to our highly-optimized VL shader pipeline
+                    # Mode A: CNN_L-based upscaling — sharper than DoG, runs well on Apple Silicon
                     clamp_path = os.path.join(bundled_shaders_dir, "Anime4K_Clamp_Highlights.glsl")
-                    restore_path = os.path.join(bundled_shaders_dir, "Anime4K_Deblur_DoG.glsl")
-                    upscale_path = os.path.join(bundled_shaders_dir, "Anime4K_Upscale_DoG_x2.glsl")
+                    restore_path = os.path.join(bundled_shaders_dir, "Anime4K_Restore_CNN_L.glsl")
+                    upscale_path = os.path.join(bundled_shaders_dir, "Anime4K_Upscale_CNN_x2_L.glsl")
                     downscale_x2 = os.path.join(bundled_shaders_dir, "Anime4K_AutoDownscalePre_x2.glsl")
                     downscale_x4 = os.path.join(bundled_shaders_dir, "Anime4K_AutoDownscalePre_x4.glsl")
                     shaders_to_load = []
@@ -393,7 +393,7 @@ class MpvPlayer(BasePlayer):
                             shaders_to_load.append(p)
                     if shaders_to_load:
                         mpv_args.append(f"--glsl-shaders={':'.join(shaders_to_load)}")
-                        logger.info("Using standard high-efficiency Anime4K upscaling shaders (Tier VL).")
+                        logger.info("Using Anime4K Mode A (CNN_L) upscaling shaders.")
             else:
                 logger.info("GPU upscaling shaders are disabled (Battery Saver / Low-End profile).")
 

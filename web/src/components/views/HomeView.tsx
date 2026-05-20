@@ -34,6 +34,8 @@ export default function HomeView({ onSelect }: HomeViewProps) {
   const recentlyWatchedQuery = useQuery({
     queryKey: ["home-recently-watched"],
     queryFn: () => mediaApi.getRecent("ANIME", 20),
+    refetchInterval: 15_000,
+    staleTime: 10_000,
   });
 
   // 2. Playback Status — shared query key with NowPlaying component (deduped)
@@ -48,6 +50,8 @@ export default function HomeView({ onSelect }: HomeViewProps) {
   const watchingQuery = useQuery({
     queryKey: ["home-watching"],
     queryFn: () => mediaApi.getUserList("watching", "ANIME"),
+    refetchInterval: 30_000,
+    staleTime: 20_000,
   });
 
   // 4. Background/Non-blocking Discovery Queries

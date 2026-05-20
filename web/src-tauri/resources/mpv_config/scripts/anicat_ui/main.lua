@@ -130,15 +130,15 @@ end
 local function enable_shaders()
   local shader_paths = {
     "~~/shaders/Anime4K_Clamp_Highlights.glsl",
-    "~~/shaders/Anime4K_Deblur_DoG.glsl",
-    "~~/shaders/Anime4K_Upscale_DoG_x2.glsl",
+    "~~/shaders/Anime4K_Restore_CNN_L.glsl",
+    "~~/shaders/Anime4K_Upscale_CNN_x2_L.glsl",
     "~~/shaders/Anime4K_AutoDownscalePre_x2.glsl",
     "~~/shaders/Anime4K_AutoDownscalePre_x4.glsl"
   }
   local path_str = table.concat(shader_paths, ":")
   mp.commandv("change-list", "glsl-shaders", "set", path_str)
   refresh_shaders_state()
-  mp.osd_message("Upscaling: ON", 1.5)
+  mp.osd_message("Upscaling: Mode A (Balanced)", 1.5)
 end
 
 local function disable_shaders()
@@ -260,11 +260,9 @@ register_script_messages()
 
 local ok, err = pcall(function()
   mp.add_forced_key_binding('MBTN_LEFT', 'anicat-left-click', on_left_click)
-  mp.add_forced_key_binding('ctrl+1', 'anicat-enable-shaders', enable_shaders)
-  mp.add_forced_key_binding('ctrl+2', 'anicat-disable-shaders', disable_shaders)
 end)
 if not ok then
   msg.warn('Could not register forced keybindings: ' .. tostring(err))
 end
 
-msg.info('Anicat overlay loaded: ctrl+1 = Upscaling Enable, ctrl+2 = Upscaling Disable')
+msg.info('Anicat overlay loaded: ctrl+1..4 = Upscaling presets, ctrl+0 = OFF')
