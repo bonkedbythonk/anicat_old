@@ -105,15 +105,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Always clean the tag we're about to create (re-run safety)
+          gh release delete "${{ env.RELEASE_TAG }}" --yes --cleanup-tag || true
+
           if [ "${{ github.ref_name }}" = "master" ]; then
             echo "Deleting all existing stable rolling releases..."
-            gh api /repos/${{ github.repository }}/releases \
-              --jq '.[].tag_name' --paginate 2>/dev/null \
+            gh release list --limit 100 --json tagName --jq '.[].tagName' \
               | grep -- '-stable$' \
               | while read -r tag; do
                   echo "  Deleting: $tag"
                   gh release delete "$tag" --yes --cleanup-tag || true
                 done
+            echo "Stable releases cleaned up."
           else
             echo "Cleaning up existing nightly release: nightly"
             gh release delete nightly --yes --cleanup-tag || true
