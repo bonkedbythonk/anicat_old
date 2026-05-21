@@ -48,7 +48,9 @@ If you're comfortable with the terminal, you can install just the command-line v
 curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/master/scripts/install_cli.sh | bash
 ```
 
-Then use commands like `anicat search -t "Attack on Titan"` to stream from the terminal.
+Then type **`anicat`** to open the home screen and see what to watch next. Use `anicat search -t "Attack on Titan"` to find and stream specific shows.
+
+> **Image previews (TUI mode):** For rich image previews when browsing anime in the terminal, use [Kitty terminal](https://sw.kovidgoyal.net/kitty/). It's the only terminal that supports the image protocol Anicat uses.
 
 ---
 
