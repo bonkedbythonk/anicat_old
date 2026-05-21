@@ -357,7 +357,8 @@ class AniListApi(BaseApiClient):
         }
         try:
             response = execute_graphql(
-                ANILIST_ENDPOINT, self.http_client, gql.GET_MEDIA_RECOMMENDATIONS, variables
+                ANILIST_ENDPOINT, self.http_client, gql.GET_MEDIA_RECOMMENDATIONS, variables,
+                use_cache=True, ttl=1800,  # 30 min — recommendations change slowly
             )
             return mapper.to_generic_recommendations(response.json())
         except Exception as e:
@@ -371,7 +372,8 @@ class AniListApi(BaseApiClient):
         logger.info(f"Fetching characters for media {params.id} (type: {variables['type']})")
         try:
             response = execute_graphql(
-                ANILIST_ENDPOINT, self.http_client, gql.GET_MEDIA_CHARACTERS, variables
+                ANILIST_ENDPOINT, self.http_client, gql.GET_MEDIA_CHARACTERS, variables,
+                use_cache=True, ttl=1800,  # 30 min — character data rarely changes
             )
             if response and "errors" not in response.json():
                 return mapper.to_generic_characters_result(response.json())
@@ -388,7 +390,8 @@ class AniListApi(BaseApiClient):
         variables = {"id": params.id, "format_in": None}
         try:
             response = execute_graphql(
-                ANILIST_ENDPOINT, self.http_client, gql.GET_MEDIA_RELATIONS, variables
+                ANILIST_ENDPOINT, self.http_client, gql.GET_MEDIA_RELATIONS, variables,
+                use_cache=True, ttl=1800,  # 30 min — relations are static
             )
             return mapper.to_generic_relations(response.json())
         except Exception as e:
@@ -401,7 +404,8 @@ class AniListApi(BaseApiClient):
         variables = {"id": params.id, "type": "ANIME"}
         try:
             response = execute_graphql(
-                ANILIST_ENDPOINT, self.http_client, gql.GET_AIRING_SCHEDULE, variables
+                ANILIST_ENDPOINT, self.http_client, gql.GET_AIRING_SCHEDULE, variables,
+                use_cache=True, ttl=300,  # 5 min — schedule updates periodically
             )
             if response and "errors" not in response.json():
                 return mapper.to_generic_airing_schedule_result(response.json())
@@ -423,7 +427,8 @@ class AniListApi(BaseApiClient):
             variables["mediaId_in"] = media_ids
         try:
             response = execute_graphql(
-                ANILIST_ENDPOINT, self.http_client, gql.AIRING_SCHEDULE, variables
+                ANILIST_ENDPOINT, self.http_client, gql.AIRING_SCHEDULE, variables,
+                use_cache=True, ttl=300,  # 5 min — schedule updates periodically
             )
             if response is not None:
                 if not response.is_success:
@@ -448,7 +453,8 @@ class AniListApi(BaseApiClient):
         }
         try:
             response = execute_graphql(
-                ANILIST_ENDPOINT, self.http_client, gql.GET_REVIEWS, variables
+                ANILIST_ENDPOINT, self.http_client, gql.GET_REVIEWS, variables,
+                use_cache=True, ttl=600,  # 10 min — reviews are semi-static
             )
             if response and "errors" not in response.json():
                 return mapper.to_generic_reviews_list(response.json())

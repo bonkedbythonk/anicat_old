@@ -93,7 +93,15 @@ export default function HomeView({ onSelect }: HomeViewProps) {
     queryFn: () => mediaApi.search('', 'ANIME', 1, { status: 'RELEASING' }),
   });
 
-  // 5. Continue Watching = local watch history filtered to only shows
+  // 5. Smart Playlist — personalized recommendations (cached, non-blocking)
+  const smartPlaylistQuery = useQuery({
+    queryKey: ["home-smart-playlist"],
+    queryFn: () => mediaApi.getSmartPlaylist(),
+    staleTime: 300_000,   // 5 min — backend already caches, no need to hammer
+    refetchInterval: 600_000, // 10 min between background refreshes
+  });
+
+  // 6. Continue Watching = local watch history filtered to only shows
   //    currently on the user's AniList watching/repeating list, EXCLUDING
   //    items the user has caught up on.
   const continueWatchingList = useMemo(() => {
@@ -200,6 +208,10 @@ export default function HomeView({ onSelect }: HomeViewProps) {
       
       {continueWatchingList.length > 0 && (
         <MediaRow title="Continue Watching" items={continueWatchingList} onSelect={onSelect} />
+      )}
+      
+      {smartPlaylistQuery.data?.media && smartPlaylistQuery.data.media.length > 0 && (
+        <MediaRow title="Smart Playlist" items={smartPlaylistQuery.data.media} onSelect={onSelect} />
       )}
       
       {recentReleasesQuery.isLoading ? (

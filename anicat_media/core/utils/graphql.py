@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import time
+import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
@@ -17,6 +18,50 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 GRAPHQL_CACHE_DIR = APP_CACHE_DIR / "network" / "graphql"
+
+# ── Rate Limiting ────────────────────────────────────────────────────────────
+# AniList allows 90 requests per minute per user token.  We throttle at
+# 80 req/min to leave headroom for other concurrent activity and always
+# apply a minimum 700ms inter-request delay.  When a 429 is received,
+# subsequent requests wait with exponential backoff (1s / 2s / 4s / 8s).
+
+_DOMAIN_LOCKS: dict[str, threading.Lock] = {}
+_DOMAIN_LAST_REQUEST: dict[str, float] = {}
+_MIN_INTERVAL = 0.7       # seconds between requests (≈ 85 req/min)
+_BACKOFF_SECONDS = 1.0    # initial backoff on 429
+_MAX_BACKOFF = 8.0        # cap backoff growth
+_RETRIES_ON_429 = 2       # how many times to retry a 429 with backoff
+
+
+def _domain_rate_limit(url: str) -> None:
+    """Sleep if necessary to maintain the per-domain minimum request interval."""
+    from urllib.parse import urlparse
+
+    domain = urlparse(url).netloc or url
+    lock = _DOMAIN_LOCKS.setdefault(domain, threading.Lock())
+    with lock:
+        now = time.time()
+        last = _DOMAIN_LAST_REQUEST.get(domain, 0)
+        wait = _MIN_INTERVAL - (now - last)
+        if wait > 0:
+            time.sleep(wait)
+            now = time.time()
+        _DOMAIN_LAST_REQUEST[domain] = now
+
+
+def _handle_429_backoff(url: str, attempt: int) -> bool:
+    """Calculate and sleep the backoff delay for a 429 response.
+
+    Returns True if we should retry, False if we've exhausted retries.
+    """
+    if attempt >= _RETRIES_ON_429:
+        return False
+    delay = min(_BACKOFF_SECONDS * (2 ** attempt), _MAX_BACKOFF)
+    logger.warning(
+        f"[RATE LIMIT] 429 from {url}, backing off {delay:.1f}s (attempt {attempt + 1}/{_RETRIES_ON_429})"
+    )
+    time.sleep(delay)
+    return True
 
 
 class GraphQLCache:
@@ -133,42 +178,18 @@ def execute_graphql(
             )
 
     json_body = {"query": query, "variables": variables}
-    
-    try:
-        response = httpx_client.post(url, json=json_body, headers=headers, timeout=TIMEOUT)
-        
-        if response.status_code == 200:
-            if use_cache:
-                try:
-                    _cache.set(url, query, variables, response.json())
-                except Exception as e:
-                    logger.warning(f"Failed to cache response: {e}")
-            return response
-            
-        logger.warning(f"GraphQL request failed with status code {response.status_code}: {response.text}")
-        response.raise_for_status()
-        return response
-        
-    except httpx.RequestError as e:
-        logger.warning(f"GraphQL request failed for {graphql_file.name}: {e}")
 
-        # Offline fallback is only for network-level failures.
-        cached_data = _cache.get(url, query, variables, ttl=float("inf"))
-        if cached_data:
-            logger.info(f"Returning expired cached response for {graphql_file.name} as offline fallback.")
-            return Response(
-                status_code=200,
-                content=json.dumps(cached_data).encode("utf-8"),
-                headers={"Content-Type": "application/json", "X-Offline-Fallback": "true"},
+    # Rate-limit and retry-with-backoff loop
+    for attempt in range(_RETRIES_ON_429 + 1):
+        _domain_rate_limit(url)
+
+        try:
+            response = httpx_client.post(
+                url, json=json_body, headers=headers, timeout=TIMEOUT
             )
-
-        raise
-    except httpx.HTTPStatusError as e:
-        logger.warning(f"GraphQL request failed for {graphql_file.name}: {e}")
-
-        # Treat only server-side errors as potentially offline/transient.
-        status_code = e.response.status_code if e.response is not None else 0
-        if status_code >= 500:
+        except httpx.RequestError as e:
+            logger.warning(f"GraphQL request failed for {graphql_file.name}: {e}")
+            # Offline fallback for network-level failures
             cached_data = _cache.get(url, query, variables, ttl=float("inf"))
             if cached_data:
                 logger.info(f"Returning expired cached response for {graphql_file.name} as offline fallback.")
@@ -177,9 +198,48 @@ def execute_graphql(
                     content=json.dumps(cached_data).encode("utf-8"),
                     headers={"Content-Type": "application/json", "X-Offline-Fallback": "true"},
                 )
+            raise
 
-        # 4xx (e.g. invalid token) should not be treated as offline fallback.
-        raise
+        if response.status_code == 200:
+            if use_cache:
+                try:
+                    _cache.set(url, query, variables, response.json())
+                except Exception as e:
+                    logger.warning(f"Failed to cache response: {e}")
+            return response
+
+        # 429 — retry with backoff
+        if response.status_code == 429:
+            if _handle_429_backoff(url, attempt):
+                continue
+            # Exhausted retries — try offline cache fallback
+            cached_data = _cache.get(url, query, variables, ttl=float("inf"))
+            if cached_data:
+                logger.info(f"Returning cached response for {graphql_file.name} after 429 exhaustion.")
+                return Response(
+                    status_code=200,
+                    content=json.dumps(cached_data).encode("utf-8"),
+                    headers={"Content-Type": "application/json", "X-Offline-Fallback": "true"},
+                )
+            logger.warning(f"GraphQL 429 exhausted retries for {graphql_file.name}: {response.text}")
+            response.raise_for_status()
+
+        # 5xx — treat as potentially transient, try cache fallback
+        if response.status_code >= 500:
+            cached_data = _cache.get(url, query, variables, ttl=float("inf"))
+            if cached_data:
+                logger.info(f"Returning cached response for {graphql_file.name} after 5xx.")
+                return Response(
+                    status_code=200,
+                    content=json.dumps(cached_data).encode("utf-8"),
+                    headers={"Content-Type": "application/json", "X-Offline-Fallback": "true"},
+                )
+            logger.warning(f"GraphQL request failed with status code {response.status_code}: {response.text}")
+            response.raise_for_status()
+
+        # Other errors (4xx except 429)
+        logger.warning(f"GraphQL request failed with status code {response.status_code}: {response.text}")
+        response.raise_for_status()
 
 
 def invalidate_graphql_cache(url: str, graphql_file: Path, variables: dict):

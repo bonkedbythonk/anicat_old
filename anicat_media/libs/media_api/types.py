@@ -239,6 +239,9 @@ class MediaItem(BaseMediaApiModel):
     # user related
     user_status: Optional[UserListItem] = None
 
+    # Smart Playlist metadata — set by the smart-playlist endpoint
+    playlist_reason: Optional[str] = None
+
 
 class Notification(BaseMediaApiModel):
     """A generic representation of a user notification."""

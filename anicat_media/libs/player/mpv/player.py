@@ -15,6 +15,7 @@ from ....utils.subprocess import run_cmd
 
 from ....core.config import MpvConfig
 from ....core.exceptions import AnicatError
+from ....core.utils import detect
 from ..base import BasePlayer
 from ..params import PlayerParams
 from ..types import PlayerResult

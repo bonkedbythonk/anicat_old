@@ -353,6 +353,10 @@ export const mediaApi = {
       body: branch ? JSON.stringify({ branch }) : undefined
     }),
 
+  // ─── Smart Playlist ───────────────────────────────────
+  getSmartPlaylist: (): Promise<MediaSearchResult> =>
+    fetchFromApi('/media/smart-playlist'),
+
   getHealthStatus: (): Promise<HealthStatus> =>
     fetchFromApi('/status/health'),
     

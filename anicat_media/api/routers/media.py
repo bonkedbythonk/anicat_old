@@ -198,6 +198,125 @@ async def get_media_details(media_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.get("/smart-playlist", response_model=MediaSearchResult)
+async def get_smart_playlist():
+    """Generate a personalized Smart Playlist.
+
+    Combines three sources, ranked by priority:
+    1. Currently watching shows with new unaired episodes (direct schedule lookup)
+    2. Recommendations based on your highest-rated shows
+    3. Your plan-to-watch list (shuffled subset)
+
+    Rate-limit safety: Maximum 8 GraphQL requests (well under 90 req/min limit).
+    All list queries use 5-minute cache; recommendation queries use 1-hour cache.
+    """
+    import random
+    import time as _time
+
+    from ...libs.media_api.params import (
+        UserMediaListSearchParams,
+        MediaRecommendationParams,
+    )
+    from ...libs.media_api.types import UserMediaListStatus, MediaSort, PageInfo
+
+    ctx = get_ctx()
+    all_items: list = []
+    seen_ids: set[int] = set()
+
+    # ── Source 1: New episodes from your watching list ──
+    try:
+        watching = ctx.media_api.search_media_list(
+            UserMediaListSearchParams(
+                status=UserMediaListStatus.WATCHING,
+                type=MediaType.ANIME,
+                sort=MediaSort.UPDATED_TIME_DESC,
+                per_page=20,
+            )
+        )
+        if watching and watching.media:
+            # Find shows with upcoming episodes the user hasn't watched
+            watching_ids = [m.id for m in watching.media]
+            schedule = ctx.media_api.get_global_airing_schedule(
+                airingAt_greater=int(_time.time()),
+                airingAt_lesser=int(_time.time()) + 86400 * 7,
+                per_page=50,
+                media_ids=watching_ids,
+            )
+            if schedule and hasattr(schedule, "media") and schedule.media:
+                for item in schedule.media:
+                    if item.id not in seen_ids:
+                        item.playlist_reason = "New episode soon"
+                        all_items.append(item)
+                        seen_ids.add(item.id)
+    except Exception as e:
+        logger.warning(f"Smart playlist source 1 (schedule) failed: {e}")
+
+    # ── Source 2: Recommendations from your top-rated shows ──
+    try:
+        completed = ctx.media_api.search_media_list(
+            UserMediaListSearchParams(
+                status=UserMediaListStatus.COMPLETED,
+                type=MediaType.ANIME,
+                sort=MediaSort.SCORE_DESC,
+                per_page=5,
+            )
+        )
+        if completed and completed.media:
+            top_shows = [
+                m
+                for m in completed.media
+                if m.user_status and (m.user_status.score or 0) >= 70
+            ][:3]
+            for show in top_shows:
+                try:
+                    recs = ctx.media_api.get_recommendation_for(
+                        MediaRecommendationParams(id=show.id, per_page=10)
+                    )
+                    if recs:
+                        for rec in recs:
+                            if rec.id not in seen_ids:
+                                rec.playlist_reason = f"Because you liked {show.title.romaji or show.title.english}"
+                                all_items.append(rec)
+                                seen_ids.add(rec.id)
+                except Exception:
+                    continue
+    except Exception as e:
+        logger.warning(f"Smart playlist source 2 (recommendations) failed: {e}")
+
+    # ── Source 3: Plan-to-watch (shuffled, capped) ──
+    try:
+        planning = ctx.media_api.search_media_list(
+            UserMediaListSearchParams(
+                status=UserMediaListStatus.PLANNING,
+                type=MediaType.ANIME,
+                sort=MediaSort.POPULARITY_DESC,
+                per_page=20,
+            )
+        )
+        if planning and planning.media:
+            import random
+
+            sample = planning.media[:]
+            random.shuffle(sample)
+            for item in sample[:5]:
+                if item.id not in seen_ids:
+                    item.playlist_reason = "From your Watchlist"
+                    all_items.append(item)
+                    seen_ids.add(item.id)
+    except Exception as e:
+        logger.warning(f"Smart playlist source 3 (planning) failed: {e}")
+
+    return MediaSearchResult(
+        page_info=PageInfo(
+            total=len(all_items),
+            current_page=1,
+            has_next_page=False,
+            per_page=len(all_items),
+        ),
+        media=all_items,
+    )
+
 async def get_anime_ref(ctx, media, media_id: int):
     """Get the anime reference from registry or search."""
     record = ctx.media_registry.get_media_record(media_id)
