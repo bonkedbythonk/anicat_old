@@ -269,7 +269,19 @@ class AnimePahe(BaseAnimeProvider):
             )
             return
 
-        url = f"{ANIMEPAHE_BASE}/play/{params.anime_id}/{episode.session_id}"
+        # Resolve anime_id via search in case the cached ID is stale
+        resolved_id = params.anime_id
+        search_result = self._get_search_result(
+            AnimeParams(id=params.anime_id, query=params.query)
+        )
+        if search_result and search_result.id != params.anime_id:
+            resolved_id = search_result.id
+            logger.info(
+                f"AnimePahe episode_streams using resolved ID "
+                f"'{resolved_id}' instead of cached '{params.anime_id}'"
+            )
+
+        url = f"{ANIMEPAHE_BASE}/play/{resolved_id}/{episode.session_id}"
         response = self.client.get(url, follow_redirects=True)
         response.raise_for_status()
 
