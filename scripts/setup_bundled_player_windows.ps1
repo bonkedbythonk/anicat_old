@@ -1,45 +1,102 @@
 # setup_bundled_player_windows.ps1
 # Automates downloading, extracting, and configuring the portable MPV player for AniCat on Windows.
 #
-# Requires: PowerShell 5.1+, 7z (7-Zip) in PATH
+# Requirements: PowerShell 5.1+, internet access. 7-Zip is auto-installed if missing.
 
 $ErrorActionPreference = "Stop"
 
 $ResourcesDir = "web\src-tauri\resources"
 $ConfigDir = "$ResourcesDir\mpv_config"
 
-Write-Host "=== 1. Locating latest Windows MPV portable build ==="
-
-# Use shinchiro's mpv-winbuild releases (the standard Windows MPV distribution)
-$MpvReleasesUrl = "https://api.github.com/repos/shinchiro/mpv-winbuild/releases/latest"
-
-try {
-    $ReleaseJson = Invoke-RestMethod -Uri $MpvReleasesUrl -TimeoutSec 30
-} catch {
-    Write-Host "GitHub API failed, trying SourceForge fallback..."
-    # Fallback: download from SourceForge
-    $SfUrl = "https://sourceforge.net/projects/mpv-player-windows/files/latest/download"
-    $MpvZip = "$env:TEMP\mpv-windows.7z"
-    Invoke-WebRequest -Uri $SfUrl -OutFile $MpvZip -TimeoutSec 120
-    $UseSourceForge = $true
+# ---------------------------------------------------------------------------
+# Helper: ensure 7-Zip is available (auto-install via Chocolatey on CI)
+# ---------------------------------------------------------------------------
+function Ensure-7Zip {
+    $7zPath = Get-Command 7z -ErrorAction SilentlyContinue
+    if ($7zPath) {
+        Write-Host "7-Zip found at: $($7zPath.Source)"
+        return
+    }
+    # Check common install locations
+    $commonPaths = @(
+        "${env:ProgramFiles}\7-Zip\7z.exe",
+        "${env:ProgramFiles(x86)}\7-Zip\7z.exe"
+    )
+    foreach ($p in $commonPaths) {
+        if (Test-Path $p) {
+            $env:Path += ";$(Split-Path $p)"
+            Write-Host "7-Zip found at: $p"
+            return
+        }
+    }
+    # Try Chocolatey install (works on GitHub Actions Windows runners)
+    Write-Host "7-Zip not found. Attempting Chocolatey install..."
+    $choco = Get-Command choco -ErrorAction SilentlyContinue
+    if ($choco) {
+        choco install 7zip -y --no-progress | Out-Null
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        Write-Host "7-Zip installed via Chocolatey."
+        return
+    }
+    throw "7-Zip is required but not found, and Chocolatey is not available to install it."
 }
 
-if (-not $UseSourceForge) {
-    # Find the 64-bit portable 7z asset
-    $Asset = $ReleaseJson.assets | Where-Object {
-        $_.name -match "mpv-x86_64.*\.7z" -and $_.name -notmatch "installer|setup|symbols|pdbs"
-    } | Select-Object -First 1
+# ---------------------------------------------------------------------------
+# Helper: download the MPV portable 7z archive
+# ---------------------------------------------------------------------------
+function Get-MpvArchive {
+    $MpvZip = "$env:TEMP\mpv-windows.7z"
+    $ghReleaseUrl = "https://api.github.com/repos/shinchiro/mpv-winbuild/releases/latest"
 
-    if (-not $Asset) {
-        Write-Host "ERROR: Could not find a portable MPV 64-bit asset in the release."
-        exit 1
+    # -- Tier 1: GitHub API for latest release --
+    try {
+        Write-Host "Trying GitHub API: $ghReleaseUrl"
+        $ReleaseJson = Invoke-RestMethod -Uri $ghReleaseUrl -TimeoutSec 30 -ErrorAction Stop
+        $Asset = $ReleaseJson.assets | Where-Object {
+            $_.name -match "mpv-x86_64.*\.7z" -and $_.name -notmatch "installer|setup|symbols|pdbs"
+        } | Select-Object -First 1
+        if ($Asset) {
+            Write-Host "Found: $($Asset.name) ($('{0:N0}' -f $Asset.size) bytes)"
+            Write-Host "Downloading..."
+            Invoke-WebRequest -Uri $Asset.browser_download_url -OutFile $MpvZip -TimeoutSec 180
+            return $MpvZip
+        }
+        Write-Host "GitHub API succeeded but no matching 64-bit portable .7z asset found."
+    } catch {
+        Write-Host "GitHub API failed: $_"
     }
 
-    Write-Host "Found: $($Asset.name) ($($Asset.size) bytes)"
-    Write-Host "=== 2. Downloading portable MPV ==="
-    $MpvZip = "$env:TEMP\mpv-windows.7z"
-    Invoke-WebRequest -Uri $Asset.browser_download_url -OutFile $MpvZip -TimeoutSec 120
+    # -- Tier 2: Direct download from a known good release (pinned fallback) --
+    $fallbackUrl = "https://github.com/shinchiro/mpv-winbuild/releases/download/2025-03-23-release/mpv-x86_64-20250323.7z"
+    Write-Host "Trying fallback URL: $fallbackUrl"
+    try {
+        Invoke-WebRequest -Uri $fallbackUrl -OutFile $MpvZip -TimeoutSec 180 -ErrorAction Stop
+        Write-Host "Fallback download complete."
+        return $MpvZip
+    } catch {
+        throw "All download methods failed. Last error: $_"
+    }
 }
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+Write-Host "=== 1. Ensuring 7-Zip is available ==="
+Ensure-7Zip
+
+Write-Host "=== 2. Downloading Windows MPV portable build ==="
+$MpvZip = Get-MpvArchive
+
+# Validate the downloaded archive
+if (-not (Test-Path $MpvZip)) {
+    throw "Downloaded MPV archive not found at: $MpvZip"
+}
+$fileInfo = Get-Item $MpvZip
+if ($fileInfo.Length -lt 1000000) {
+    throw "Downloaded MPV archive is too small ($($fileInfo.Length) bytes) — likely a redirect page or error, not a valid archive."
+}
+Write-Host "Archive size: $('{0:N0}' -f $fileInfo.Length) bytes"
 
 Write-Host "=== 3. Creating resources directory and extracting MPV ==="
 New-Item -ItemType Directory -Force -Path $ResourcesDir | Out-Null
@@ -48,18 +105,25 @@ $TmpExtract = "$env:TEMP\mpv_extract"
 Remove-Item -Recurse -Force $TmpExtract -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $TmpExtract | Out-Null
 
-# Extract with 7-Zip
-& 7z x "$MpvZip" -o"$TmpExtract" -y | Out-Null
+# Extract with 7-Zip (capture output for debugging)
+$extractOutput = & 7z x "$MpvZip" -o"$TmpExtract" -y 2>&1
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "7z extraction output:"
+    Write-Host ($extractOutput -join "`n")
+    throw "7-Zip extraction failed with exit code $LASTEXITCODE"
+}
+Write-Host "Extraction successful."
 
-# Find the extracted mpv directory (it'll be something like "mpv-x86_64-20250101")
+# Find the extracted mpv directory (named like "mpv-x86_64-YYYYMMDD")
 $MpvDir = Get-ChildItem -Path $TmpExtract -Directory | Select-Object -First 1
 if (-not $MpvDir) {
-    Write-Host "ERROR: Could not find extracted MPV directory."
-    exit 1
+    Write-Host "Contents of extract directory:"
+    Get-ChildItem -Path $TmpExtract | ForEach-Object { Write-Host "  $($_.Name)" }
+    throw "Could not find extracted MPV directory inside $TmpExtract"
 }
+Write-Host "Extracted MPV directory: $($MpvDir.Name)"
 
 Write-Host "Copying MPV binary and libraries..."
-# Copy mpv.exe and all DLLs
 Copy-Item "$($MpvDir.FullName)\mpv.exe" -Destination "$ResourcesDir\mpv.exe" -Force
 Get-ChildItem "$($MpvDir.FullName)\*.dll" | ForEach-Object {
     Copy-Item $_.FullName -Destination "$ResourcesDir\" -Force
