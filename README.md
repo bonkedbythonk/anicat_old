@@ -86,12 +86,5 @@ _TODO: Add screenshots showing the search view, episode list, player, and settin
 Anicat is for educational and personal use only. See [DISCLAIMER.md](DISCLAIMER.md) and [SECURITY.md](SECURITY.md).
 
 ## License
-MIT
 
----
-
-## Legal
-Anicat is for educational and personal use only. See [DISCLAIMER.md](DISCLAIMER.md) and [SECURITY.md](SECURITY.md).
-
-## License
-MIT
+[MIT](LICENSE)

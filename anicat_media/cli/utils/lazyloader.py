@@ -3,36 +3,30 @@ import importlib
 import click
 
 
-# TODO: since command structure is pretty obvious default to only requiring  mapping of command names to their function name(cause some have special names like import)
 class LazyGroup(click.Group):
-    def __init__(self, root: str, *args, lazy_subcommands=None, **kwargs):
+    """Click Group that lazily imports subcommands only when needed."""
+
+    def __init__(self, root: str, *args, lazy_subcommands=None, hidden_commands=None, **kwargs):
         super().__init__(*args, **kwargs)
-        # lazy_subcommands is a map of the form:
-        #
-        #   {command-name} -> {module-name}.{command-object-name}
-        #
         self.root = root
         self.lazy_subcommands = lazy_subcommands or {}
+        self._hidden_commands = set(hidden_commands or [])
 
     def list_commands(self, ctx):
         base = super().list_commands(ctx)
         lazy = sorted(self.lazy_subcommands.keys())
-        return base + lazy
+        return [c for c in base + lazy if c not in self._hidden_commands]
 
-    def get_command(self, ctx, cmd_name):  # pyright:ignore
+    def get_command(self, ctx, cmd_name):
         if cmd_name in self.lazy_subcommands:
             return self._lazy_load(cmd_name)
         return super().get_command(ctx, cmd_name)
 
     def _lazy_load(self, cmd_name: str):
-        # lazily loading a command, first get the module name and attribute name
-        import_path: str = self.lazy_subcommands[cmd_name]
+        import_path = self.lazy_subcommands[cmd_name]
         modname, cmd_object_name = import_path.rsplit(".", 1)
-        # do the import
         mod = importlib.import_module(f".{modname}", package=self.root)
-        # get the Command object from that module
         cmd_object = getattr(mod, cmd_object_name)
-        # check the result to make debugging easier
         if not isinstance(cmd_object, click.Command):
             raise ValueError(
                 f"Lazy loading of {import_path} failed by returning "

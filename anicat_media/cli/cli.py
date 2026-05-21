@@ -53,6 +53,10 @@ commands = {
     root="anicat_media.cli.commands",
     invoke_without_command=True,
     lazy_subcommands=commands,
+    hidden_commands=[
+        "completed", "dashboard", "download", "downloads", "list",
+        "login", "notifications", "planning", "profile", "settings", "status",
+    ],
     context_settings=dict(auto_envvar_prefix=CLI_NAME),
 )
 @click.version_option(__version__, "--version")
@@ -78,14 +82,16 @@ commands = {
 @click.pass_context
 def cli(ctx: click.Context, **options: "Unpack[Options]"):
     """
-    Watch, track, and download anime & manga from your terminal.
+    Anicat — watch, track, and download anime & manga.
 
-    Quick start:
-      anicat                              Home — what to watch next
+    Just type [bold]anicat[/bold] to open the full interactive menu.
+    Everything from search to streaming to progress tracking is there.
+
+    Quick shortcuts (for when you know what you want):
       anicat search -t "Attack on Titan"  Search and stream
-      anicat watching                     See what you're watching
+      anicat watching                     What you're currently watching
       anicat schedule                     Upcoming episodes
-      anicat discover                     Smart recommendations
+      anicat discover                     Personalized recommendations
     """
     setup_logging(options["log"])
     setup_exceptions_handler(
