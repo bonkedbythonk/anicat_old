@@ -1,62 +1,63 @@
 # Anicat
 
-![Anicat Desktop](assets/branding/dashboard.png)
-
-**Premium Anime & Manga Experience for macOS.**
-
-Anicat is a high-performance, native media hub for searching, streaming, and tracking anime and manga. Features a full macOS desktop app (Tauri) and a blazing-fast terminal CLI.
+**A simple way to watch and track anime on your Mac.**
 
 ---
 
-## Getting Started
+## How to Install
 
-### 1. The Native macOS App (Recommended)
-Sits in your Dock, manages the background server, looks native.
+### 1. Open Terminal
 
-#### Easy Installation
+Terminal is an app that lets you install things with a text command.
+
+- Press **Command + Space** on your keyboard
+- Type **Terminal**
+- Press **Enter**
+
+The Terminal app will open — it's a black or white window where you can type commands.
+
+### 2. Copy and paste this one command
+
+Click inside the Terminal window, then paste (Command + V) this line:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/master/scripts/install_macos.sh | bash
 ```
 
-#### Nightly Build
-```bash
-curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/master/scripts/install_macos.sh | sed 's/releases\/latest/releases\/tags\/nightly/g' | bash
-```
+Then press **Enter**. The installer will download and set up everything automatically.
 
-#### Manual Installation
-Download the `.dmg` from [Releases](https://github.com/bonkedbythonk/anicat/releases), mount it, drag to `/Applications`.
+> **What this does:** It downloads the latest version of Anicat from GitHub, moves it to your Applications folder, and sets it up so it works properly on your Mac.
+
+### 3. Open Anicat
+
+After the install finishes:
+
+1. Open your **Applications** folder (Finder > Applications)
+2. Double-click **Anicat**
+3. If Mac shows a warning, click **Open** (it's safe — the app is just not from the App Store)
+
+That's it! Anicat will start and you can search for anime right away.
 
 ---
 
-### 2. The CLI / Terminal (One Command)
-Install the `anicat` CLI command globally — works on macOS, Linux, Windows:
+### For People Who Know Computers (CLI Version)
+
+If you're comfortable with the terminal, you can install just the command-line version:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/master/scripts/install_cli.sh | bash
 ```
-After installation, `anicat` is available everywhere. Runs all 16 commands for streaming, tracking, downloading, and discovery. The installer automatically installs `uv` if needed.
 
----
-
-### 3. Playback Options
-
-**Built-in Player:** Works out of the box in the GUI app.
-
-**MPV Companion (Bundled):** The macOS installer bundles MPV with the ModernZ skin, Anime4K upscaling shaders, and Outfit typography — zero configuration. The in-app player includes skip-intro/outro overlay with auto-skip support from AniSkip crowdsourced timings.
-
+Then use commands like `anicat search -t "Attack on Titan"` to stream from the terminal.
 
 ---
 
 ## Features
-- **AniList Sync** — Real-time progress tracking for anime and manga
-- **Smart Playlist** — Personalized recommendations from your watching list
-- **Smart Scrapers** — AnimePahe, AniZone, GogoAnime, HiAnime providers with automatic fallback
-- **One-Click Updates** — In-app update mechanism, no terminal needed
-- **Persistent Background Engine** — Dedicated sidecar keeps the server alive
-- **Real-Time Data Sync** — Instant UI updates via TanStack Query + data_version polling
-- **Airing Schedules** — Live countdowns for currently releasing series
-- **Rate-Limited API Client** — Automatic 700ms throttling and 429 backoff for AniList GraphQL
-- **Terminal TUI** — Full interactive browser (`anicat anilist`) with FZF, image previews
-- **macOS Native** — Tauri v2, title bar overlay, traffic-light buttons
+- **AniList Sync** — Your watch progress syncs automatically
+- **Built-in Player** — Watch right inside the app, nothing else to install
+- **Skip Intro** — Automatically skip openings and endings
+- **One-Click Updates** — Update the app from Settings > Maintenance
+- **Terminal Version** — Also works as a command-line app for power users
 
 ---
 
