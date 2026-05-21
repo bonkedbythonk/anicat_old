@@ -518,11 +518,34 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
             _cached_update_available = False
 
             if result.returncode == 0:
+                # Check if frontend files changed — skip rebuild if not
+                frontend_changed = False
+                try:
+                    diff_result = subprocess.run(
+                        ["git", "diff", "--name-only", "@{1}.."],
+                        cwd=repo_root, capture_output=True, text=True, timeout=10
+                    )
+                    changed = diff_result.stdout.strip().split("\n") if diff_result.stdout.strip() else []
+                    frontend_changed = any(f.startswith("web/") or f.startswith("src-tauri/") or f == "package.json" for f in changed)
+                except Exception:
+                    frontend_changed = True  # safer to rebuild if we can't check
+
                 install_script = os.path.join(repo_root, "scripts", "install.sh")
-                if os.path.exists(install_script):
-                    subprocess.Popen(["bash", install_script, "--no-launch"], cwd=repo_root, start_new_session=True)
+                if frontend_changed and os.path.exists(install_script):
+                    subprocess.Popen(
+                        ["bash", install_script, "--no-launch"],
+                        cwd=repo_root, start_new_session=True
+                    )
                     return {"status": "success", "message": f"Update in progress (Git branch {target_branch}). Rebuilding frontend..."}
-                return {"status": "success", "message": f"Updated successfully (Git branch {target_branch} code only)."}
+                elif frontend_changed:
+                    return {"status": "success", "message": f"Frontend changed but no install.sh found. Please rebuild manually."}
+                else:
+                    # No frontend changes — just restart the backend process
+                    subprocess.Popen(
+                        ["bash", "-c", "sleep 2 && lsof -ti :13370 | xargs kill -HUP 2>/dev/null"],
+                        start_new_session=True
+                    )
+                    return {"status": "success", "message": f"Updated (Git branch {target_branch}). Backend will restart momentarily."}
             else:
                 return {"status": "error", "message": f"Git pull failed: {result.stderr.strip() or result.stdout.strip()}"}
 
@@ -538,12 +561,13 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
 
             if os.path.exists(local_script):
                 logger.info(f"[UPDATE] Running local installer script: {local_script}")
-                subprocess.Popen(
-                    ["bash", local_script],
-                    start_new_session=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
-                )
+                with open(LOG_FILE, "a") as log:
+                    subprocess.Popen(
+                        ["bash", local_script],
+                        start_new_session=True,
+                        stdout=log,
+                        stderr=subprocess.STDOUT,
+                    )
             else:
                 subprocess.Popen(
                     f"curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/{branch_name}/scripts/install_macos.sh | bash",

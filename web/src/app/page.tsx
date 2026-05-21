@@ -140,8 +140,7 @@ export default function App() {
                 updateOverlayTimeoutRef.current = setTimeout(() => {
                   setActiveUpdateOverlay(null);
                   updateOverlayTimeoutRef.current = null;
-                }, 120000);
-              }
+                }, 300000); // 5 min — matches backend stale-file cleanup
             }}
           />
         );
@@ -229,8 +228,10 @@ export default function App() {
 
   // Show a friendly "Updating..." screen when the background process restarts
   // during an update, instead of the scary "Connection Failed" error.
-  // Auto-dismiss if the flag has been stuck for >2 minutes (update likely failed).
-  const isUpdatingStale = updateStartedAtRef.current && (Date.now() - updateStartedAtRef.current) > 120000;
+  // Auto-dismiss if the flag has been stuck for >5 minutes (backend cleans up
+  // stale flags after 5 min).
+  const UPDATING_STALE_TIMEOUT = 300000; // 5 minutes
+  const isUpdatingStale = updateStartedAtRef.current && (Date.now() - updateStartedAtRef.current) > UPDATING_STALE_TIMEOUT;
   if (isUpdatingStale) {
     updateDismissedRef.current = true;
   }
@@ -249,14 +250,14 @@ export default function App() {
               Updating Anicat...
             </h2>
             <p className="text-sm text-gray-400 leading-relaxed px-4">
-              Installing the latest version. This will only take a few moments.
+              Downloading the latest version. This may take a few minutes depending on your connection speed.
             </p>
           </div>
           <div className="w-48 mx-auto h-1.5 bg-white/[0.04] border border-white/[0.08] rounded-full overflow-hidden">
             <div className="h-full bg-accent rounded-full animate-pulse" style={{ width: '60%' }} />
           </div>
           <p className="text-[11px] text-gray-500 font-medium">
-            Anicat will restart automatically when ready.
+            The app will restart automatically when ready.
           </p>
         </div>
       </div>

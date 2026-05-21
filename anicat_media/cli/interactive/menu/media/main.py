@@ -461,21 +461,48 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
 
             from InquirerPy import inquirer
             if inquirer.confirm(message="Would you like to update Anicat now?", default=True).execute():  # type: ignore
-                console.print("\n[bold cyan]Updating Anicat... This will take a moment.[/]")
+                console.print("\n[bold cyan]Updating Anicat...[/]")
                 import subprocess
                 import sys
+                from datetime import datetime
                 try:
-                    # Run the update command
-                    subprocess.run(["uv", "tool", "install", "--force", "git+https://github.com/bonkedbythonk/anicat.git"], check=True)
-                    
+                    start = datetime.now()
+                    with console.status("[bold cyan]Downloading and installing latest version...[/]") as status:
+                        proc = subprocess.Popen(
+                            ["uv", "tool", "install", "--force", "git+https://github.com/bonkedbythonk/anicat.git"],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                        )
+                        # Show output lines in status while respecting a 5-minute timeout
+                        line_count = 0
+                        for line in proc.stdout or []:
+                            line = line.strip()
+                            if line and line_count % 10 == 0:
+                                # Show short excerpts to indicate progress
+                                short = line[:80] + ("..." if len(line) > 80 else "")
+                                status.update(f"[dim]{short}[/]")
+                            line_count += 1
+                        proc.wait(timeout=300)
+
+                    elapsed = int((datetime.now() - start).total_seconds())
+
+                    if proc.returncode != 0:
+                        raise RuntimeError(f"uv tool install failed with exit code {proc.returncode}")
+
                     # Update local hash and clear status to prevent update loop
                     if ctx.updater.remote_hash:
                         LAST_COMMIT_FILE.write_text(ctx.updater.remote_hash, encoding="utf-8")
                         UPDATE_STATUS_FILE.write_text("0", encoding="utf-8")
                         logger.info(f"Updated local hash to {ctx.updater.remote_hash}")
 
-                    console.print("\n[bold green]Anicat has been updated! Please restart the app to apply changes.[/]")
+                    console.print(f"\n[bold green]Anicat has been updated in {elapsed}s! Please restart the app to apply changes.[/]")
                     sys.exit(0)
+                except subprocess.TimeoutExpired:
+                    console.print("\n[bold red]Update timed out after 5 minutes.[/bold red]")
+                    console.print("The download or build may be taking longer than expected.")
+                    console.print("Try upgrading manually with:\n[bold yellow]uv tool install --force git+https://github.com/bonkedbythonk/anicat.git[/bold yellow]")
+                    feedback.pause_for_user("return to menu")
                 except Exception as e:
                     error_panel = Panel(
                         f"[bold red]Update Failed![/bold red]\n\n{e}\n\nPlease try running the command manually:\n[bold yellow]uv tool install --force git+https://github.com/bonkedbythonk/anicat.git[/bold yellow]",
