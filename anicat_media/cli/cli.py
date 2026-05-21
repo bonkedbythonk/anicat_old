@@ -32,9 +32,13 @@ logger = logging.getLogger(__name__)
 commands = {
     "search": "search.search",
     "discover": "extra.discover",
+    "home": "home.home",
+    "manga": "home.manga",
+    "library": "home.library",
     "watching": "home.watching",
     "planning": "home.planning",
     "completed": "home.completed",
+    "lists": "list_cmd.list",
     "list": "list_cmd.list",
     "schedule": "home.schedule",
     "profile": "home.profile",
@@ -54,8 +58,7 @@ commands = {
     invoke_without_command=True,
     lazy_subcommands=commands,
     hidden_commands=[
-        "completed", "dashboard", "download", "downloads", "list",
-        "login", "notifications", "planning", "profile", "settings", "status",
+        "dashboard", "download", "list", "status",
     ],
     context_settings=dict(auto_envvar_prefix=CLI_NAME),
 )
@@ -84,14 +87,15 @@ def cli(ctx: click.Context, **options: "Unpack[Options]"):
     """
     Anicat — watch, track, and download anime & manga.
 
-    Just type [bold]anicat[/bold] to open the full interactive menu.
-    Everything from search to streaming to progress tracking is there.
+    Run [bold]anicat[/bold] to see what to watch next.
 
-    Quick shortcuts (for when you know what you want):
-      anicat search -t "Attack on Titan"  Search and stream
-      anicat watching                     What you're currently watching
-      anicat schedule                     Upcoming episodes
-      anicat discover                     Personalized recommendations
+    Quick shortcuts:
+      anicat search <query>       Search and stream
+      anicat watching             Currently watching
+      anicat schedule             Upcoming episodes
+      anicat manga                Trending & popular manga
+      anicat lists                View your lists
+      anicat settings             Open configuration
     """
     setup_logging(options["log"])
     setup_exceptions_handler(
@@ -132,6 +136,6 @@ def cli(ctx: click.Context, **options: "Unpack[Options]"):
 
 
     if ctx.invoked_subcommand is None:
-        from .commands.anilist import cmd
+        from .commands.home import home  # noqa: PLC0415
 
-        ctx.invoke(cmd.anilist)
+        ctx.invoke(home)

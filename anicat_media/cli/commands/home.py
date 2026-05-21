@@ -177,7 +177,58 @@ def completed(config: AppConfig, type: str):
     display_list(data, "Completed")
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────
+# ── Manga ──────────────────────────────────────────────────────────────────
+
+@click.command(short_help="Trending & popular manga")
+@click.pass_obj
+def manga(config: AppConfig):
+    """Manga homepage — trending, popular, and currently reading."""
+    with console.status("Loading manga data..."):
+        trending = _api_get(f"{LOCAL_API_ORIGIN}/api/media/trending?type=MANGA&per_page=5")
+        reading = _api_get(f"{LOCAL_API_ORIGIN}/api/user/list?status=watching&type=MANGA")
+
+    console.print("[bold cyan]Manga[/bold cyan]\n")
+
+    if reading and reading.get("media"):
+        table = Table(title="Currently Reading", show_header=True, header_style="bold")
+        table.add_column("Title")
+        table.add_column("Progress", justify="right")
+        table.add_column("Score", justify="right")
+        for item in reading["media"][:5]:
+            title = (item.get("title", {}).get("romaji") or
+                     item.get("title", {}).get("english") or "?")
+            prog = item.get("user_status", {}).get("progress", 0)
+            total = item.get("chapters", "?")
+            score = item.get("user_status", {}).get("score", "-")
+            table.add_row(title, f"{prog}/{total}", str(score))
+        console.print(table)
+        console.print()
+
+    if trending and trending.get("media"):
+        table = Table(title="Trending Manga", show_header=True, header_style="bold")
+        table.add_column("#", style="dim", width=2)
+        table.add_column("Title")
+        table.add_column("Score", justify="right")
+        for i, item in enumerate(trending["media"][:5], 1):
+            title = (item.get("title", {}).get("romaji") or
+                     item.get("title", {}).get("english") or "?")
+            score = item.get("average_score", "?")
+            table.add_row(str(i), title, f"{score}%")
+        console.print(table)
+
+    console.print("\n[dim]anicat search -t MANGA <title>  |  anicat lists[/dim]")
+
+
+# ── Library ────────────────────────────────────────────────────────────────
+
+@click.command(short_help="Your completed library")
+@click.option("--type", "-t", default="ANIME", help="ANIME or MANGA")
+@click.option("--page", "-p", default=1, help="Page number")
+@click.pass_obj
+def library(config: AppConfig, type: str, page: int):
+    """Browse your completed anime/manga library."""
+    data = _api_get(f"{LOCAL_API_ORIGIN}/api/user/list?status=completed&type={type}&page={page}")
+    display_list(data, f"{type} Library")
 
 def _api_get(url: str):
     """Fetch JSON from the local API."""
