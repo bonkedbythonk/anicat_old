@@ -2,7 +2,7 @@
 
 ![Anicat Desktop](assets/branding/dashboard.png)
 
-**Premium Anime & Manga Experience for macOS.** v4.10.1
+**Premium Anime & Manga Experience for macOS.**
 
 Anicat is a high-performance, native media hub for searching, streaming, and tracking anime and manga. Features a full macOS desktop app (Tauri) and a blazing-fast terminal CLI.
 
