@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { X, Play, Pause, RotateCcw, Volume2, VolumeX, Maximize, Minimize, Loader2, ArrowRight, Video, PictureInPicture2 } from "lucide-react";
 import { API_BASE_ORIGIN, mediaApi } from "@/lib/api";
+import { dispatchRefresh } from "@/lib/events";
 
 interface AnimePlayerProps {
   mediaId: number;
@@ -350,8 +351,12 @@ export default function AnimePlayer({
       if (video && video.duration) {
         mediaApi.trackPlayback(mediaId, episodeNumber, video.currentTime, video.duration)
           .then(res => {
-            if (res.completed && onEpisodeCompleted) {
-              onEpisodeCompleted(episodeNumber);
+            if (res.completed) {
+              // Immediately refresh all views so Home page shows updated progress
+              dispatchRefresh();
+              if (onEpisodeCompleted) {
+                onEpisodeCompleted(episodeNumber);
+              }
               const isFinal = totalEpisodes ? parseInt(episodeNumber, 10) === totalEpisodes : !hasNextEpisode;
               if (isFinal) {
                 setIsPlaying(false);
@@ -710,6 +715,8 @@ export default function AnimePlayer({
                 if (onEpisodeCompleted) {
                   onEpisodeCompleted(episodeNumber);
                 }
+                // Immediately refresh views after episode ends
+                dispatchRefresh();
                 const isFinal = totalEpisodes ? parseInt(episodeNumber, 10) === totalEpisodes : !hasNextEpisode;
                 if (isFinal) {
                   setShowRatingModal(true);
@@ -996,6 +1003,7 @@ export default function AnimePlayer({
                   setIsSubmittingRating(true);
                   try {
                     await mediaApi.updateStatus(mediaId, "completed", userRating);
+                    dispatchRefresh();
                     setRatingSuccess(true);
                     setTimeout(() => {
                       setIsSubmittingRating(false);
@@ -1004,6 +1012,7 @@ export default function AnimePlayer({
                     }, 1200);
                   } catch (e) {
                     console.error("Failed to submit rating:", e);
+                    dispatchRefresh();
                     setIsSubmittingRating(false);
                     alert("Failed to submit rating. List entry updated without score.");
                     setShowRatingModal(false);
@@ -1025,6 +1034,7 @@ export default function AnimePlayer({
 
               <button
                 onClick={() => {
+                  dispatchRefresh();
                   setShowRatingModal(false);
                   handleClose();
                 }}

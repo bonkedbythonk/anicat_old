@@ -11,7 +11,30 @@ interface HomeViewProps {
   onSelect: (item: MediaItem) => void;
 }
 
-// Premium animated shimmer skeleton loader for lazy-loaded media rows
+// Returns true if the user has watched all available episodes for a media item.
+function isCaughtUp(item: MediaItem): boolean {
+  const progress = item.user_status?.progress || 0;
+  if (progress === 0) return false;
+
+  // If airing, compare against the latest aired episode
+  if (item.next_airing?.episode) {
+    return progress >= item.next_airing.episode - 1;
+  }
+
+  // If episodes count is known, compare directly
+  if (item.episodes || item.chapters) {
+    return progress >= (item.episodes || item.chapters || 0);
+  }
+
+  // Unknown episode count and not airing — treat finished media as caught up
+  if (item.status === 'FINISHED') {
+    return progress > 0;
+  }
+
+  // Unknown total and still airing/releasing — can't determine, show it
+  return false;
+}
+
 function MediaRowSkeleton({ title }: { title: string }) {
   return (
     <div className="space-y-4 animate-pulse px-1">
@@ -71,13 +94,14 @@ export default function HomeView({ onSelect }: HomeViewProps) {
   });
 
   // 5. Continue Watching = local watch history filtered to only shows
-  //    currently on the user's AniList watching/repeating list
+  //    currently on the user's AniList watching/repeating list, EXCLUDING
+  //    items the user has caught up on.
   const continueWatchingList = useMemo(() => {
     const recent = recentlyWatchedQuery.data?.media || [];
     const watching = watchingQuery.data?.media || [];
     // Build a set of watching media IDs for fast lookup
     const watchingIds = new Set(watching.map((m) => m.id));
-    return recent.filter((m) => watchingIds.has(m.id));
+    return recent.filter((m) => watchingIds.has(m.id) && !isCaughtUp(m));
   }, [recentlyWatchedQuery.data, watchingQuery.data]);
 
   // 6. "New for You" — based on AniList watching list + schedule
@@ -121,29 +145,13 @@ export default function HomeView({ onSelect }: HomeViewProps) {
   const candidateHeroItem = useMemo(() => {
     // First: pick the most recently watched item that is still in progress
     if (continueWatchingList.length > 0) {
-      const inProgress = continueWatchingList.filter((item) => {
-        const progress = item.user_status?.progress || 0;
-        const total = item.episodes || 0;
-        if (item.next_airing) {
-          return progress < item.next_airing.episode - 1;
-        }
-        return total > 0 ? progress < total : true;
-      });
-      if (inProgress.length > 0) return inProgress[0];
+      return continueWatchingList[0];
     }
 
     // Second: fall back to AniList watching list (first in-progress item)
     if (watchingMedia.length > 0) {
-      const availableToWatch = watchingMedia.filter((item) => {
-        const progress = item.user_status?.progress || 0;
-        const total = item.episodes || 0;
-        if (item.next_airing) {
-          return progress < item.next_airing.episode - 1;
-        }
-        return total > 0 ? progress < total : true;
-      });
-      const pool = availableToWatch.length > 0 ? availableToWatch : watchingMedia;
-      return pool[0];
+      const availableToWatch = watchingMedia.filter((item) => !isCaughtUp(item));
+      if (availableToWatch.length > 0) return availableToWatch[0];
     }
 
     // Third: trending
@@ -153,7 +161,7 @@ export default function HomeView({ onSelect }: HomeViewProps) {
     return null;
   }, [continueWatchingList, watchingMedia, trendingQuery.data]);
 
-  // Stabilize hero: only swap when the identity actually changes, preventing flicker
+  // Stable hero reference to prevent flicker on re-fetch
   const stableHeroRef = useRef<MediaItem | null>(candidateHeroItem);
   const heroItem = useMemo(() => {
     const prev = stableHeroRef.current;
