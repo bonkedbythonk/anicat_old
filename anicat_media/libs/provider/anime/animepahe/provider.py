@@ -146,6 +146,15 @@ class AnimePahe(BaseAnimeProvider):
                 year="Unknown"
             )
 
+        # Use the resolved ID from search results — the cached ID may be
+        # stale if the anime was re-indexed on AnimePahe.
+        lookup_id = search_result.id
+        if lookup_id != params.id:
+            logger.info(
+                f"AnimePahe using resolved ID '{lookup_id}' "
+                f"instead of cached '{params.id}'"
+            )
+
         anime: Optional[AnimePaheAnimePage] = None
 
         has_next_page = True
@@ -153,7 +162,7 @@ class AnimePahe(BaseAnimeProvider):
             logger.debug(f"Loading page: {page}")
             _anime_page = self._anime_page_loader(
                 m="release",
-                id=params.id,
+                id=lookup_id,
                 sort="episode_asc",
                 page=page,
             )
@@ -180,11 +189,18 @@ class AnimePahe(BaseAnimeProvider):
     @lru_cache()
     def _get_search_result(self, params: AnimeParams) -> Optional[SearchResult]:
         from anicat_media.core.utils.normalizer import normalize_title
-        
+
+        # Collect the first result from any search as a fallback in case
+        # none of the results match the cached ID (anime may have been
+        # re-indexed on AnimePahe with a different ID).
+        first_result: Optional[SearchResult] = None
+
         # Try 1: Normalized query
         normalized_query = normalize_title(params.query, "animepahe", True)
         search_results = self._search(SearchParams(query=normalized_query))
         if search_results and search_results.results:
+            if first_result is None:
+                first_result = search_results.results[0]
             for search_result in search_results.results:
                 if search_result.id == params.id:
                     return search_result
@@ -195,6 +211,8 @@ class AnimePahe(BaseAnimeProvider):
             simplified_query = " ".join(words[:4])
             search_results = self._search(SearchParams(query=simplified_query))
             if search_results and search_results.results:
+                if first_result is None:
+                    first_result = search_results.results[0]
                 for search_result in search_results.results:
                     if search_result.id == params.id:
                         return search_result
@@ -202,11 +220,26 @@ class AnimePahe(BaseAnimeProvider):
         # Try 3: Original raw query
         search_results = self._search(SearchParams(query=params.query))
         if search_results and search_results.results:
+            if first_result is None:
+                first_result = search_results.results[0]
             for search_result in search_results.results:
                 if search_result.id == params.id:
                     return search_result
 
-        logger.error(f"No search results matched ID {params.id} for query '{params.query}'")
+        # No exact ID match — if any search returned results, use the first
+        # one. The anime may have been re-indexed on AnimePahe with a new ID.
+        if first_result is not None:
+            logger.warning(
+                f"AnimePahe ID mismatch: cached '{params.id}' not found in "
+                f"search results. Using first search result '{first_result.id}' "
+                f"for query '{params.query}'"
+            )
+            return first_result
+
+        logger.error(
+            f"No search results at all for ID {params.id} "
+            f"with query '{params.query}'"
+        )
         return None
 
     @lru_cache()
