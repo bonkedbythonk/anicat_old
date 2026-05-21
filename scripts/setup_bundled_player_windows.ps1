@@ -234,8 +234,8 @@ if (-not (Test-Path "$ConfigDir\script-opts\modernz.conf")) {
 }
 
 Write-Host "=== Cleaning up temporary files ==="
-Remove-Item -Recurse -Force $TmpExtract -ErrorAction SilentlyContinue
-Remove-Item -Force $MpvZip -ErrorAction SilentlyContinue
+# No global temp files to clean — Chocolatey/Winget handle their own cleanup,
+# and the SourceForge path cleans up $tmpZip locally.
 
 Write-Host ""
 Write-Host "=== Bundle Setup Complete! ==="
