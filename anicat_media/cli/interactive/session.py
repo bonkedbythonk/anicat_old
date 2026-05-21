@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from ..service.player import PlayerService
     from ..service.registry import MediaRegistryService
     from ..service.session import SessionsService
+    from ..service.updater.service import UpdaterService
     from ..service.watch_history import WatchHistoryService
 
 logger = logging.getLogger(__name__)
@@ -97,6 +98,7 @@ class Context:
     _session: Optional["SessionsService"] = None
     _auth: Optional["AuthService"] = None
     _player: Optional["PlayerService"] = None
+    _updater: Optional["UpdaterService"] = None
 
     data_version: int = 0
     is_offline: bool = False
@@ -298,6 +300,15 @@ class Context:
 
             self._auth = AuthService(self.config.general.media_api)
         return self._auth
+
+
+    @property
+    def updater(self) -> "UpdaterService":
+        if not self._updater:
+            from ..service.updater.service import UpdaterService
+
+            self._updater = UpdaterService(self.config)
+        return self._updater
 
 
 MenuFunction = Callable[[Context, State], Union[State, InternalDirective]]
