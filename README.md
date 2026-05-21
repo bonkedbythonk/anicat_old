@@ -33,22 +33,7 @@ Install the `anicat` CLI command globally — works on macOS, Linux, Windows:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/master/scripts/install_cli.sh | bash
 ```
-After installation, `anicat` is available everywhere. Requires `uv` or `pip3`.
-
-**16 CLI Commands:**
-| Command | Description |
-|---------|-------------|
-| `anicat search -t <title>` | Search and stream anime |
-| `anicat binge -t <title>` | Binge all episodes |
-| `anicat discover` | Smart Playlist recommendations |
-| `anicat details <id>` | View anime details |
-| `anicat track <id> -e 5 -s watching` | Track watch progress |
-| `anicat status` | Check server health |
-| `anicat anilist search` | Rich interactive browser (TUI) |
-| `anicat download` | Batch download episodes |
-| `anicat config` | Edit/view configuration |
-| `anicat queue list` | Manage download queue |
-| `anicat dashboard` | Launch the GUI from terminal |
+After installation, `anicat` is available everywhere. Runs all 16 commands for streaming, tracking, downloading, and discovery. The installer automatically installs `uv` if needed.
 
 ---
 
@@ -56,7 +41,8 @@ After installation, `anicat` is available everywhere. Requires `uv` or `pip3`.
 
 **Built-in Player:** Works out of the box in the GUI app.
 
-**MPV Companion (Bundled):** The macOS installer bundles MPV with the ModernZ skin, Anime4K upscaling shaders, skip-intro overlay, and Outfit typography — zero configuration.
+**MPV Companion (Bundled):** The macOS installer bundles MPV with the ModernZ skin, Anime4K upscaling shaders, and Outfit typography — zero configuration. The in-app player includes skip-intro/outro overlay with auto-skip support from AniSkip crowdsourced timings.
+
 
 ---
 
