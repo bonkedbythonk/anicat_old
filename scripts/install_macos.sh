@@ -3,10 +3,28 @@ set -e
 
 # Anicat Easy macOS Installer
 # This script downloads the latest release from GitHub, installs it, and bypasses Gatekeeper.
+#
+# Options:
+#   --cli-only    Install the CLI version only (no GUI app)
 
 REPO="bonkedbythonk/anicat"
 APP_NAME="Anicat.app"
 INSTALL_PATH="/Applications/$APP_NAME"
+
+# Parse options
+CLI_ONLY=false
+for arg in "$@"; do
+    case "$arg" in
+        --cli-only) CLI_ONLY=true ;;
+    esac
+done
+
+if [ "$CLI_ONLY" = true ]; then
+    echo "Installing Anicat CLI only..."
+    CLI_SCRIPT="https://raw.githubusercontent.com/$REPO/master/scripts/install_cli.sh"
+    curl -fsSL "$CLI_SCRIPT" | bash
+    exit $?
+fi
 
 echo "Starting Anicat installation..."
 

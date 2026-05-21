@@ -62,7 +62,9 @@ def options_from_model(model: type[BaseModel], parent_name: str = "") -> Callabl
             decorators.extend(nested_decorator_list)
             continue
 
-        if is_external_tool:
+        if parent_name:
+            cli_name = f"--{parent_name}-{field_name.replace('_', '-')}"
+        elif is_external_tool:
             cli_name = f"--{model_name}-{field_name.replace('_', '-')}"
         else:
             cli_name = f"--{field_name.replace('_', '-')}"
@@ -81,7 +83,9 @@ def options_from_model(model: type[BaseModel], parent_name: str = "") -> Callabl
             if field_info.default is not PydanticUndefined:
                 kwargs["default"] = field_info.default
                 kwargs["show_default"] = True
-            if is_external_tool:
+            if parent_name:
+                cli_name = f"{cli_name}/--no-{parent_name}-{field_name.replace('_', '-')}"
+            elif is_external_tool:
                 cli_name = (
                     f"{cli_name}/--no-{model_name}-{field_name.replace('_', '-')}"
                 )
@@ -102,7 +106,9 @@ def options_from_model(model: type[BaseModel], parent_name: str = "") -> Callabl
         )
 
     for field_name, computed_field_info in model.model_computed_fields.items():
-        if is_external_tool:
+        if parent_name:
+            cli_name = f"--{parent_name}-{field_name.replace('_', '-')}"
+        elif is_external_tool:
             cli_name = f"--{model_name}-{field_name.replace('_', '-')}"
         else:
             cli_name = f"--{field_name.replace('_', '-')}"
