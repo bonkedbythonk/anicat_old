@@ -71,6 +71,7 @@ def options_from_model(model: type[BaseModel], parent_name: str = "") -> Callabl
         kwargs = {
             "type": _get_click_type(field_info),
             "help": field_info.description or "",
+            "hidden": True,
         }
 
         if (
@@ -116,6 +117,7 @@ def options_from_model(model: type[BaseModel], parent_name: str = "") -> Callabl
         kwargs = {
             "type": TYPE_MAP[computed_field_info.return_type],
             "help": computed_field_info.description or "",
+            "hidden": True,
         }
 
         decorators.append(

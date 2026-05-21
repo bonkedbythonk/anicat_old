@@ -30,22 +30,16 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 commands = {
-    "config": "config.config",
     "search": "search.search",
-    "binge": "extra.binge",
     "discover": "extra.discover",
-    "details": "extra.details",
     "track": "extra.track",
-    "anilist": "anilist.cmd.anilist",
+    "list": "list_cmd.list",
     "download": "download.download",
     "login": "login.login",
-    "registry": "registry.registry",
-    "worker": "worker.worker",
-    "queue": "queue.queue",
-    "completions": "completions.completions",
-    "dashboard": "dashboard.dashboard",
-    "stop": "stop.stop",
     "status": "status.status",
+    "config": "config.config",
+    "dashboard": "dashboard.dashboard",
+    "system": "system.system",
 }
 
 
@@ -57,27 +51,35 @@ commands = {
     context_settings=dict(auto_envvar_prefix=CLI_NAME),
 )
 @click.version_option(__version__, "--version")
-@click.option("--no-config", is_flag=True, help="Don't load the user config file.")
+@click.option("--no-config", is_flag=True, help="Don't load the user config file.", hidden=True)
 @click.option(
-    "--trace", is_flag=True, help="Controls Whether to display tracebacks or not"
+    "--trace", is_flag=True, help="Display tracebacks on errors", hidden=True
 )
-@click.option("--dev", is_flag=True, help="Controls Whether the app is in dev mode")
-@click.option("--log", is_flag=True, help="Controls Whether to log")
+@click.option("--dev", is_flag=True, help="Development mode", hidden=True)
+@click.option("--log", is_flag=True, help="Enable logging", hidden=True)
 @click.option(
     "--rich-traceback",
     is_flag=True,
-    help="Controls Whether to display a rich traceback",
+    help="Display rich tracebacks",
+    hidden=True,
 )
 @click.option(
     "--rich-traceback-theme",
     default="github-dark",
-    help="Controls Whether to display a rich traceback",
+    help="Theme for rich tracebacks",
+    hidden=True,
 )
 @options_from_model(AppConfig)
 @click.pass_context
 def cli(ctx: click.Context, **options: "Unpack[Options]"):
     """
-    The main entry point for the Anicat CLI.
+    Watch, track, and download anime from your terminal.
+
+    Quick start:
+      anicat search -t "Attack on Titan"   Search and stream
+      anicat discover                      Personalized recommendations
+      anicat list watching                 View your watchlist
+      anicat status                        Check the dashboard
     """
     setup_logging(options["log"])
     setup_exceptions_handler(
