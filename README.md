@@ -1,6 +1,8 @@
 # Anicat
 
-**A simple way to watch and track anime on your Mac.**
+![Anicat Desktop](assets/branding/dashboard.png)
+
+**A simple way to watch and track anime on your Mac.** Search, stream, download, and track everything in one place — with a beautiful GUI app and a powerful terminal version.
 
 ---
 
@@ -54,12 +56,37 @@ Then type **`anicat`** to open the home screen and see what to watch next. Use `
 
 ---
 
-## Features
-- **AniList Sync** — Your watch progress syncs automatically
-- **Built-in Player** — Watch right inside the app, nothing else to install
-- **Skip Intro** — Automatically skip openings and endings
-- **One-Click Updates** — Update the app from Settings > Maintenance
-- **Terminal Version** — Also works as a command-line app for power users
+## What You Can Do
+
+| Feature | What It Does |
+|---------|-------------|
+| **Search & Stream** | Find any anime and start watching in one command. Multiple providers with automatic fallback. |
+| **AniList Sync** | Your progress, scores, and lists sync automatically to your AniList account. |
+| **Continue Watching** | Pick up where you left off. The app remembers which episode and timestamp you were on. |
+| **Smart Playlist** | Personalized recommendations from your watching list, top-rated shows, and plan-to-watch. |
+| **Airing Schedule** | See what's airing today and the next 7 days, with live countdowns. |
+| **Skip Intro** | Automatically detect and skip openings and endings using crowdsourced AniSkip timings. |
+| **Batch Download** | Download entire seasons for offline watching, with yt-dlp engine and subtitle merging. |
+| **Manga Support** | Read manga chapters from MangaKatana, with progress tracking and chapter navigation. |
+| **Notifications** | Get notified when a new episode of your watched show airs, directly from AniList. |
+| **One-Click Updates** | Update to the latest version from Settings > Maintenance. No terminal needed after install. |
+| **Terminal Version** | 15 CLI commands that mirror the app. Search, track, download, and manage everything from the terminal. |
+| **Built-in Player** | Watch right inside the app. HLS.js streaming with auto-quality, picture-in-picture, and keyboard shortcuts. |
+| **MPV Integration** | For power users — bundled MPV with Anime4K upscaling shaders, ModernZ skin, and subtitle support. |
+
+---
+
+## Screenshots
+
+_TODO: Add screenshots showing the search view, episode list, player, and settings._
+
+---
+
+## Legal
+Anicat is for educational and personal use only. See [DISCLAIMER.md](DISCLAIMER.md) and [SECURITY.md](SECURITY.md).
+
+## License
+MIT
 
 ---
 
