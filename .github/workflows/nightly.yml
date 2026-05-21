@@ -101,12 +101,23 @@ jobs:
             echo "RELEASE_PRERELEASE=true" >> $GITHUB_ENV
           fi
 
-      - name: Delete old rolling release
+      - name: Delete old rolling release(s)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Cleaning up existing release: ${{ env.RELEASE_TAG }}"
-          gh release delete "${{ env.RELEASE_TAG }}" --yes --cleanup-tag || true
+          if [ "${{ github.ref_name }}" = "master" ]; then
+            echo "Deleting all existing stable rolling releases..."
+            gh api /repos/${{ github.repository }}/releases \
+              --jq '.[].tag_name' --paginate 2>/dev/null \
+              | grep -- '-stable$' \
+              | while read -r tag; do
+                  echo "  Deleting: $tag"
+                  gh release delete "$tag" --yes --cleanup-tag || true
+                done
+          else
+            echo "Cleaning up existing nightly release: nightly"
+            gh release delete nightly --yes --cleanup-tag || true
+          fi
 
       - uses: tauri-apps/tauri-action@v0
         env:
