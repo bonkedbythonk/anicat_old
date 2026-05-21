@@ -106,3 +106,4 @@ build_sidecar/
 !build_sidecar/anicat-server.py
 web/src-tauri/target/release/bundle/dmg/
 .copilot/
+docs/

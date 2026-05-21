@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     epilog=examples.download,
 )
 @click.option(
-    "--anime_title",
+    "--anime-title",
     "-t",
     required=True,
     shell_complete=anime_titles_shell_complete,

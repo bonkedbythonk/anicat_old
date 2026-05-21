@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     "-t",
     shell_complete=anime_titles_shell_complete,
     multiple=True,
-    help="Specify which anime to download",
+    help="Specify which anime to stream or binge",
 )
 @click.option(
     "--episode-range",

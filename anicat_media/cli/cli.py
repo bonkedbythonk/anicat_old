@@ -30,18 +30,22 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 commands = {
-    "config": "anicat_media.cli.commands.config.config",
-    "search": "anicat_media.cli.commands.search.search",
-    "anilist": "anicat_media.cli.commands.anilist.anilist",
-    "download": "anicat_media.cli.commands.download.download",
-    "login": "anicat_media.cli.commands.login.login",
-    "registry": "anicat_media.cli.commands.registry.registry",
-    "worker": "anicat_media.cli.commands.worker.worker",
-    "queue": "anicat_media.cli.commands.queue.queue",
-    "completions": "anicat_media.cli.commands.completions.completions",
-    "dashboard": "anicat_media.cli.commands.dashboard.dashboard",
-    "stop": "anicat_media.cli.commands.stop.stop",
-    "status": "anicat_media.cli.commands.status.status",
+    "config": "config.config",
+    "search": "search.search",
+    "binge": "extra.binge",
+    "discover": "extra.discover",
+    "details": "extra.details",
+    "track": "extra.track",
+    "anilist": "anilist.cmd.anilist",
+    "download": "download.download",
+    "login": "login.login",
+    "registry": "registry.registry",
+    "worker": "worker.worker",
+    "queue": "queue.queue",
+    "completions": "completions.completions",
+    "dashboard": "dashboard.dashboard",
+    "stop": "stop.stop",
+    "status": "status.status",
 }
 
 
