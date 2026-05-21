@@ -50,7 +50,8 @@ class AnimeProviderFactory:
                 "User-Agent": random_user_agent(),
                 "Accept-Encoding": "identity",
                 **provider_class.HEADERS,
-            }
+            },
+            follow_redirects=True,
         )
 
         return provider_class(client)

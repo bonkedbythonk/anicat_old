@@ -86,8 +86,34 @@ class AnimePahe(BaseAnimeProvider):
                         "The provider may be temporarily blocking automated access."
                     )
 
+    def _ensure_connection(self):
+        """Re-solve DDoS-Guard if the provider is currently marked unavailable."""
+        if not self._available:
+            try:
+                self._solve_ddos_guard()
+                self._available = True
+                self._last_error = None
+            except Exception as e:
+                self._last_error = f"AnimePahe is unavailable — {e}"
+                logger.warning(f"Retried DDoS-Guard bypass but still failed: {e}")
+
+    def _request_with_retry(self, method, *args, **kwargs):
+        """Make an HTTP request, retrying DDoS-Guard bypass on 403."""
+        response = method(*args, **kwargs)
+        if response.status_code == 403:
+            logger.warning("Got 403 from AnimePahe, re-trying DDoS-Guard bypass")
+            try:
+                self._solve_ddos_guard()
+                response = method(*args, **kwargs)
+            except Exception as e:
+                self._available = False
+                self._last_error = f"AnimePahe DDoS-Guard bypass failed on retry: {e}"
+                logger.error(self._last_error)
+        return response
+
     @debug_provider
     def search(self, params: SearchParams) -> SearchResults | None:
+        self._ensure_connection()
         return self._search(params)
 
     @lru_cache()
@@ -122,6 +148,7 @@ class AnimePahe(BaseAnimeProvider):
 
     @debug_provider
     def get(self, params: AnimeParams) -> Anime | None:
+        self._ensure_connection()
         return self._get_anime(params)
 
     @lru_cache()
