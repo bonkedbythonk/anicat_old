@@ -132,12 +132,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Removing older stable releases (keeping ${{ env.RELEASE_TAG }})..."
-          gh release list --limit 100 --json tagName --jq '.[].tagName' \
-            | grep -- '-stable$' \
-            | grep -v "${{ env.RELEASE_TAG }}" \
-            | while read -r old_tag; do
-                echo "  Deleting: $old_tag"
-                gh release delete "$old_tag" --yes --cleanup-tag || true
-              done
-          echo "Older stable releases cleaned up."
+          CURRENT_TAG="${{ env.RELEASE_TAG }}"
+          # Only clean up if the current release was actually created
+          if gh release view "$CURRENT_TAG" --json tagName --jq '.tagName' 2>/dev/null; then
+            echo "Current release exists. Removing older stable releases (keeping $CURRENT_TAG)..."
+            gh release list --limit 100 --json tagName --jq '.[].tagName' \
+              | grep -- '-stable$' \
+              | grep -v "$CURRENT_TAG" \
+              | while read -r old_tag; do
+                  echo "  Deleting: $old_tag"
+                  gh release delete "$old_tag" --yes --cleanup-tag || true
+                done
+            echo "Older stable releases cleaned up."
+          else
+            echo "Current release $CURRENT_TAG was not created. Skipping cleanup to preserve existing releases."
+          fi
