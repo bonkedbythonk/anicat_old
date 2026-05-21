@@ -32,14 +32,19 @@ logger = logging.getLogger(__name__)
 commands = {
     "search": "search.search",
     "discover": "extra.discover",
-    "track": "extra.track",
+    "watching": "home.watching",
+    "planning": "home.planning",
+    "completed": "home.completed",
     "list": "list_cmd.list",
+    "schedule": "home.schedule",
+    "profile": "home.profile",
+    "notifications": "home.notifications",
+    "settings": "config.config",
+    "downloads": "downloads.downloads",
     "download": "download.download",
     "login": "login.login",
     "status": "status.status",
-    "config": "config.config",
     "dashboard": "dashboard.dashboard",
-    "system": "system.system",
 }
 
 
@@ -73,13 +78,14 @@ commands = {
 @click.pass_context
 def cli(ctx: click.Context, **options: "Unpack[Options]"):
     """
-    Watch, track, and download anime from your terminal.
+    Watch, track, and download anime & manga from your terminal.
 
     Quick start:
-      anicat search -t "Attack on Titan"   Search and stream
-      anicat discover                      Personalized recommendations
-      anicat list watching                 View your watchlist
-      anicat status                        Check the dashboard
+      anicat                              Home — what to watch next
+      anicat search -t "Attack on Titan"  Search and stream
+      anicat watching                     See what you're watching
+      anicat schedule                     Upcoming episodes
+      anicat discover                     Smart recommendations
     """
     setup_logging(options["log"])
     setup_exceptions_handler(
