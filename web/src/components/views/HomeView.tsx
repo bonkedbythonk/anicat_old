@@ -129,9 +129,22 @@ export default function HomeView({ onSelect }: HomeViewProps) {
       if (watchingMedia.length > 0) {
         const schedule = await mediaApi.getSchedule(3, 0, 1, 10, watchingIds);
         const scheduledMedia = schedule.media || [];
+        // Build a progress lookup from the watching list so we can check
+        // whether the user is caught up on schedule items.
+        const progressMap = new Map(
+          watchingMedia.map((m) => [m.id, m.user_status?.progress || 0])
+        );
         const seenIds = new Set(releases.map((m) => m.id));
         for (const m of scheduledMedia) {
           if (!seenIds.has(m.id)) {
+            // Skip if the user has caught up on this show
+            const userProgress = progressMap.get(m.id) || 0;
+            const latestReleased = m.next_airing?.episode
+              ? m.next_airing.episode - 1
+              : m.episodes || 0;
+            if (userProgress > 0 && userProgress >= latestReleased) {
+              continue;
+            }
             releases.push(m);
             seenIds.add(m.id);
           }
