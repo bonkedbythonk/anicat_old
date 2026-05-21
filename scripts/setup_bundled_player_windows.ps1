@@ -44,6 +44,7 @@ function Ensure-7Zip {
         return
     }
     Write-Host "WARNING: 7-Zip not available. SourceForge fallback will not work if needed."
+}
 
 # ---------------------------------------------------------------------------
 # Helper: get MPV binary + DLLs (Chocolatey → Winget → SourceForge fallback)
