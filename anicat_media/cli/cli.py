@@ -54,7 +54,8 @@ commands = {
     invoke_without_command=True,
     lazy_subcommands=commands,
     hidden_commands=[
-        "dashboard", "download", "list", "status",
+        "completed", "dashboard", "download", "downloads", "list",
+        "login", "notifications", "planning", "profile", "settings", "status",
     ],
     context_settings=dict(auto_envvar_prefix=CLI_NAME),
 )
@@ -83,17 +84,14 @@ def cli(ctx: click.Context, **options: "Unpack[Options]"):
     """
     Anicat — watch, track, and download anime & manga.
 
-    Run [bold]anicat[/bold] to see what to watch next.
+    Just type [bold]anicat[/bold] to open the full interactive menu.
+    Everything from search to streaming to progress tracking is there.
 
-    Quick shortcuts:
-      anicat search <query>               Search and stream
+    Quick shortcuts (for when you know what you want):
+      anicat search -t "Attack on Titan"  Search and stream
       anicat watching                     What you're currently watching
-      anicat planning                     Your plan to watch list
       anicat schedule                     Upcoming episodes
       anicat discover                     Personalized recommendations
-      anicat profile                      Your AniList profile
-      anicat settings                     Open configuration
-      anicat downloads list               View download queue
     """
     setup_logging(options["log"])
     setup_exceptions_handler(
@@ -134,6 +132,6 @@ def cli(ctx: click.Context, **options: "Unpack[Options]"):
 
 
     if ctx.invoked_subcommand is None:
-        from .commands.home import home  # noqa: PLC0415
+        from .commands.anilist import cmd
 
-        ctx.invoke(home)
+        ctx.invoke(cmd.anilist)
