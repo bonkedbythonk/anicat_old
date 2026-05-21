@@ -55,6 +55,11 @@ jobs:
       - name: install python dependencies
         run: uv sync
 
+      - name: inject commit SHA into version
+        run: |
+          sed -i '' "s/__commit__ = \"\"/__commit__ = \"${{ github.sha }}\"/" anicat_media/_version.py
+          echo "Injected commit SHA: ${{ github.sha }}"
+
       - name: build sidecar
         run: |
           uv run pyinstaller --noconfirm build_sidecar/sidecar.spec
@@ -91,7 +96,7 @@ jobs:
             echo "RELEASE_TAG=v${VERSION}-stable" >> $GITHUB_ENV
             echo "RELEASE_NAME=Anicat v${VERSION} (Stable Rolling)" >> $GITHUB_ENV
             echo "RELEASE_BODY=Auto-built from master branch — Anicat v${VERSION}. This rolling stable build updates on every push to master." >> $GITHUB_ENV
-            echo "RELEASE_DRAFT=true" >> $GITHUB_ENV
+            echo "RELEASE_DRAFT=false" >> $GITHUB_ENV
             echo "RELEASE_PRERELEASE=false" >> $GITHUB_ENV
           else
             echo "RELEASE_TAG=nightly" >> $GITHUB_ENV
@@ -101,26 +106,12 @@ jobs:
             echo "RELEASE_PRERELEASE=true" >> $GITHUB_ENV
           fi
 
-      - name: Delete old rolling release(s)
+      - name: Pre-clean release tag (re-run safety)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Always clean the tag we're about to create (re-run safety)
-          gh release delete "${{ env.RELEASE_TAG }}" --yes --cleanup-tag || true
-
-          if [ "${{ github.ref_name }}" = "master" ]; then
-            echo "Deleting all existing stable rolling releases..."
-            gh release list --limit 100 --json tagName --jq '.[].tagName' \
-              | grep -- '-stable$' \
-              | while read -r tag; do
-                  echo "  Deleting: $tag"
-                  gh release delete "$tag" --yes --cleanup-tag || true
-                done
-            echo "Stable releases cleaned up."
-          else
-            echo "Cleaning up existing nightly release: nightly"
-            gh release delete nightly --yes --cleanup-tag || true
-          fi
+          gh release delete "${{ env.RELEASE_TAG }}" --yes --cleanup-tag 2>/dev/null || true
+          echo "Pre-cleaned tag: ${{ env.RELEASE_TAG }}"
 
       - uses: tauri-apps/tauri-action@v0
         env:
@@ -135,3 +126,18 @@ jobs:
           releaseDraft: ${{ env.RELEASE_DRAFT }}
           prerelease: ${{ env.RELEASE_PRERELEASE }}
           args: ${{ matrix.args }}
+
+      - name: Clean up older rolling releases
+        if: github.ref_name == 'master'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Removing older stable releases (keeping ${{ env.RELEASE_TAG }})..."
+          gh release list --limit 100 --json tagName --jq '.[].tagName' \
+            | grep -- '-stable$' \
+            | grep -v "${{ env.RELEASE_TAG }}" \
+            | while read -r old_tag; do
+                echo "  Deleting: $old_tag"
+                gh release delete "$old_tag" --yes --cleanup-tag || true
+              done
+          echo "Older stable releases cleaned up."

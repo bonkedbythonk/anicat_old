@@ -5,7 +5,7 @@ import os
 from fastapi import APIRouter
 from pydantic import BaseModel
 import subprocess
-from anicat_media.core.constants import VERSION, LOG_FILE, UPDATE_IN_PROGRESS_FILE
+from anicat_media.core.constants import VERSION, COMMIT, LOG_FILE, UPDATE_IN_PROGRESS_FILE
 from anicat_media.cli.config import ConfigLoader
 import shutil
 import sys
@@ -15,6 +15,15 @@ logger = logging.getLogger(__name__)
 
 class UpdateTriggerRequest(BaseModel):
     branch: Optional[str] = None
+
+
+class CheckUpdateResponse(BaseModel):
+    status: str
+    update_available: bool
+    message: str
+    version: str = ""
+    release_notes: str = ""
+    release_url: str = ""
 
 
 router = APIRouter()
@@ -97,12 +106,25 @@ def _current_version_tag() -> str:
     return f"v{_normalize_version(VERSION)}"
 
 
-def _check_github_update(update_branch: str) -> bool:
-    """Helper to check if an update is available from GitHub Releases, respecting the branch."""
+def _check_github_update(update_branch: str) -> dict:
+    """Check if an update is available from GitHub Releases.
+
+    Returns a dict with keys: available (bool), version (str),
+    release_notes (str), release_url (str).
+
+    Uses COMMIT (baked into _version.py at CI build time) for nightly
+    comparison instead of a fragile cache file.
+    """
     import urllib.request
     import json
     import ssl
-    from anicat_media.core.constants import LAST_COMMIT_FILE
+
+    result = {
+        "available": False,
+        "version": "",
+        "release_notes": "",
+        "release_url": "",
+    }
 
     try:
         ctx_ssl = ssl._create_unverified_context()
@@ -118,43 +140,51 @@ def _check_github_update(update_branch: str) -> bool:
         with urllib.request.urlopen(req, timeout=5, context=ctx_ssl) as response:
             res_data = json.loads(response.read().decode())
             if isinstance(res_data, list):
-                latest_tag = res_data[0].get("tag_name", "") if res_data else ""
+                if not res_data:
+                    return result
+                latest = res_data[0]
             else:
-                latest_tag = res_data.get("tag_name", "")
+                latest = res_data
+
+        latest_tag = latest.get("tag_name", "")
+        latest_version = _normalize_version(latest_tag)
+        release_notes = latest.get("body", "") or ""
+        release_url = latest.get("html_url", "") or ""
 
         if not latest_tag:
-            return False
+            return result
 
         if update_branch == "nightly" and latest_tag.lower() == "nightly":
-            # Use the release's target_commitish (the commit the DMG was built from)
-            # instead of raw nightly branch HEAD, so we don't falsely detect an update
-            # when commits were pushed but CI hasn't built a DMG yet.
-            remote_sha = ""
-            if isinstance(res_data, list) and res_data:
-                remote_sha = res_data[0].get("target_commitish", "") or ""
+            # Use baked-in COMMIT (set by CI at build time) to compare
+            # against the release's target_commitish — the exact commit
+            # the DMG was built from.
+            remote_sha = latest.get("target_commitish", "") or ""
+            if remote_sha and COMMIT:
+                result["available"] = COMMIT != remote_sha
+                result["version"] = f"nightly ({remote_sha[:12]}...)"
+                result["release_notes"] = release_notes
+                result["release_url"] = release_url
+                return result
+            # Fallback: compare tag name
+            if remote_sha and not COMMIT:
+                result["available"] = True
+                result["version"] = f"nightly ({remote_sha[:12]}...)"
+                result["release_notes"] = release_notes
+                result["release_url"] = release_url
+                return result
+            return result
 
-            if remote_sha:
-                local_sha = ""
-                if LAST_COMMIT_FILE.exists():
-                    try:
-                        local_sha = LAST_COMMIT_FILE.read_text(encoding="utf-8").strip()
-                    except Exception:
-                        pass
-
-                if not local_sha:
-                    try:
-                        LAST_COMMIT_FILE.write_text(remote_sha, encoding="utf-8")
-                    except Exception:
-                        pass
-                    return False
-                return local_sha != remote_sha
-
-        # Stable or standard branch comparison
+        # Stable or standard branch: compare version tags
         current_version = _current_version_tag()
-        return not _version_tag_matches(latest_tag, current_version)
+        result["available"] = not _version_tag_matches(latest_tag, current_version)
+        if result["available"]:
+            result["version"] = latest_version
+            result["release_notes"] = release_notes
+            result["release_url"] = release_url
+        return result
     except Exception as e:
         logger.error(f"[UPDATE CHECK] GitHub Releases check failed: {str(e)}")
-        return False
+        return result
 
 # Notifications/profile fetch cache to avoid rate limits
 _last_notifications_check: Optional[datetime] = None
@@ -291,31 +321,11 @@ async def get_health():
                 except Exception:
                     update_branch = "stable"
 
-                if os.path.exists(os.path.join(repo_root, ".git")):
-                    from anicat_media.utils.subprocess import run_cmd
-                    rc, stdout, _ = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=2, cwd=repo_root)
-                    current_branch = stdout.strip() if (rc == 0 and stdout) else "master"
-
-                    if update_branch == "nightly":
-                        target_branch = "nightly"
-                    else:
-                        target_branch = "master"
-
-                    try:
-                        run_cmd(["git", "fetch", "origin", target_branch, "--quiet"], timeout=8, cwd=repo_root)
-                        rc, stdout, _ = run_cmd(["git", "rev-list", "--count", f"HEAD..origin/{target_branch}"], timeout=5, cwd=repo_root)
-                        if rc == 0 and stdout:
-                            count = int(stdout.strip())
-                            if count > 0:
-                                _cached_update_available = True
-                            else:
-                                # No new git commits, but fall through to GitHub releases check
-                                # in case a CI-built DMG is newer than the current checkout
-                                _cached_update_available = _check_github_update(update_branch)
-                    except Exception:
-                        pass
-                else:
-                    _cached_update_available = _check_github_update(update_branch)
+                # Unified detection: always use GitHub Releases API.
+                # This works for both git dev installs and DMG/release installs
+                # and avoids the git-vs-API divergence.
+                result = _check_github_update(update_branch)
+                _cached_update_available = result["available"]
             except Exception:
                 pass
 
@@ -418,56 +428,47 @@ async def check_for_updates():
     global _last_update_check, _cached_update_available
     # Respect opt-out environment variable for automated update checks
     if os.environ.get("ANICAT_DISABLE_AUTO_UPDATE", "0") == "1":
-        return {"status": "error", "update_available": False, "message": "Auto-updates disabled by environment"}
+        return {"status": "error", "update_available": False, "message": "Auto-updates disabled by environment", "version": "", "release_notes": "", "release_url": ""}
 
     # Respect user's config setting (allow disabling update checks via AppConfig)
     try:
         loader = ConfigLoader()
         current_config = loader.load(allow_setup=False)
         if not getattr(current_config.general, "check_for_updates", True):
-            return {"status": "error", "update_available": False, "message": "Auto-updates disabled in configuration"}
+            return {"status": "error", "update_available": False, "message": "Auto-updates disabled in configuration", "version": "", "release_notes": "", "release_url": ""}
         update_branch = getattr(current_config.general, "update_branch", "stable")
     except Exception:
-        # If config can't be read, fall back to env-only opt-out
         update_branch = "stable"
 
     try:
-        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-        if os.path.exists(os.path.join(repo_root, ".git")):
-            from anicat_media.utils.subprocess import run_cmd
-            rc, stdout, _ = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=5, cwd=repo_root)
-            current_branch = stdout.strip() if (rc == 0 and stdout) else "master"
+        _last_update_check = datetime.now()
 
-            if update_branch == "nightly":
-                target_branch = "nightly"
-            else:
-                target_branch = "master"
+        # Unified detection: always use GitHub Releases API.
+        # Works for git dev installs and DMG/release installs alike.
+        result = _check_github_update(update_branch)
+        _cached_update_available = result["available"]
 
-            run_cmd(["git", "fetch", "origin", target_branch, "--quiet"], timeout=10, cwd=repo_root)
-            rc, stdout, _ = run_cmd(["git", "rev-list", "--count", f"HEAD..origin/{target_branch}"], timeout=8, cwd=repo_root)
-            _last_update_check = datetime.now()
-            if rc == 0 and stdout:
-                count = int(stdout.strip())
-                if count > 0:
-                    _cached_update_available = True
-                    return {"status": "success", "update_available": True, "message": f"A new version of Anicat is available on {target_branch}!"}
-            # No new git commits. Fall through to GitHub releases SHA comparison
-            # so we can still detect newer CI-built DMG releases.
-            has_update = _check_github_update(update_branch)
-            _cached_update_available = has_update
-            if has_update:
-                return {"status": "success", "update_available": True, "message": f"A new version is available on the {update_branch} branch!"}
-            return {"status": "success", "update_available": False, "message": f"You are running the latest version of the {update_branch} branch."}
-        else:
-            _last_update_check = datetime.now()
-            has_update = _check_github_update(update_branch)
-            _cached_update_available = has_update
-            if has_update:
-                return {"status": "success", "update_available": True, "message": f"A new version is available on the {update_branch} branch!"}
-            return {"status": "success", "update_available": False, "message": f"You are running the latest version of the {update_branch} branch."}
+        if result["available"]:
+            version_str = result["version"]
+            return {
+                "status": "success",
+                "update_available": True,
+                "message": f"A new version is available: v{version_str}",
+                "version": version_str,
+                "release_notes": result["release_notes"],
+                "release_url": result["release_url"],
+            }
+        return {
+            "status": "success",
+            "update_available": False,
+            "message": f"You are running the latest version on the {update_branch} branch.",
+            "version": VERSION,
+            "release_notes": "",
+            "release_url": "",
+        }
     except Exception as e:
         logger.error(f"[UPDATE CHECK] Error: {str(e)}")
-        return {"status": "error", "update_available": False, "message": f"Failed to check for updates: {str(e)}"}
+        return {"status": "error", "update_available": False, "message": f"Failed to check for updates: {str(e)}", "version": "", "release_notes": "", "release_url": ""}
 
 @router.post("/update")
 async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
@@ -529,26 +530,6 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
         import platform
         if platform.system() == "Darwin":
             UPDATE_IN_PROGRESS_FILE.write_text("1", encoding="utf-8")
-
-            # Reset LAST_COMMIT_FILE to the current release's SHA so the next
-            # update check compares against this newly-installed version, not an old baseline.
-            from anicat_media.core.constants import LAST_COMMIT_FILE
-            try:
-                import urllib.request
-                import json
-                import ssl
-                ctx_ssl = ssl._create_unverified_context()
-                rel_url = "https://api.github.com/repos/bonkedbythonk/anicat/releases"
-                rel_req = urllib.request.Request(rel_url, headers={"User-Agent": "Anicat-App"})
-                with urllib.request.urlopen(rel_req, timeout=5, context=ctx_ssl) as rel_resp:
-                    rel_data = json.loads(rel_resp.read().decode())
-                    if isinstance(rel_data, list) and rel_data:
-                        commit_sha = rel_data[0].get("target_commitish", "")
-                        if commit_sha:
-                            LAST_COMMIT_FILE.write_text(commit_sha, encoding="utf-8")
-                            logger.info(f"Reset LAST_COMMIT_FILE to nightly release SHA: {commit_sha[:12]}...")
-            except Exception as e:
-                logger.warning(f"Failed to reset LAST_COMMIT_FILE before update: {e}")
 
             logger.info("[UPDATE] Triggering macOS native update via installer script")
             local_script = os.path.join(repo_root, "scripts", "install_macos.sh")

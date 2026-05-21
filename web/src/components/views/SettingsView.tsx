@@ -22,6 +22,8 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [stagedHasUpdate, setStagedHasUpdate] = useState(health?.update_available || false);
   const [updateMessage, setUpdateMessage] = useState<{ text: string; type: "success" | "error" | null }>({ text: "", type: null });
+  const [releaseNotes, setReleaseNotes] = useState<string>("");
+  const [releaseUrl, setReleaseUrl] = useState<string>("");
   const [options, setOptions] = useState<Record<string, any> | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -87,6 +89,8 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
   const handleUpdate = async () => {
     setCheckingUpdate(true);
     setUpdateMessage({ text: "", type: null });
+    setReleaseNotes("");
+    setReleaseUrl("");
     try {
       if (!hasUpdate) {
         // If we don't know of an update yet, check for one first!
@@ -94,6 +98,8 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
         if (res.status === "success") {
           setStagedHasUpdate(res.update_available);
           setUpdateMessage({ text: res.message, type: "success" });
+          if (res.release_notes) setReleaseNotes(res.release_notes);
+          if (res.release_url) setReleaseUrl(res.release_url);
         } else {
           setUpdateMessage({ text: res.message, type: "error" });
         }
@@ -615,6 +621,23 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                         <AlertCircle size={15} className="mt-0.5 shrink-0" />
                       )}
                       <span>{updateMessage.text}</span>
+                    </div>
+                  )}
+
+                  {releaseNotes && (
+                    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs text-gray-400 max-h-48 overflow-y-auto animate-fade-in">
+                      <div className="font-bold text-gray-300 mb-2 text-[10px] uppercase tracking-wider">Release Notes</div>
+                      <div className="whitespace-pre-wrap leading-relaxed">{releaseNotes}</div>
+                      {releaseUrl && (
+                        <a
+                          href={releaseUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block mt-3 text-accent hover:text-accent-light font-medium transition-colors"
+                        >
+                          View on GitHub →
+                        </a>
+                      )}
                     </div>
                   )}
                 </div>

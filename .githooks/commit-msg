@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# prepare-commit-msg — Auto-bump version based on conventional commit message.
+# commit-msg — Auto-bump version based on conventional commit message.
 #
-# Parses the first line of the commit message and bumps the project version
-# accordingly using scripts/bump-version.sh.
+# Reads the commit message from the file passed as $1 and bumps the project
+# version accordingly using scripts/bump-version.sh.
 #
 #   fix:    →  PATCH bump (4.0.0 → 4.0.1)
 #   feat:   →  MINOR bump (4.0.0 → 4.1.0)
@@ -27,7 +27,10 @@ IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 bump_and_stage() {
     local new_version="$1"
     bash "$BUMP_SCRIPT" "$new_version"
-    # Re-stage all version files so they're included in the commit
+    # Stage all version files so they're included in THIS commit.
+    # commit-msg hook runs after the message is finalized but before
+    # the commit object is created. git add here updates the index,
+    # and the commit will include these changes.
     git add "$PROJECT_ROOT/version.txt" \
             "$PROJECT_ROOT/pyproject.toml" \
             "$PROJECT_ROOT/anicat_media/_version.py" \
