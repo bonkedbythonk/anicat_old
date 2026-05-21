@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { API_BASE_ORIGIN } from "@/lib/api";
 
 /**
  * Bridges all browser console output and unhandled errors to the
@@ -38,7 +39,7 @@ export function useRemoteLogging() {
 
     const logToBackend = async (level: string, message: string, data?: unknown) => {
       try {
-        await fetch("http://127.0.0.1:13370/api/actions/log", {
+        await fetch(`${API_BASE_ORIGIN}/actions/log`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

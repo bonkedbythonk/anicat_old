@@ -15,8 +15,6 @@ from ....utils.subprocess import run_cmd
 
 from ....core.config import MpvConfig
 from ....core.exceptions import AnicatError
-from ....core.patterns import TORRENT_REGEX, YOUTUBE_REGEX
-from ....core.utils import detect
 from ..base import BasePlayer
 from ..params import PlayerParams
 from ..types import PlayerResult
@@ -30,7 +28,7 @@ class MpvPlayer(BasePlayer):
     """
     MPV player implementation for Anicat.
 
-    Provides playback functionality using the MPV media player, supporting desktop, mobile, torrents, and syncplay.
+    Provides desktop playback using the MPV media player.
     """
 
     def __init__(self, config: MpvConfig, player_type: str = "external"):
@@ -123,70 +121,7 @@ class MpvPlayer(BasePlayer):
 
     def play(self, params):
         """
-        Play the given media using MPV, handling desktop, mobile, torrent, and syncplay scenarios.
-
-        Args:
-            params: PlayerParams object containing playback parameters.
-
-        Returns:
-            PlayerResult: Information about the playback session.
-        """
-        if TORRENT_REGEX.match(params.url) and detect.is_running_in_termux():
-            raise AnicatError("Unable to play torrents on termux")
-        elif params.syncplay and detect.is_running_in_termux():
-            raise AnicatError("Unable to play with syncplay on termux")
-        elif detect.is_running_in_termux():
-            return self._play_on_mobile(params)
-        else:
-            return self._play_on_desktop(params)
-
-    def _play_on_mobile(self, params) -> PlayerResult:
-        """
-        Play media on a mobile device using Android intents.
-
-        Args:
-            params: PlayerParams object containing playback parameters.
-
-        Returns:
-            PlayerResult: Information about the playback session.
-        """
-        if YOUTUBE_REGEX.match(params.url):
-            args = [
-                "nohup",
-                "am",
-                "start",
-                "--user",
-                "0",
-                "-a",
-                "android.intent.action.VIEW",
-                "-d",
-                params.url,
-                "-n",
-                "com.google.android.youtube/.UrlActivity",
-            ]
-        else:
-            args = [
-                "nohup",
-                "am",
-                "start",
-                "--user",
-                "0",
-                "-a",
-                "android.intent.action.VIEW",
-                "-d",
-                params.url,
-                "-n",
-                "is.xyz.mpv/.MPVActivity",
-            ]
-
-        # Use `run_cmd` to enforce timeouts and avoid uncaught exceptions
-        run_cmd(args, timeout=10, capture_output=False, env=detect.get_clean_env())
-
-        return PlayerResult(params.episode)
-
-    def _play_on_desktop(self, params) -> PlayerResult:
-        """
-        Play media on a desktop environment using MPV.
+        Play the given media using MPV on desktop.
 
         Args:
             params: PlayerParams object containing playback parameters.
@@ -196,13 +131,7 @@ class MpvPlayer(BasePlayer):
         """
         if not self.executable:
             raise AnicatError("MPV executable not found in PATH.")
-
-        if TORRENT_REGEX.search(params.url):
-            return self._stream_on_desktop_with_webtorrent_cli(params)
-        elif params.syncplay:
-            return self._stream_on_desktop_with_syncplay(params)
-        else:
-            return self._stream_on_desktop_with_subprocess(params)
+        return self._stream_on_desktop_with_subprocess(params)
 
     def _stream_on_desktop_with_subprocess(self, params: PlayerParams) -> PlayerResult:
         """
@@ -323,55 +252,6 @@ class MpvPlayer(BasePlayer):
             raise AnicatError(f"Failed to spawn MPV player process: {e}")
 
         return process
-
-    def _stream_on_desktop_with_webtorrent_cli(
-        self, params: PlayerParams
-    ) -> PlayerResult:
-        """
-        Stream torrent media using the webtorrent CLI and MPV.
-
-        Args:
-            params: PlayerParams object containing playback parameters.
-
-        Returns:
-            PlayerResult: Information about the playback session.
-        """
-        WEBTORRENT_CLI = shutil.which("webtorrent")
-        if not WEBTORRENT_CLI:
-            raise AnicatError(
-                "Please Install webtorrent cli inorder to stream torrents"
-            )
-
-        args = [WEBTORRENT_CLI, params.url, "--mpv"]
-        if mpv_args := self._create_mpv_cli_options(params):
-            args.append("--player-args")
-            args.extend(mpv_args)
-
-        run_cmd(args, timeout=300, capture_output=False, env=detect.get_clean_env())
-        return PlayerResult(params.episode)
-
-    def _stream_on_desktop_with_syncplay(self, params: PlayerParams) -> PlayerResult:
-        """
-        Stream media using Syncplay for synchronized playback with friends.
-
-        Args:
-            params: PlayerParams object containing playback parameters.
-
-        Returns:
-            PlayerResult: Information about the playback session.
-        """
-        SYNCPLAY_EXECUTABLE = shutil.which("syncplay")
-        if not SYNCPLAY_EXECUTABLE:
-            raise AnicatError(
-                "Please install syncplay to be able to stream with your friends"
-            )
-        args = [SYNCPLAY_EXECUTABLE, params.url]
-        if mpv_args := self._create_mpv_cli_options(params):
-            args.append("--")
-            args.extend(mpv_args)
-        run_cmd(args, timeout=300, capture_output=False, env=detect.get_clean_env())
-
-        return PlayerResult(params.episode)
 
     def _create_mpv_cli_options(self, params: PlayerParams) -> list[str]:
         """

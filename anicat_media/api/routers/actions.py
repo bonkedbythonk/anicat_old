@@ -7,6 +7,7 @@ import json
 import urllib.parse
 import httpx
 import logging
+from ...core.constants import LOCAL_API_ORIGIN
 from ...libs.player.params import PlayerParams
 from ...libs.player.types import PlayerResult
 from .status import set_playback
@@ -514,7 +515,7 @@ async def resolve_media_stream(media_id: int, episode: Optional[str] = None):
             set_playback(media_id=media_id, media_title=title, episode=resolved_episode)
 
             # Serve local file via FastAPI route
-            local_stream_url = f"http://127.0.0.1:13370/api/actions/local-file/{media_id}/{resolved_episode}"
+            local_stream_url = f"{LOCAL_API_ORIGIN}/api/actions/local-file/{media_id}/{resolved_episode}"
 
             start_time_seconds = 0
             if start_time:
@@ -555,7 +556,7 @@ async def resolve_media_stream(media_id: int, episode: Optional[str] = None):
         proxy_prefix = "/api/actions/proxy"
         headers_str = json.dumps(stream_headers)
 
-        proxied_stream_url = f"http://127.0.0.1:13370{proxy_prefix}?url={urllib.parse.quote(raw_stream_url)}&headers={urllib.parse.quote(headers_str)}"
+        proxied_stream_url = f"{LOCAL_API_ORIGIN}{proxy_prefix}?url={urllib.parse.quote(raw_stream_url)}&headers={urllib.parse.quote(headers_str)}"
 
         start_time_seconds = 0
         if resolved["start_time"]:
@@ -609,7 +610,7 @@ def _proxy_m3u8_content(m3u8_content: str, base_url: str, headers_json: str) -> 
                     remaining = suffix_parts[1] if len(suffix_parts) > 1 else ""
 
                     absolute_uri = urllib.parse.urljoin(base_url, uri)
-                    proxied_uri = f"http://127.0.0.1:13370/api/actions/proxy?url={urllib.parse.quote(absolute_uri)}&headers={urllib.parse.quote(headers_json)}"
+                    proxied_uri = f"{LOCAL_API_ORIGIN}/api/actions/proxy?url={urllib.parse.quote(absolute_uri)}&headers={urllib.parse.quote(headers_json)}"
                     rewritten_lines.append(f'{prefix}URI="{proxied_uri}"{remaining}')
                     continue
                 except Exception:
@@ -618,7 +619,7 @@ def _proxy_m3u8_content(m3u8_content: str, base_url: str, headers_json: str) -> 
         else:
             # Segment or sub-playlist URL - converted to absolute proxy URLs
             absolute_url = urllib.parse.urljoin(base_url, line_stripped)
-            proxied_url = f"http://127.0.0.1:13370/api/actions/proxy?url={urllib.parse.quote(absolute_url)}&headers={urllib.parse.quote(headers_json)}"
+            proxied_url = f"{LOCAL_API_ORIGIN}/api/actions/proxy?url={urllib.parse.quote(absolute_url)}&headers={urllib.parse.quote(headers_json)}"
             rewritten_lines.append(proxied_url)
     return "\n".join(rewritten_lines)
 

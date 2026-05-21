@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, memo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import MediaCard from "./MediaCard";
 import type { MediaItem } from "@/lib/api";
@@ -16,7 +16,7 @@ interface MediaRowProps {
 const CARD_STEP = 194;
 const BUFFER = 3; // extras rendered on each side of visible area
 
-export default function MediaRow({ title, items, onSelect }: MediaRowProps) {
+const MediaRow = memo(function MediaRow({ title, items, onSelect }: MediaRowProps) {
   const rowRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [visibleEnd, setVisibleEnd] = useState(Math.min(items.length, 10));
@@ -100,4 +100,6 @@ export default function MediaRow({ title, items, onSelect }: MediaRowProps) {
       </div>
     </div>
   );
-}
+});
+
+export default MediaRow;

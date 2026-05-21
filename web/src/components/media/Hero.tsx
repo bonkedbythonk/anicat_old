@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Play, Maximize, BookOpen, Loader2 } from "lucide-react";
 import { type MediaItem } from "@/lib/api";
 
@@ -9,7 +9,7 @@ interface HeroProps {
   onSelect?: (item: MediaItem, action?: "play") => void;
 }
 
-export default function Hero({ item, onSelect }: HeroProps) {
+const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
   const [clicked, setClicked] = useState(false);
   const title = item.title.english || item.title.romaji || "Unknown";
   const currentProgress = item.user_status?.progress || 0;
@@ -106,4 +106,6 @@ export default function Hero({ item, onSelect }: HeroProps) {
       </div>
     </div>
   );
-}
+});
+
+export default Hero;

@@ -1,6 +1,6 @@
 [project]
 name = "anicat"
-version = "4.8.4"
+version = "4.8.5"
 description = "Minimalist Media CLI for macOS."
 authors = [
     { name = "Thomas (bonkedbythonk)" },
@@ -17,8 +17,6 @@ dependencies = [
     "inquirerpy>=0.3.4",
     "pillow>=12.2.0",
     "pydantic>=2.11.7",
-    "pyinstaller>=6.17.0",
-    "requests>=2.33.1",
     "rich>=13.9.2",
     "uvicorn>=0.46.0",
 ]

@@ -94,7 +94,9 @@ USER_VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
 USER_CONFIG = APP_DATA_DIR / "config.toml"
 
 LOG_FILE = LOG_FOLDER / "app.log"
-SUPPORT_PROJECT_URL = "https://github.com/bonkedbythonk/anicat"
+LOCAL_API_PORT = 13370
+LOCAL_API_ORIGIN = f"http://127.0.0.1:{LOCAL_API_PORT}"
+SUPPORT_PROJECT_URL = f"https://github.com/{AUTHOR}/anicat"
 UPDATE_STATUS_FILE = APP_CACHE_DIR / ".update_status"
 LAST_COMMIT_FILE = APP_CACHE_DIR / ".last_commit"
 UPDATE_IN_PROGRESS_FILE = APP_CACHE_DIR / ".update_in_progress"

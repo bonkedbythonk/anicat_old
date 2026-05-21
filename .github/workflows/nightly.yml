@@ -94,8 +94,8 @@ jobs:
           VERSION=$(cat version.txt)
           if [ "${{ github.ref_name }}" = "master" ]; then
             echo "RELEASE_TAG=v${VERSION}-stable" >> $GITHUB_ENV
-            echo "RELEASE_NAME=Anicat v${VERSION} (Stable Rolling)" >> $GITHUB_ENV
-            echo "RELEASE_BODY=Auto-built from master branch — Anicat v${VERSION}. This rolling stable build updates on every push to master." >> $GITHUB_ENV
+            echo "RELEASE_NAME=Anicat v${VERSION}" >> $GITHUB_ENV
+            echo "RELEASE_BODY=Auto-built from master branch — Anicat v${VERSION}." >> $GITHUB_ENV
             echo "RELEASE_DRAFT=false" >> $GITHUB_ENV
             echo "RELEASE_PRERELEASE=false" >> $GITHUB_ENV
           else

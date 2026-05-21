@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, memo } from "react";
 import { Play, BookOpen } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { type MediaItem, mediaApi } from "@/lib/api";
@@ -10,7 +10,7 @@ interface MediaCardProps {
   onSelect?: (item: MediaItem, action?: "play") => void;
 }
 
-export default function MediaCard({ item, onSelect }: MediaCardProps) {
+const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
   const queryClient = useQueryClient();
 
   const handlePlay = (e: React.MouseEvent) => {
@@ -155,4 +155,6 @@ export default function MediaCard({ item, onSelect }: MediaCardProps) {
       </div>
     </div>
   );
-}
+});
+
+export default MediaCard;
