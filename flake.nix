@@ -18,7 +18,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
         inherit (pkgs) lib python312Packages;
 
-        version = "4.12.2";
+        version = "4.12.3";
       in
       {
         packages.default = python312Packages.buildPythonApplication {

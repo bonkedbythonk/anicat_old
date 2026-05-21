@@ -12,12 +12,13 @@ def generate_config_toml_from_app_model(config: AppConfig) -> str:
     lines = [r"#/\_/\ ", r"#( o.o )", r"# > ^ <  [ a n i c a t ]", ""]
 
     for section_name, section_model in config:
-        if not hasattr(section_model, "model_fields"):
+        model_class = type(section_model)
+        if not hasattr(model_class, "model_fields"):
             continue
 
         lines.append(f"[{section_name}]")
 
-        for field_name in section_model.model_fields:
+        for field_name in model_class.model_fields:
             field_value = getattr(section_model, field_name)
 
             # Special case for token in anilist section to ensure it's always written

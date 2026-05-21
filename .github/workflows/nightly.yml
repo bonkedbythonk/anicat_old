@@ -110,8 +110,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete "${{ env.RELEASE_TAG }}" --yes --cleanup-tag 2>/dev/null || true
-          echo "Pre-cleaned tag: ${{ env.RELEASE_TAG }}"
+          gh release delete "$RELEASE_TAG" --yes --cleanup-tag 2>/dev/null || true
+          echo "Pre-cleaned tag: $RELEASE_TAG"
 
       - uses: tauri-apps/tauri-action@v0
         env:
@@ -132,7 +132,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          CURRENT_TAG="${{ env.RELEASE_TAG }}"
+          CURRENT_TAG="$RELEASE_TAG"
           # Only clean up if the current release was actually created
           if gh release view "$CURRENT_TAG" --json tagName --jq '.tagName' 2>/dev/null; then
             echo "Current release exists. Removing older stable releases (keeping $CURRENT_TAG)..."
