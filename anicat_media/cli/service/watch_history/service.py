@@ -139,40 +139,31 @@ class WatchHistoryService:
             except (ValueError, TypeError):
                 local_progress = remote_progress
 
-        # 3. Handle Completion and Increment
-        # If we have a local session, check if it was completed
+        # 3. Determine the best known progress (local registry is the live source,
+        #    AniList is a fallback that may be up to 5 minutes stale).
+        best_progress = max(local_progress, remote_progress)
+
+        # 4. Handle Completion and Increment
         if start_time and total_duration:
+            # Active local session — check if the episode was completed
             from ....core.utils.converter import calculate_completion_percentage
-            
+
             if (
                 calculate_completion_percentage(start_time, total_duration)
                 >= self.config.stream.episode_complete_at
             ):
                 # Episode is considered finished, move to next
-                local_progress += 1
+                best_progress += 1
                 start_time = None
-        elif not index_entry or not start_time:
-            # No active local session (either finished or never started)
-            # Default to the next episode based on progress
-            if self.config.general.preferred_tracker == "local":
-                local_progress += 1
-            else:
-                remote_progress += 1
-                local_progress = remote_progress
-
-        # 4. Resolve Final Episode Number
-        if self.config.general.preferred_tracker == "local":
-            episode = str(local_progress)
         else:
-            # Remote/AniList preference
-            # If local is ahead and force_forward is off, maybe allow it?
-            # But usually we want remote_progress + 1 if no active local session.
-            episode = str(remote_progress if remote_progress > local_progress else local_progress)
+            # No active local session (finished or never started)
+            # Default to the next episode
+            best_progress += 1
 
-        if episode == "0":
-            episode = "1"
-            
-        return episode, start_time
+        if best_progress == 0:
+            best_progress = 1
+
+        return str(best_progress), start_time
 
     def update(
         self,
