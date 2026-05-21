@@ -267,11 +267,11 @@ async def get_smart_playlist():
                 m
                 for m in completed.media
                 if m.user_status and (m.user_status.score or 0) >= 70
-            ][:3]
+            ][:5]
             for show in top_shows:
                 try:
                     recs = ctx.media_api.get_recommendation_for(
-                        MediaRecommendationParams(id=show.id, per_page=10)
+                        MediaRecommendationParams(id=show.id, per_page=15)
                     )
                     if recs:
                         for rec in recs:
@@ -299,7 +299,7 @@ async def get_smart_playlist():
 
             sample = planning.media[:]
             random.shuffle(sample)
-            for item in sample[:5]:
+            for item in sample[:10]:
                 if item.id not in seen_ids:
                     item.playlist_reason = "From your Watchlist"
                     all_items.append(item)

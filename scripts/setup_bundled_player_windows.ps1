@@ -1,7 +1,8 @@
 # setup_bundled_player_windows.ps1
 # Automates downloading, extracting, and configuring the portable MPV player for AniCat on Windows.
 #
-# Requirements: PowerShell 5.1+, internet access. 7-Zip is auto-installed if missing.
+# MPV is obtained via Chocolatey (pre-installed on CI), Winget, or SourceForge fallback.
+# 7-Zip is only needed for the SourceForge fallback path.
 
 $ErrorActionPreference = "Stop"
 
@@ -9,12 +10,14 @@ $ResourcesDir = "web\src-tauri\resources"
 $ConfigDir = "$ResourcesDir\mpv_config"
 
 # ---------------------------------------------------------------------------
-# Helper: ensure 7-Zip is available (auto-install via Chocolatey on CI)
+# Helper: ensure 7-Zip is available (non-fatal — only needed for SourceForge path)
 # ---------------------------------------------------------------------------
 function Ensure-7Zip {
+    $script:_7zAvailable = $false
     $7zPath = Get-Command 7z -ErrorAction SilentlyContinue
     if ($7zPath) {
         Write-Host "7-Zip found at: $($7zPath.Source)"
+        $script:_7zAvailable = $true
         return
     }
     # Check common install locations
@@ -26,56 +29,124 @@ function Ensure-7Zip {
         if (Test-Path $p) {
             $env:Path += ";$(Split-Path $p)"
             Write-Host "7-Zip found at: $p"
+            $script:_7zAvailable = $true
             return
         }
     }
-    # Try Chocolatey install (works on GitHub Actions Windows runners)
+    # Try Chocolatey install
     Write-Host "7-Zip not found. Attempting Chocolatey install..."
     $choco = Get-Command choco -ErrorAction SilentlyContinue
     if ($choco) {
         choco install 7zip -y --no-progress | Out-Null
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        $script:_7zAvailable = $true
         Write-Host "7-Zip installed via Chocolatey."
         return
     }
-    throw "7-Zip is required but not found, and Chocolatey is not available to install it."
-}
+    Write-Host "WARNING: 7-Zip not available. SourceForge fallback will not work if needed."
 
 # ---------------------------------------------------------------------------
-# Helper: download the MPV portable 7z archive
+# Helper: get MPV binary + DLLs (Chocolatey → Winget → SourceForge fallback)
 # ---------------------------------------------------------------------------
-function Get-MpvArchive {
-    $MpvZip = "$env:TEMP\mpv-windows.7z"
-    $ghReleaseUrl = "https://api.github.com/repos/shinchiro/mpv-winbuild/releases/latest"
+function Get-MpvBinaries {
+    param([string]$DestDir)
 
-    # -- Tier 1: GitHub API for latest release --
-    try {
-        Write-Host "Trying GitHub API: $ghReleaseUrl"
-        $ReleaseJson = Invoke-RestMethod -Uri $ghReleaseUrl -TimeoutSec 30 -ErrorAction Stop
-        $Asset = $ReleaseJson.assets | Where-Object {
-            $_.name -match "mpv-x86_64.*\.7z" -and $_.name -notmatch "installer|setup|symbols|pdbs"
-        } | Select-Object -First 1
-        if ($Asset) {
-            Write-Host "Found: $($Asset.name) ($('{0:N0}' -f $Asset.size) bytes)"
-            Write-Host "Downloading..."
-            Invoke-WebRequest -Uri $Asset.browser_download_url -OutFile $MpvZip -TimeoutSec 180
-            return $MpvZip
+    # -- Tier 1: Check if mpv is already installed in PATH --
+    $existing = Get-Command mpv -ErrorAction SilentlyContinue
+    if ($existing) {
+        Write-Host "mpv already installed: $($existing.Source)"
+        $srcDir = Split-Path $existing.Source -Parent
+        Copy-Item "$srcDir\mpv.exe" -Destination "$DestDir\mpv.exe" -Force
+        Get-ChildItem "$srcDir\*.dll" | ForEach-Object {
+            Copy-Item $_.FullName -Destination "$DestDir\" -Force
         }
-        Write-Host "GitHub API succeeded but no matching 64-bit portable .7z asset found."
-    } catch {
-        Write-Host "GitHub API failed: $_"
+        Write-Host "Copied mpv.exe + DLLs from existing install."
+        return
     }
 
-    # -- Tier 2: Direct download from a known good release (pinned fallback) --
-    $fallbackUrl = "https://github.com/shinchiro/mpv-winbuild/releases/download/2025-03-23-release/mpv-x86_64-20250323.7z"
-    Write-Host "Trying fallback URL: $fallbackUrl"
-    try {
-        Invoke-WebRequest -Uri $fallbackUrl -OutFile $MpvZip -TimeoutSec 180 -ErrorAction Stop
-        Write-Host "Fallback download complete."
-        return $MpvZip
-    } catch {
-        throw "All download methods failed. Last error: $_"
+    # -- Tier 2: Chocolatey (pre-installed on GitHub Actions Windows runners) --
+    $choco = Get-Command choco -ErrorAction SilentlyContinue
+    if ($choco) {
+        Write-Host "Installing MPV via Chocolatey..."
+        choco install mpv -y --no-progress --limit-output 2>&1 | Out-Null
+        # Refresh PATH so we can find mpv
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        $mpvExe = Get-Command mpv -ErrorAction SilentlyContinue
+        if ($mpvExe) {
+            $srcDir = Split-Path $mpvExe.Source -Parent
+            Copy-Item "$srcDir\mpv.exe" -Destination "$DestDir\mpv.exe" -Force
+            Get-ChildItem "$srcDir\*.dll" | ForEach-Object {
+                Copy-Item $_.FullName -Destination "$DestDir\" -Force
+            }
+            Write-Host "MPV installed and copied via Chocolatey."
+            return
+        }
+        Write-Host "Chocolatey install completed but mpv.exe not found on PATH."
     }
+
+    # -- Tier 3: Winget (built into Windows 10/11) --
+    $winget = Get-Command winget -ErrorAction SilentlyContinue
+    if ($winget) {
+        Write-Host "Installing MPV via Winget..."
+        winget install --id=mpv.net --exact --silent --accept-source-agreements 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            # Try alternative package (mpv.net is a common one, try mpv directly)
+            winget install --id=mpv --exact --silent --accept-source-agreements 2>&1 | Out-Null
+        }
+        # Refresh PATH
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        $mpvExe = Get-Command mpv -ErrorAction SilentlyContinue
+        if ($mpvExe) {
+            $srcDir = Split-Path $mpvExe.Source -Parent
+            Copy-Item "$srcDir\mpv.exe" -Destination "$DestDir\mpv.exe" -Force
+            Get-ChildItem "$srcDir\*.dll" | ForEach-Object {
+                Copy-Item $_.FullName -Destination "$DestDir\" -Force
+            }
+            Write-Host "MPV installed and copied via Winget."
+            return
+        }
+        Write-Host "Winget install completed but mpv.exe not found on PATH."
+    }
+
+    # -- Tier 4: Direct SourceForge download (last resort) --
+    if (-not $script:_7zAvailable) {
+        throw "No package manager available and 7-Zip is not installed. Cannot download MPV from SourceForge. Please install MPV manually (choco install mpv, winget install mpv, or from https://mpv.io)."
+    }
+    Write-Host "No package manager available. Attempting direct SourceForge download..."
+    # SourceForge RSS feed for the project
+    try {
+        $sfRss = Invoke-RestMethod -Uri "https://sourceforge.net/projects/mpv-player-windows/rss?path=/64bit" -TimeoutSec 30
+        # Parse the first file download link from the RSS
+        $match = [regex]::Match($sfRss, 'https://sourceforge\.net/projects/mpv-player-windows/files/64bit/[^"]+\.7z/download')
+        if ($match.Success) {
+            $sfUrl = $match.Value
+            Write-Host "SourceForge URL: $sfUrl"
+            $tmpZip = "$env:TEMP\mpv-sourceforge.7z"
+            Invoke-WebRequest -Uri $sfUrl -OutFile $tmpZip -TimeoutSec 180
+            # Extract the .7z
+            $extractDir = "$env:TEMP\mpv_sf_extract"
+            Remove-Item -Recurse -Force $extractDir -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Force -Path $extractDir | Out-Null
+            & 7z x "$tmpZip" -o"$extractDir" -y 2>&1 | Out-Null
+            # Find mpv.exe in the extracted tree
+            $extractedMpv = Get-ChildItem -Path $extractDir -Recurse -Filter "mpv.exe" | Select-Object -First 1
+            if ($extractedMpv) {
+                $extractedDir = Split-Path $extractedMpv.FullName -Parent
+                Copy-Item $extractedMpv.FullName -Destination "$DestDir\mpv.exe" -Force
+                Get-ChildItem "$extractedDir\*.dll" | ForEach-Object {
+                    Copy-Item $_.FullName -Destination "$DestDir\" -Force
+                }
+                Write-Host "MPV downloaded and extracted from SourceForge."
+                Remove-Item -Recurse -Force $extractDir -ErrorAction SilentlyContinue
+                Remove-Item -Force $tmpZip -ErrorAction SilentlyContinue
+                return
+            }
+        }
+    } catch {
+        Write-Host "SourceForge download failed: $_"
+    }
+
+    throw "Could not obtain MPV binaries from any source. Please install MPV manually (choco install mpv, winget install mpv, or from https://mpv.io)."
 }
 
 # ---------------------------------------------------------------------------
@@ -85,49 +156,17 @@ function Get-MpvArchive {
 Write-Host "=== 1. Ensuring 7-Zip is available ==="
 Ensure-7Zip
 
-Write-Host "=== 2. Downloading Windows MPV portable build ==="
-$MpvZip = Get-MpvArchive
-
-# Validate the downloaded archive
-if (-not (Test-Path $MpvZip)) {
-    throw "Downloaded MPV archive not found at: $MpvZip"
-}
-$fileInfo = Get-Item $MpvZip
-if ($fileInfo.Length -lt 1000000) {
-    throw "Downloaded MPV archive is too small ($($fileInfo.Length) bytes) — likely a redirect page or error, not a valid archive."
-}
-Write-Host "Archive size: $('{0:N0}' -f $fileInfo.Length) bytes"
-
-Write-Host "=== 3. Creating resources directory and extracting MPV ==="
+Write-Host "=== 2. Creating resources directory ==="
 New-Item -ItemType Directory -Force -Path $ResourcesDir | Out-Null
 
-$TmpExtract = "$env:TEMP\mpv_extract"
-Remove-Item -Recurse -Force $TmpExtract -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Force -Path $TmpExtract | Out-Null
+Write-Host "=== 3. Obtaining MPV binaries ==="
+Get-MpvBinaries -DestDir $ResourcesDir
 
-# Extract with 7-Zip (capture output for debugging)
-$extractOutput = & 7z x "$MpvZip" -o"$TmpExtract" -y 2>&1
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "7z extraction output:"
-    Write-Host ($extractOutput -join "`n")
-    throw "7-Zip extraction failed with exit code $LASTEXITCODE"
+# Verify we have mpv.exe
+if (-not (Test-Path "$ResourcesDir\mpv.exe")) {
+    throw "mpv.exe not found in $ResourcesDir after Get-MpvBinaries"
 }
-Write-Host "Extraction successful."
-
-# Find the extracted mpv directory (named like "mpv-x86_64-YYYYMMDD")
-$MpvDir = Get-ChildItem -Path $TmpExtract -Directory | Select-Object -First 1
-if (-not $MpvDir) {
-    Write-Host "Contents of extract directory:"
-    Get-ChildItem -Path $TmpExtract | ForEach-Object { Write-Host "  $($_.Name)" }
-    throw "Could not find extracted MPV directory inside $TmpExtract"
-}
-Write-Host "Extracted MPV directory: $($MpvDir.Name)"
-
-Write-Host "Copying MPV binary and libraries..."
-Copy-Item "$($MpvDir.FullName)\mpv.exe" -Destination "$ResourcesDir\mpv.exe" -Force
-Get-ChildItem "$($MpvDir.FullName)\*.dll" | ForEach-Object {
-    Copy-Item $_.FullName -Destination "$ResourcesDir\" -Force
-}
+Write-Host "MPV binary size: $('{0:N0}' -f (Get-Item "$ResourcesDir\mpv.exe").Length) bytes"
 
 Write-Host "=== 4. Setting up isolated themed configuration directories ==="
 New-Item -ItemType Directory -Force -Path "$ConfigDir\scripts" | Out-Null

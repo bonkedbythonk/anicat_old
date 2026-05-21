@@ -210,16 +210,16 @@ export default function HomeView({ onSelect }: HomeViewProps) {
         <MediaRow title="Continue Watching" items={continueWatchingList} onSelect={onSelect} />
       )}
       
-      {smartPlaylistQuery.data?.media && smartPlaylistQuery.data.media.length > 0 && (
-        <MediaRow title="Smart Playlist" items={smartPlaylistQuery.data.media} onSelect={onSelect} />
-      )}
-      
       {recentReleasesQuery.isLoading ? (
         <MediaRowSkeleton title="New for You" />
       ) : (
         recentReleasesQuery.data && recentReleasesQuery.data.length > 0 && (
           <MediaRow title="New for You" items={recentReleasesQuery.data} onSelect={onSelect} />
         )
+      )}
+      
+      {smartPlaylistQuery.data?.media && smartPlaylistQuery.data.media.length > 0 && (
+        <MediaRow title="Smart Playlist" items={smartPlaylistQuery.data.media} onSelect={onSelect} />
       )}
       
       {trendingQuery.isLoading ? (
