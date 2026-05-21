@@ -254,6 +254,7 @@ end)
 mp.register_event('end-file', function()
   state.file_loaded = false
   state.overlay:remove()
+  mp.osd_message('Playback finished. Press Q or close the window to return to Anicat.', 5)
 end)
 
 register_script_messages()

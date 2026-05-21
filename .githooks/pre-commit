@@ -1,20 +1,30 @@
 #!/usr/bin/env bash
-# commit-msg — Auto-bump version based on conventional commit message.
+# pre-commit — Auto-bump version based on conventional commit message.
 #
-# Reads the commit message from the file passed as $1 and bumps the project
+# Reads the commit message from .git/COMMIT_EDITMSG and bumps the project
 # version accordingly using scripts/bump-version.sh.
 #
 #   fix:    →  PATCH bump (4.0.0 → 4.0.1)
 #   feat:   →  MINOR bump (4.0.0 → 4.1.0)
 #   BREAKING CHANGE / ! → MAJOR bump (4.0.0 → 5.0.0)
 #
+# Runs BEFORE the commit is created, so git add here includes the bumped
+# files in the commit.
+#
 # Install: git config core.hooksPath .githooks
 
 set -euo pipefail
 
-COMMIT_MSG_FILE="$1"
-COMMIT_MSG=$(head -1 "$COMMIT_MSG_FILE")
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+GIT_DIR="$(git rev-parse --git-dir)"
+COMMIT_MSG_FILE="$GIT_DIR/COMMIT_EDITMSG"
+
+# Skip if no commit message file exists (e.g. during rebase or merges)
+if [ ! -f "$COMMIT_MSG_FILE" ]; then
+    exit 0
+fi
+
+COMMIT_MSG=$(head -1 "$COMMIT_MSG_FILE")
 BUMP_SCRIPT="$PROJECT_ROOT/scripts/bump-version.sh"
 
 CURRENT_VERSION=$(cat "$PROJECT_ROOT/version.txt")
@@ -28,9 +38,8 @@ bump_and_stage() {
     local new_version="$1"
     bash "$BUMP_SCRIPT" "$new_version"
     # Stage all version files so they're included in THIS commit.
-    # commit-msg hook runs after the message is finalized but before
-    # the commit object is created. git add here updates the index,
-    # and the commit will include these changes.
+    # pre-commit runs before the commit object is created, so git add
+    # updates the index that the commit uses.
     git add "$PROJECT_ROOT/version.txt" \
             "$PROJECT_ROOT/pyproject.toml" \
             "$PROJECT_ROOT/anicat_media/_version.py" \

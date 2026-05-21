@@ -19,7 +19,7 @@
 | Python format/lint | `uv run ruff format . && uv run ruff check .` |
 | Python tests | `uv run pytest` (add `-m "not integration"` to skip network tests) |
 | Frontend dev server | `cd web && npm run dev` (→ localhost:3000) |
-| Bump version | Auto-bumps on `git commit` via `.githooks/commit-msg` (see below) |
+| Bump version | Auto-bumps on `git commit` via `.githooks/pre-commit` (see below) |
 | Frontend build | `cd web && npm run build` |
 | Frontend lint | `cd web && npm run lint` |
 
@@ -70,7 +70,7 @@ See [README.md](README.md) for user-facing docs.
 
 ## Versioning (Auto-Bump via Git Hook)
 
-A `commit-msg` hook at `.githooks/commit-msg` auto-bumps the version
+A `pre-commit` hook at `.githooks/pre-commit` auto-bumps the version
 when you commit with [conventional commits](https://www.conventionalcommits.org/):
 
 | Commit prefix | Bump | Example |
@@ -89,7 +89,7 @@ no bump occurs.
 ### 0. Always use conventional commits (auto-bump hook)
 
 Every `git commit` message **must** use the conventional commits format.
-The `.githooks/commit-msg` hook reads the first line to auto-bump
+The `.githooks/pre-commit` hook reads the first line to auto-bump
 the version — if you use a generic message like `"updated stuff"`, no bump
 happens and the version stays stale.
 

@@ -91,6 +91,12 @@ osd-level=1
 osd-on-seek=no
 osd-bar=no
 
+# Playback
+# Show last frame instead of black screen when episode ends
+keep-open=yes
+# Remember volume, position, and other settings between launches
+save-position-on-quit=yes
+
 # Subtitles
 sub-auto=fuzzy
 sub-font="Outfit"
