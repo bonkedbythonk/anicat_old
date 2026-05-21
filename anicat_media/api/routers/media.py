@@ -218,7 +218,7 @@ async def get_smart_playlist():
         UserMediaListSearchParams,
         MediaRecommendationParams,
     )
-    from ...libs.media_api.types import UserMediaListStatus, MediaSort, PageInfo
+    from ...libs.media_api.types import UserMediaListStatus, UserMediaListSort, PageInfo
 
     ctx = get_ctx()
     all_items: list = []
@@ -230,7 +230,7 @@ async def get_smart_playlist():
             UserMediaListSearchParams(
                 status=UserMediaListStatus.WATCHING,
                 type=MediaType.ANIME,
-                sort=MediaSort.UPDATED_TIME_DESC,
+                sort=UserMediaListSort.UPDATED_TIME_DESC,
                 per_page=20,
             )
         )
@@ -258,7 +258,7 @@ async def get_smart_playlist():
             UserMediaListSearchParams(
                 status=UserMediaListStatus.COMPLETED,
                 type=MediaType.ANIME,
-                sort=MediaSort.SCORE_DESC,
+                sort=UserMediaListSort.MEDIA_SCORE_DESC,
                 per_page=5,
             )
         )
@@ -290,7 +290,7 @@ async def get_smart_playlist():
             UserMediaListSearchParams(
                 status=UserMediaListStatus.PLANNING,
                 type=MediaType.ANIME,
-                sort=MediaSort.POPULARITY_DESC,
+                sort=UserMediaListSort.MEDIA_POPULARITY_DESC,
                 per_page=20,
             )
         )
