@@ -90,15 +90,28 @@ jobs:
         run: npm run build
 
       - name: Set release parameters
+        id: release_params
         run: |
           VERSION=$(cat version.txt)
           if [ "${{ github.ref_name }}" = "master" ]; then
+            echo "tag=v${VERSION}-stable" >> $GITHUB_OUTPUT
+            echo "name=Anicat v${VERSION}" >> $GITHUB_OUTPUT
+            echo "body=Auto-built from master branch — Anicat v${VERSION}." >> $GITHUB_OUTPUT
+            echo "draft=false" >> $GITHUB_OUTPUT
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+            # Also export as env vars for downstream shell steps
             echo "RELEASE_TAG=v${VERSION}-stable" >> $GITHUB_ENV
             echo "RELEASE_NAME=Anicat v${VERSION}" >> $GITHUB_ENV
             echo "RELEASE_BODY=Auto-built from master branch — Anicat v${VERSION}." >> $GITHUB_ENV
             echo "RELEASE_DRAFT=false" >> $GITHUB_ENV
             echo "RELEASE_PRERELEASE=false" >> $GITHUB_ENV
           else
+            echo "tag=nightly" >> $GITHUB_OUTPUT
+            echo "name=Anicat Nightly Build" >> $GITHUB_OUTPUT
+            echo "body=Automated rolling pre-release built from nightly branch. Last updated: ${{ github.event.head_commit.timestamp || 'Manual Trigger' }} (commit ${{ github.sha }}). Install via: curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/master/scripts/install_macos.sh | sed 's/releases/latest/releases/tags/nightly/g' | bash" >> $GITHUB_OUTPUT
+            echo "draft=false" >> $GITHUB_OUTPUT
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+            # Also export as env vars for downstream shell steps
             echo "RELEASE_TAG=nightly" >> $GITHUB_ENV
             echo "RELEASE_NAME=Anicat Nightly Build" >> $GITHUB_ENV
             echo "RELEASE_BODY=Automated rolling pre-release built from nightly branch. Last updated: ${{ github.event.head_commit.timestamp || 'Manual Trigger' }} (commit ${{ github.sha }}). Install via: curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/master/scripts/install_macos.sh | sed 's/releases/latest/releases/tags/nightly/g' | bash" >> $GITHUB_ENV
@@ -120,11 +133,11 @@ jobs:
           TAURI_BUNDLER_DMG_IGNORE_CI: "true"
         with:
           projectPath: web
-          tagName: ${{ env.RELEASE_TAG }}
-          releaseName: ${{ env.RELEASE_NAME }}
-          releaseBody: ${{ env.RELEASE_BODY }}
-          releaseDraft: ${{ env.RELEASE_DRAFT }}
-          prerelease: ${{ env.RELEASE_PRERELEASE }}
+          tagName: ${{ steps.release_params.outputs.tag }}
+          releaseName: ${{ steps.release_params.outputs.name }}
+          releaseBody: ${{ steps.release_params.outputs.body }}
+          releaseDraft: ${{ steps.release_params.outputs.draft }}
+          prerelease: ${{ steps.release_params.outputs.prerelease }}
           args: ${{ matrix.args }}
 
       - name: Clean up older rolling releases

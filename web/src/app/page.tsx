@@ -141,6 +141,7 @@ export default function App() {
                   setActiveUpdateOverlay(null);
                   updateOverlayTimeoutRef.current = null;
                 }, 300000); // 5 min — matches backend stale-file cleanup
+              }
             }}
           />
         );
