@@ -45,10 +45,15 @@ class MpvPlayer(BasePlayer):
         # Determine bundled paths:
         app_dir = os.path.dirname(sys.executable)
         bundled_paths = [
+            # macOS .app bundle paths
             os.path.abspath(
                 os.path.join(app_dir, "..", "Resources", "resources", "mpv")
             ),
             os.path.abspath(os.path.join(app_dir, "..", "Resources", "mpv")),
+            # Windows / Linux flat directory paths
+            os.path.abspath(os.path.join(app_dir, "resources", "mpv")),
+            os.path.abspath(os.path.join(app_dir, "resources", "mpv.exe")),
+            # Development fallback relative to this source file
             os.path.abspath(
                 os.path.join(
                     os.path.dirname(__file__),
@@ -62,6 +67,19 @@ class MpvPlayer(BasePlayer):
                     "mpv",
                 )
             ),
+            os.path.abspath(
+                os.path.join(
+                    os.path.dirname(__file__),
+                    "..",
+                    "..",
+                    "..",
+                    "..",
+                    "web",
+                    "src-tauri",
+                    "resources",
+                    "mpv.exe",
+                )
+            ),
         ]
 
         # Always search for and prioritize the bundled MPV shipped with AniCat to ensure consistent UX/shaders/ModernZ theme.
@@ -70,9 +88,9 @@ class MpvPlayer(BasePlayer):
                 self.executable = path
                 logger.info(f"Bundled MPV selected: {self.executable}")
                 # Try to remove macOS quarantine flag on the bundled resources if present
-                try:
-                    resources_dir = os.path.dirname(self.executable)
-                    if sys.platform == "darwin":
+                if sys.platform == "darwin":
+                    try:
+                        resources_dir = os.path.dirname(self.executable)
                         subprocess.run(
                             [
                                 "xattr",
@@ -85,8 +103,8 @@ class MpvPlayer(BasePlayer):
                             stderr=subprocess.DEVNULL,
                         )
                         logger.info("Cleared macOS quarantine on bundled resources.")
-                except Exception as e:
-                    logger.warning(f"Could not clear macOS quarantine dynamically: {e}")
+                    except Exception as e:
+                        logger.warning(f"Could not clear macOS quarantine dynamically: {e}")
                 break
 
         # Only check system-installed MPV locations if no bundled MPV was found (e.g. running in CLI dev mode)
@@ -111,8 +129,25 @@ class MpvPlayer(BasePlayer):
                     logger.info(
                         f"System-installed MPV discovered at: {self.executable}"
                     )
+            elif sys.platform == "win32":
+                self.executable = shutil.which("mpv")
+                if not self.executable:
+                    common_paths = [
+                        os.path.expanduser("~\\scoop\\shims\\mpv.exe"),
+                        "C:\\Program Files\\mpv\\mpv.exe",
+                        "C:\\Program Files (x86)\\mpv\\mpv.exe",
+                        os.path.expanduser("~\\AppData\\Local\\mpv\\mpv.exe"),
+                    ]
+                    for path in common_paths:
+                        if os.path.exists(path):
+                            self.executable = path
+                            break
+                if self.executable:
+                    logger.info(
+                        f"System-installed MPV discovered at: {self.executable}"
+                    )
             else:
-                # Non-macOS standard PATH lookup
+                # Linux / other Unix — standard PATH lookup
                 self.executable = shutil.which("mpv")
 
         if self.executable:
@@ -201,8 +236,11 @@ class MpvPlayer(BasePlayer):
         pre_args = self.config.pre_args.split(",") if self.config.pre_args else []
 
         # Set up a dedicated debug log file for MPV output
-        log_dir = os.path.expanduser("~/Library/Caches/anicat/logs")
-        if sys.platform != "darwin":
+        if sys.platform == "darwin":
+            log_dir = os.path.expanduser("~/Library/Caches/anicat/logs")
+        elif sys.platform == "win32":
+            log_dir = os.path.expanduser("~/AppData/Local/anicat/logs")
+        else:
             log_dir = os.path.expanduser("~/.cache/anicat/logs")
 
         try:
@@ -298,6 +336,10 @@ class MpvPlayer(BasePlayer):
                 if sys.platform == "darwin":
                     watch_later_dir = os.path.expanduser(
                         "~/Library/Caches/anicat/mpv_watch_later"
+                    )
+                elif sys.platform == "win32":
+                    watch_later_dir = os.path.expanduser(
+                        "~/AppData/Local/anicat/mpv_watch_later"
                     )
                 else:
                     watch_later_dir = os.path.expanduser(

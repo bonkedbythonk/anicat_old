@@ -76,6 +76,7 @@ Thumbs.db
 applet.icns
 .anicat_path
 QUICKSTART.md
+AGENTS.md
 docs/DEV_VS_PUBLIC.md
 scripts/start-dev.sh
 scripts/dev_backend.sh

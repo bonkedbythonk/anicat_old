@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import sys
 
-# Ensure common paths are present for macOS GUI launches
+# Ensure common paths are present for macOS GUI launches and Windows bundled apps
 if sys.platform == "darwin":
     path = os.environ.get("PATH", "")
     extra_paths = [
@@ -18,6 +18,17 @@ if sys.platform == "darwin":
         "/usr/sbin",
         "/sbin",
         os.path.expanduser("~/.local/bin")
+    ]
+    current_paths = path.split(os.pathsep)
+    for p in extra_paths:
+        if p not in current_paths:
+            current_paths.append(p)
+    os.environ["PATH"] = os.pathsep.join(current_paths)
+elif sys.platform == "win32":
+    path = os.environ.get("PATH", "")
+    extra_paths = [
+        os.path.expanduser("~\\scoop\\shims"),
+        os.path.expanduser("~\\AppData\\Local\\Microsoft\\WindowsApps"),
     ]
     current_paths = path.split(os.pathsep)
     for p in extra_paths:

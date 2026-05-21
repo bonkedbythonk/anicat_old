@@ -102,7 +102,7 @@ def get_clean_env() -> dict[str, str]:
             else:
                 env.pop(var, None)
 
-    # 2. Inject common paths for macOS GUI launches
+    # 2. Inject common paths for macOS GUI launches and Windows bundled apps
     if sys.platform == "darwin":
         path = env.get("PATH", "")
         extra_paths = [
@@ -146,5 +146,16 @@ def get_clean_env() -> dict[str, str]:
                     env["VK_ICD_FILENAMES"] = icd_path
                     env["VK_DRIVER_FILES"] = icd_path
                     break
+    elif sys.platform == "win32":
+        path = env.get("PATH", "")
+        extra_paths = [
+            os.path.expanduser("~\\scoop\\shims"),
+            os.path.expanduser("~\\AppData\\Local\\Microsoft\\WindowsApps"),
+        ]
+        current_paths = path.split(os.pathsep)
+        for p in extra_paths:
+            if p not in current_paths:
+                current_paths.append(p)
+        env["PATH"] = os.pathsep.join(current_paths)
         
     return env

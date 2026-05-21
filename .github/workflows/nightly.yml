@@ -17,6 +17,9 @@ jobs:
       contents: write
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
@@ -24,6 +27,13 @@ jobs:
           - platform: 'macos-14' # Apple Silicon (M1) Runner
             args: '--target aarch64-apple-darwin'
             triple: 'aarch64-apple-darwin'
+            sidecar_suffix: ''
+            tauri_extra_env: 'TAURI_BUNDLER_DMG_IGNORE_CI: "true"'
+          - platform: 'windows-latest'
+            args: '--target x86_64-pc-windows-msvc'
+            triple: 'x86_64-pc-windows-msvc'
+            sidecar_suffix: '.exe'
+            tauri_extra_env: ''
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -50,21 +60,27 @@ jobs:
           python-version: '3.11'
 
       - name: install uv
+        if: runner.os == 'macOS'
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: install uv (Windows)
+        if: runner.os == 'Windows'
+        run: irm https://astral.sh/uv/install.ps1 | iex
+        shell: powershell
 
       - name: install python dependencies
         run: uv sync
 
       - name: inject commit SHA into version
         run: |
-          sed -i '' "s/__commit__ = \"\"/__commit__ = \"${{ github.sha }}\"/" anicat_media/_version.py
+          python -c "from pathlib import Path; p=Path('anicat_media/_version.py'); p.write_text(p.read_text().replace('__commit__ = \"\"', '__commit__ = \"${{ github.sha }}\"'))"
           echo "Injected commit SHA: ${{ github.sha }}"
 
       - name: build sidecar
         run: |
           uv run pyinstaller --noconfirm build_sidecar/sidecar.spec
           mkdir -p web/src-tauri/binaries
-          mv dist/anicat-server web/src-tauri/binaries/anicat-server-${{ matrix.triple }}
+          mv dist/anicat-server${{ matrix.sidecar_suffix }} web/src-tauri/binaries/anicat-server-${{ matrix.triple }}${{ matrix.sidecar_suffix }}
 
       - name: install rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -80,8 +96,14 @@ jobs:
       - name: install frontend dependencies
         run: cd web && npm install
 
-      - name: Setup Bundled Player Companion
+      - name: Setup Bundled Player Companion (macOS)
+        if: runner.os == 'macOS'
         run: chmod +x ./scripts/setup_bundled_player.sh && ./scripts/setup_bundled_player.sh
+
+      - name: Setup Bundled Player Companion (Windows)
+        if: runner.os == 'Windows'
+        run: ./scripts/setup_bundled_player_windows.ps1
+        shell: powershell
 
       - name: build frontend
         working-directory: web
