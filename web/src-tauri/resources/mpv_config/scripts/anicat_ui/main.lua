@@ -4,7 +4,7 @@ local msg = require 'mp.msg'
 local options = require 'mp.options'
 
 local opts = {
-  accent = '00f2fe',
+  accent = '0A84FF',
   font = 'Outfit',
   skip_times = '',
 }
@@ -202,7 +202,7 @@ local function render()
     local s_y2 = s_y1 + btn_h
     state.skip_button = { x1 = s_x1, y1 = s_y1, x2 = s_x2, y2 = s_y2 }
 
-    draw_button(ass, s_x1, s_y1, s_x2, s_y2, '0a0b10', opts.accent, skip_label, 14, 'ffffff')
+    draw_button(ass, s_x1, s_y1, s_x2, s_y2, '050505', opts.accent, skip_label, 14, 'ffffff')
   end
 
   state.overlay.data = ass.text
