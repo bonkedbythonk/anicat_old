@@ -85,9 +85,10 @@ commands = {
 @click.pass_context
 def cli(ctx: click.Context, **options: "Unpack[Options]"):
     """
-    Anicat — watch, track, and download anime & manga.
+    Anicat — watch, track, and download anime and manga.
 
-    Run anicat to see available commands. Commands match the app navigation: home, manga, search, lists, downloads, library, schedule, notifications, profile, settings.
+    Run anicat to launch the interactive app dashboard with sidebar navigation.
+    Commands match the app: home, manga, search, lists, downloads, library, schedule, notifications, profile, settings.
     """
     setup_logging(options["log"])
     setup_exceptions_handler(
@@ -128,5 +129,6 @@ def cli(ctx: click.Context, **options: "Unpack[Options]"):
 
 
     if ctx.invoked_subcommand is None:
-        click.echo(ctx.get_help())
-        ctx.exit()
+        from .commands.anilist import cmd
+
+        ctx.invoke(cmd.anilist)

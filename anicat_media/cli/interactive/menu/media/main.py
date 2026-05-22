@@ -36,8 +36,13 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
         ))
         console.print()
 
-    # --- Search & Explore ---
+    # --- App Dashboard ---
     options: Dict[str, MenuAction] = {
+        f"{ICONS.get('HOME', icons)}Open App Dashboard": lambda: State(menu_name=MenuName.APP_HOME),
+    }
+
+    # --- Search & Explore ---
+    options.update({
         f"{ICONS.get('DYNAMIC_SEARCH', icons)}Dynamic Search": _create_dynamic_search_action(ctx, state),
         f"{ICONS.get('SEARCH', icons)}Search Anime": _create_search_media_list(ctx, state),
         f"{ICONS.get('SEARCH_MANGA', icons)}Search Manga": _create_search_manga_list(ctx, state),
