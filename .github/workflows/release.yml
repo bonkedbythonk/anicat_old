@@ -104,9 +104,14 @@ jobs:
           TAURI_BUNDLER_DMG_IGNORE_CI: "true"
         with:
           projectPath: web
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Anicat ${{ github.ref_name }}'
-          releaseBody: 'See the assets below to download the latest version of Anicat.'
+          # Only create/manage the release from the first platform
+          # to avoid race conditions when multiple matrix builds
+          # try to prune older releases simultaneously.
+          # Other platforms just build and upload workflow artifacts.
+          tagName: ${{ matrix.platform == 'macos-14' && github.ref_name || '' }}
+          releaseName: ${{ matrix.platform == 'macos-14' && format('Anicat {0}', github.ref_name) || '' }}
+          releaseBody: ${{ matrix.platform == 'macos-14' && 'See the assets below to download the latest version of Anicat.' || '' }}
           releaseDraft: false
           prerelease: false
+          uploadWorkflowArtifacts: ${{ matrix.platform != 'macos-14' }}
           args: ${{ matrix.args }}
