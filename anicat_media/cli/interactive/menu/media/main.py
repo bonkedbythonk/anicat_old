@@ -1,5 +1,6 @@
 import logging
 import random
+from datetime import datetime, timedelta
 from typing import Callable, Dict
 
 from .....libs.media_api.params import MediaSearchParams, UserMediaListSearchParams
@@ -26,17 +27,38 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
 
     console.print("[bold magenta]  anicat[/bold magenta]\n")
 
+    # ── Dashboard summary (non-blocking, best-effort) ──────────────────
+    _print_dashboard_summary(ctx, state)
+
+    # ── Navigation options ─────────────────────────────────────────────
     options: Dict[str, MenuAction] = {
         f"{ICONS.get('RECENT', icons)}Home": _create_recent_anime_action(ctx, state),
-        f"{ICONS.get('SEARCH_MANGA', icons)}Manga": _create_user_list_action(ctx, state, UserMediaListStatus.WATCHING, MediaType.MANGA),
+        f"{ICONS.get('SEARCH_MANGA', icons)}Manga": _create_manga_dashboard_action(ctx, state),
         f"{ICONS.get('SEARCH', icons)}Search": _create_search_media_list(ctx, state),
-        f"{ICONS.get('WATCHING', icons)}My Lists": _create_user_list_action(ctx, state, UserMediaListStatus.WATCHING),
+        f"{ICONS.get('WATCHING', icons)}My Lists": _create_tabbed_user_list_action(ctx, state),
         f"{ICONS.get('DOWNLOADS', icons)}Downloads": _create_downloads_action(ctx, state),
-        f"{ICONS.get('COMPLETED', icons)}Library": _create_user_list_action(ctx, state, UserMediaListStatus.COMPLETED),
-        f"{ICONS.get('UPCOMING', icons)}Schedule": lambda: State(menu_name=MenuName.MEDIA_AIRING_SCHEDULE),
-        f"{ICONS.get('EDIT', icons)}Settings": lambda: InternalDirective.CONFIG_EDIT,
-        f"{ICONS.get('EXIT', icons)}Exit": lambda: InternalDirective.EXIT,
+        f"{ICONS.get('COMPLETED', icons)}Library": _create_user_list_action(
+            ctx, state, UserMediaListStatus.COMPLETED
+        ),
+        f"{ICONS.get('UPCOMING', icons)}Schedule": lambda: State(
+            menu_name=MenuName.MEDIA_AIRING_SCHEDULE
+        ),
     }
+
+    # Profile and notifications if authenticated
+    if ctx.config.anilist.token and ctx.media_api.is_authenticated():
+        options[f"{ICONS.get('STATS', icons)}Profile"] = _create_profile_summary_action(
+            ctx
+        )
+        notif_count = _get_notification_count(ctx)
+        notif_label = (
+            f"{ICONS.get('BELL', icons)}Notifications"
+            f"{f' ({notif_count})' if notif_count > 0 else ''}"
+        )
+        options[notif_label] = lambda: _show_notifications(ctx)
+
+    options[f"{ICONS.get('EDIT', icons)}Settings"] = lambda: InternalDirective.CONFIG_EDIT
+    options[f"{ICONS.get('EXIT', icons)}Exit"] = lambda: InternalDirective.EXIT
 
     if not ctx.config.anilist.token:
         login_label = f"{'🔑' if icons else '>'}Login to AniList"
@@ -52,6 +74,374 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
     selected_action = options[choice]
     next_step = selected_action()
     return next_step
+
+
+# ── Dashboard Summary ──────────────────────────────────────────────────────
+
+
+def _print_dashboard_summary(ctx: Context, state: State) -> None:
+    """Print a high-level dashboard summary (best-effort, non-blocking)."""
+    from rich.table import Table
+
+    authenticated = (
+        ctx.config.anilist.token and ctx.media_api.is_authenticated()
+    )
+
+    # ── Quick Stats Row ────────────────────────────────────────────────
+    stats_parts = []
+
+    # Currently Watching count
+    if authenticated:
+        try:
+            watching = ctx.media_api.search_media_list(
+                UserMediaListSearchParams(
+                    status=UserMediaListStatus.WATCHING,
+                    type=MediaType.ANIME,
+                )
+            )
+            if watching and watching.page_info:
+                stats_parts.append(
+                    f"[cyan]{watching.page_info.total}[/cyan] watching"
+                )
+        except Exception:
+            pass
+
+    # Notification count
+    if authenticated:
+        try:
+            count = _get_notification_count(ctx)
+            if count > 0:
+                stats_parts.append(f"[amber]{count}[/amber] notifications")
+        except Exception:
+            pass
+
+    # Update available
+    if state.update_available if hasattr(state, "update_available") else False:
+        stats_parts.append("[green]Update available![/green]")
+
+    if stats_parts:
+        console.print(f"  {'  |  '.join(stats_parts)}")
+        console.print()
+
+    # ── Airing Today ───────────────────────────────────────────────────
+    if authenticated:
+        try:
+            now = datetime.now()
+            start_ts = int((now - timedelta(hours=12)).timestamp())
+            end_ts = int((now + timedelta(hours=24)).timestamp())
+            schedule = ctx.media_api.get_global_airing_schedule(
+                airingAt_greater=start_ts,
+                airingAt_lesser=end_ts,
+                per_page=5,
+            )
+            if schedule and schedule.media:
+                airing_today = [
+                    m
+                    for m in schedule.media
+                    if m.next_airing
+                    and m.type == MediaType.ANIME
+                ][:5]
+                if airing_today:
+                    table = Table(
+                        title="Airing Soon",
+                        show_header=True,
+                        header_style="bold cyan",
+                        box=None,
+                        padding=(0, 1),
+                    )
+                    table.add_column("Time", style="dim")
+                    table.add_column("Title", style="bold white")
+                    table.add_column("Ep", justify="right")
+                    for m in airing_today:
+                        air_time = m.next_airing.airing_at
+                        try:
+                            dt_obj = datetime.fromtimestamp(int(air_time))
+                            time_str = dt_obj.strftime("%H:%M")
+                        except (ValueError, TypeError):
+                            time_str = "?"
+                        title = (
+                            m.title.romaji
+                            or m.title.english
+                            or "?"
+                        )
+                        ep = str(m.next_airing.episode)
+                        table.add_row(time_str, title, ep)
+                    console.print(table)
+                    console.print()
+        except Exception:
+            pass
+
+    # ── Continue Watching ──────────────────────────────────────────────
+    try:
+        recent = ctx.media_registry.get_recently_watched(
+            limit=5, type=MediaType.ANIME
+        )
+        if recent and recent.media:
+            # Filter to only show items with actual progress
+            in_progress: list = []
+            for m in recent.media:
+                us = getattr(m, "user_status", None)
+                if us is not None and (us.progress or 0) > 0:
+                    in_progress.append(m)
+            in_progress = in_progress[:3]
+            if in_progress:
+                console.print(
+                    "[bold]Continue Watching[/bold]",
+                    style="bold",
+                    highlight=False,
+                )
+                for m in in_progress:
+                    title = m.title.romaji or m.title.english or "?"
+                    progress = m.user_status.progress if m.user_status else 0
+                    total = m.episodes or "?"
+                    console.print(
+                        f"  [dim]{progress}/{total}[/dim]  {title}"
+                    )
+                console.print()
+    except Exception:
+        pass
+
+
+def _get_notification_count(ctx: Context) -> int:
+    """Get unread notification count (best-effort)."""
+    try:
+        if not ctx.media_api.is_authenticated():
+            return 0
+        result = ctx.media_api.get_notifications()
+        if result:
+            return len(result)
+    except Exception:
+        pass
+    return 0
+
+
+def _show_notifications(ctx: Context) -> InternalDirective:
+    """Display recent notifications in a table."""
+    from rich.table import Table
+
+    try:
+        notifications = ctx.media_api.get_notifications()
+        if not notifications:
+            ctx.feedback.info("No notifications.")
+            return InternalDirective.MAIN
+
+        table = Table(
+            title="Notifications",
+            show_header=True,
+            header_style="bold cyan",
+        )
+        table.add_column("#", style="dim", width=3)
+        table.add_column("Message", style="bold white")
+
+        for i, n in enumerate(notifications[:15], 1):
+            msg = getattr(n, "message", str(n))[:100]
+            table.add_row(str(i), msg)
+
+        console.print(table)
+        console.print()
+        click = __import__("click")
+        click.pause("Press Enter to return...")
+    except Exception as e:
+        ctx.feedback.error(f"Failed to load notifications: {e}")
+
+    return InternalDirective.MAIN
+
+
+# ── Profile Summary Action ─────────────────────────────────────────────────
+
+
+def _create_profile_summary_action(ctx: Context) -> MenuAction:
+    """Show profile summary, then return to main menu."""
+
+    def action():
+        try:
+            profile = ctx.media_api.get_viewer_profile()
+            if profile:
+                name = getattr(profile, "name", None) or "?"
+                anime = getattr(profile, "anime_count", 0)
+                manga = getattr(profile, "manga_count", 0)
+                minutes = getattr(profile, "minutes_watched", 0)
+                eps = getattr(profile, "episodes_watched", 0)
+                chaps = getattr(profile, "chapters_read", 0)
+
+                console.print(f"\n[bold cyan]{name}[/bold cyan]")
+                console.print(f"  Anime: {anime}  |  Manga: {manga}")
+                console.print(
+                    f"  Episodes watched: {eps}  |  Chapters read: {chaps}"
+                )
+                if minutes:
+                    hours = minutes // 60
+                    console.print(f"  Watch time: {hours}h ({minutes}m)")
+                console.print()
+        except Exception:
+            pass
+
+        click_mod = __import__("click")
+        click_mod.pause("Press Enter to return...")
+        return InternalDirective.MAIN
+
+    return action
+
+
+# ── Tabbed My Lists Action ─────────────────────────────────────────────────
+
+
+def _create_tabbed_user_list_action(ctx: Context, state: State) -> MenuAction:
+    """Show a tabbed My Lists selector matching the App's Watching/Completed/
+    Planning/Paused/Dropped tabs."""
+
+    def action():
+        feedback = ctx.feedback
+        if not ctx.media_api.is_authenticated():
+            feedback.error("You haven't logged in")
+            return InternalDirective.MAIN
+
+        icons = ctx.config.general.icons
+        tabs: Dict[str, UserMediaListStatus] = {
+            f"{ICONS.get('WATCHING', icons)}Watching": UserMediaListStatus.WATCHING,
+            f"{ICONS.get('COMPLETED', icons)}Completed": UserMediaListStatus.COMPLETED,
+            f"{ICONS.get('PLANNED', icons)}Planning": UserMediaListStatus.PLANNING,
+            f"{ICONS.get('PAUSED', icons)}Paused": UserMediaListStatus.PAUSED,
+            f"{ICONS.get('DROPPED', icons)}Dropped": UserMediaListStatus.DROPPED,
+        }
+        # Add Back option
+        tab_choices = list(tabs.keys()) + [
+            f"{ICONS.get('BACK', icons)}Back"
+        ]
+
+        choice = ctx.selector.choose("Select List", tab_choices)
+        if not choice or "Back" in choice:
+            return InternalDirective.MAIN
+
+        status = tabs[choice]
+        search_params = UserMediaListSearchParams(status=status)
+
+        with feedback.progress("Fetching media list"):
+            result = ctx.media_api.search_media_list(search_params)
+
+        if result:
+            return State(
+                menu_name=MenuName.RESULTS,
+                media_api=MediaApiState(
+                    search_result={
+                        media_item.id: media_item
+                        for media_item in result.media
+                    },
+                    search_params=search_params,
+                    page_info=result.page_info,
+                ),
+            )
+        else:
+            return InternalDirective.MAIN
+
+    return action
+
+
+# ── Manga Dashboard Action ─────────────────────────────────────────────────
+
+
+def _create_manga_dashboard_action(ctx: Context, state: State) -> MenuAction:
+    """Show a Manga dashboard with Continue Reading and Trending,
+    then a selector to proceed."""
+
+    def action():
+        feedback = ctx.feedback
+        icons = ctx.config.general.icons
+
+        feedback.clear_console()
+        console.print("[bold cyan]Manga[/bold cyan]\n")
+
+        # ── Continue Reading ──────────────────────────────────────────
+        if ctx.media_api.is_authenticated():
+            try:
+                reading = ctx.media_api.search_media_list(
+                    UserMediaListSearchParams(
+                        status=UserMediaListStatus.WATCHING,
+                        type=MediaType.MANGA,
+                    )
+                )
+                if reading and reading.media:
+                    from rich.table import Table
+
+                    table = Table(
+                        title="Continue Reading",
+                        show_header=True,
+                        header_style="bold",
+                    )
+                    table.add_column("Title")
+                    table.add_column("Progress", justify="right")
+                    for m in reading.media[:5]:
+                        title = m.title.romaji or m.title.english or "?"
+                        prog = (
+                            m.user_status.progress
+                            if m.user_status
+                            else 0
+                        )
+                        total = m.chapters or "?"
+                        table.add_row(title, f"{prog}/{total}")
+                    console.print(table)
+                    console.print()
+            except Exception:
+                pass
+
+        # ── Trending Manga ────────────────────────────────────────────
+        try:
+            trending = ctx.media_api.search_media(
+                MediaSearchParams(
+                    type=MediaType.MANGA,
+                    sort=MediaSort.TRENDING_DESC,
+                    per_page=5,
+                )
+            )
+            if trending and trending.media:
+                from rich.table import Table
+
+                table = Table(
+                    title="Trending Manga",
+                    show_header=True,
+                    header_style="bold",
+                )
+                table.add_column("#", style="dim", width=2)
+                table.add_column("Title")
+                table.add_column("Score", justify="right")
+                for i, m in enumerate(trending.media[:5], 1):
+                    title = m.title.romaji or m.title.english or "?"
+                    score = m.average_score or "?"
+                    table.add_row(str(i), title, f"{score}%")
+                console.print(table)
+                console.print()
+        except Exception:
+            pass
+
+        # ── Navigation ────────────────────────────────────────────────
+        manga_options: Dict[str, MenuAction] = {
+            f"{ICONS.get('READING', icons)}Continue Reading": _create_user_list_action(
+                ctx, state, UserMediaListStatus.WATCHING, MediaType.MANGA
+            ),
+            f"{ICONS.get('SEARCH_MANGA', icons)}Search Manga": _create_search_manga_list(
+                ctx, state
+            ),
+            f"{ICONS.get('TRENDING', icons)}Trending Manga": _create_media_list_action(
+                ctx,
+                state,
+                MediaSort.TRENDING_DESC,
+            ),
+            f"{ICONS.get('BACK', icons)}Back": lambda: InternalDirective.BACK,
+        }
+
+        choice = ctx.selector.choose(
+            prompt="Manga",
+            choices=list(manga_options.keys()),
+        )
+        if not choice:
+            return InternalDirective.MAIN
+
+        return manga_options[choice]()
+
+    return action
+
+
+# ── Existing action factories (unchanged) ──────────────────────────────────
 
 
 def _create_media_list_action(

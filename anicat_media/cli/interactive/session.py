@@ -479,9 +479,31 @@ class Session:
 
         try:
             self._run_main_loop()
-        except Exception:
-            self._context.session.create_crash_backup(self._history)
-            raise
+        except KeyboardInterrupt:
+            console = __import__("rich.console", fromlist=["Console"]).Console()
+            console.print("\n[dim]Shutting down...[/dim]")
+        except Exception as e:
+            logger.exception("Unhandled error in main loop")
+            try:
+                self._context.session.create_crash_backup(self._history)
+                logger.info("Session state saved to crash backup.")
+            except Exception as backup_err:
+                logger.warning(f"Failed to create crash backup: {backup_err}")
+
+            # Show a clean error message, not a traceback
+            console = __import__("rich.console", fromlist=["Console"]).Console()
+            console.print()
+            console.print(
+                f"[bold red]An unexpected error occurred:[/bold red] {e}"
+            )
+            console.print(
+                "[dim]Your session state has been saved. Restart with"
+                " [bold]anicat anilist --resume[/bold] to recover.[/dim]"
+            )
+            console.print(
+                "[dim]For full details, run with [bold]--trace[/bold]"
+                " or check the logs.[/dim]"
+            )
         finally:
             self._shutdown_download_worker()
             # Clean up preview workers when session ends

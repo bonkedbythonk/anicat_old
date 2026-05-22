@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING
 
 import click
 
-
 from anicat_media.core.config import AppConfig
 from anicat_media.core.exceptions import AnicatError
 from ..utils.completion import anime_titles_shell_complete
@@ -11,12 +10,11 @@ from . import examples
 if TYPE_CHECKING:
     from typing import TypedDict
 
-    from anicat_media.cli.service.feedback.service import FeedbackService
     from typing_extensions import Unpack
 
-    from ...libs.provider.anime.base import BaseAnimeProvider
     from ...libs.provider.anime.types import Anime
-    from ...libs.selectors.base import BaseSelector
+    from ...libs.media_api.types import MediaItem
+    from ..interactive.session import Context
 
     class Options(TypedDict):
         anime_title: list[str]
@@ -42,37 +40,36 @@ if TYPE_CHECKING:
 )
 @click.pass_obj
 def search(config: AppConfig, **options: "Unpack[Options]"):
-    from anicat_media.cli.service.feedback.service import FeedbackService
-
-    from anicat_media.core.exceptions import AnicatError
-    from ...libs.provider.anime.params import (
-        AnimeParams,
-        SearchParams,
-    )
-    from ...libs.provider.anime.provider import create_provider
     from anicat_media.core.utils.normalizer import normalize_title
-    from ...libs.selectors.selector import create_selector
+    from ...libs.provider.anime.params import AnimeParams, SearchParams
+    from ..interactive.session import Context
+
+    ctx = Context(config)
 
     if not options["anime_title"]:
         raw = ""
         while not raw.strip():
-            raw = click.prompt("What are you in the mood for? (comma-separated)", default="", show_default=False)
+            raw = click.prompt(
+                "What are you in the mood for? (comma-separated)",
+                default="",
+                show_default=False,
+            )
             if not raw.strip():
-                click.echo(click.style("Input cannot be empty. Please try again.", fg="red"))
-        
+                click.echo(
+                    click.style("Input cannot be empty. Please try again.", fg="red")
+                )
+
         options["anime_title"] = [a.strip() for a in raw.split(",") if a.strip()]
 
-    feedback = FeedbackService(config)
-    provider = create_provider(config.general.provider)
-    selector = create_selector(config)
-
     anime_titles = options["anime_title"]
-    feedback.info(f"[green bold]Streaming:[/] {anime_titles}")
+    ctx.feedback.info(f"[green bold]Streaming:[/] {anime_titles}")
     for anime_title in anime_titles:
         # ---- search for anime ----
-        feedback.info(f"[green bold]Searching for:[/] {anime_title}")
-        with feedback.progress(f"Fetching anime search results for {anime_title}"):
-            search_results = provider.search(
+        ctx.feedback.info(f"[green bold]Searching for:[/] {anime_title}")
+        with ctx.feedback.progress(
+            f"Fetching anime search results for {anime_title}"
+        ):
+            search_results = ctx.provider.search(
                 SearchParams(
                     query=normalize_title(
                         anime_title, config.general.provider.value, True
@@ -88,7 +85,7 @@ def search(config: AppConfig, **options: "Unpack[Options]"):
             for search_result in search_results.results
         }
 
-        selected_anime_title = selector.choose(
+        selected_anime_title = ctx.selector.choose(
             "Select Anime", list(_search_results.keys())
         )
         if not selected_anime_title:
@@ -96,8 +93,10 @@ def search(config: AppConfig, **options: "Unpack[Options]"):
         anime_result = _search_results[selected_anime_title]
 
         # ---- fetch selected anime ----
-        with feedback.progress(f"Fetching {anime_result.title}"):
-            anime = provider.get(AnimeParams(id=anime_result.id, query=anime_title))
+        with ctx.feedback.progress(f"Fetching {anime_result.title}"):
+            anime = ctx.provider.get(
+                AnimeParams(id=anime_result.id, query=anime_title)
+            )
 
         if not anime:
             raise AnicatError(f"Failed to fetch anime {anime_result.title}")
@@ -115,52 +114,35 @@ def search(config: AppConfig, **options: "Unpack[Options]"):
                 )
 
                 for episode in episodes_range:
-                    stream_anime(
-                        config,
-                        provider,
-                        selector,
-                        feedback,
-                        anime,
-                        episode,
-                        anime_title,
-                    )
+                    stream_anime(ctx, anime, episode, anime_title)
             except (ValueError, IndexError) as e:
                 raise AnicatError(f"Invalid episode range: {e}") from e
         else:
-            episode = selector.choose(
+            episode = ctx.selector.choose(
                 "Select Episode",
                 getattr(anime.episodes, config.stream.translation_type),
             )
             if not episode:
                 raise AnicatError("No episode selected")
-            stream_anime(
-                config, provider, selector, feedback, anime, episode, anime_title
-            )
+            stream_anime(ctx, anime, episode, anime_title)
 
 
 def stream_anime(
-    config: AppConfig,
-    provider: "BaseAnimeProvider",
-    selector: "BaseSelector",
-    feedback: "FeedbackService",
+    ctx: "Context",
     anime: "Anime",
     episode: str,
     anime_title: str,
 ):
-    from anicat_media.cli.service.player.service import PlayerService
-
     from ...libs.player.params import PlayerParams
     from ...libs.provider.anime.params import EpisodeStreamsParams
 
-    player_service = PlayerService(config, provider)
-
-    with feedback.progress("Fetching episode streams"):
-        streams = provider.episode_streams(
+    with ctx.feedback.progress("Fetching episode streams"):
+        streams = ctx.provider.episode_streams(
             EpisodeStreamsParams(
                 anime_id=anime.id,
                 query=anime_title,
                 episode=episode,
-                translation_type=config.stream.translation_type,
+                translation_type=ctx.config.stream.translation_type,
             )
         )
         if not streams:
@@ -168,48 +150,55 @@ def stream_anime(
                 f"Failed to get streams for anime: {anime.title}, episode: {episode}"
             )
 
-    if config.stream.server.value == "TOP":
-        with feedback.progress("Fetching top server"):
+    if ctx.config.stream.server.value == "TOP":
+        with ctx.feedback.progress("Fetching top server"):
             server = next(streams, None)
             if not server:
                 raise AnicatError(
                     f"Failed to get server for anime: {anime.title}, episode: {episode}"
                 )
     else:
-        with feedback.progress("Fetching servers"):
+        with ctx.feedback.progress("Fetching servers"):
             servers = {server.name: server for server in streams}
         servers_names = list(servers.keys())
-        if config.stream.server.value in servers_names:
-            server = servers[config.stream.server.value]
+        if ctx.config.stream.server.value in servers_names:
+            server = servers[ctx.config.stream.server.value]
         else:
-            server_name = selector.choose("Select Server", servers_names)
+            server_name = ctx.selector.choose("Select Server", servers_names)
             if not server_name:
                 raise AnicatError("Server not selected")
             server = servers[server_name]
     quality = [
         ep_stream.link
         for ep_stream in server.links
-        if ep_stream.quality == config.stream.quality
+        if ep_stream.quality == ctx.config.stream.quality
     ]
     if quality:
         stream_link = quality[0]
     else:
-        feedback.warning("Preferred quality not found, selecting quality...")
-        chosen_quality = selector.choose(
+        ctx.feedback.warning("Preferred quality not found, selecting quality...")
+        chosen_quality = ctx.selector.choose(
             "Select Quality", [link.quality for link in server.links]
         )
         if not chosen_quality:
             raise AnicatError("Quality not selected")
         stream_link = next(
-            (link.link for link in server.links if link.quality == chosen_quality), None
+            (link.link for link in server.links if link.quality == chosen_quality),
+            None,
         )
     if not stream_link:
         raise AnicatError(
             f"Failed to get stream link for anime: {anime.title}, episode: {episode}"
         )
-    feedback.info(f"[green bold]Now Streaming:[/] {anime.title} Episode: {episode}")
 
-    player_service.play(
+    # Look up the media item via AniList for watch history tracking
+    media_item = _resolve_media_item(ctx, anime_title, anime)
+
+    ctx.feedback.info(
+        f"[green bold]Now Streaming:[/] {anime.title} Episode: {episode}"
+    )
+
+    player_result = ctx.player.play(
         PlayerParams(
             url=stream_link,
             title=f"{anime.title}; Episode {episode}",
@@ -219,4 +208,60 @@ def stream_anime(
             headers=server.headers,
         ),
         anime,
+        media_item=media_item,
     )
+
+    # Track watch history via shared service layer
+    if player_result and media_item:
+        try:
+            ctx.watch_history.track(media_item, player_result)
+            ctx.data_version += 1
+        except Exception as e:
+            import logging
+
+            logging.getLogger(__name__).warning(
+                f"Failed to save watch history: {e}"
+            )
+
+
+def _resolve_media_item(
+    ctx: "Context", anime_title: str, anime: "Anime"
+) -> "MediaItem | None":
+    """Resolve the AniList media item for watch history tracking."""
+    import logging
+
+    logger = logging.getLogger(__name__)
+    try:
+        if not ctx.media_api.is_authenticated():
+            return None
+
+        from ...libs.media_api.params import MediaSearchParams
+
+        search_result = ctx.media_api.search_media(
+            MediaSearchParams(query=anime_title)
+        )
+        if search_result and search_result.media:
+            # Pick the best match: prefer exact title match, then first result
+            best = search_result.media[0]
+            for m in search_result.media:
+                if (
+                    m.title.english
+                    and anime.title
+                    and m.title.english.lower() == anime.title.lower()
+                ):
+                    best = m
+                    break
+                if (
+                    m.title.romaji
+                    and anime.title
+                    and m.title.romaji.lower() == anime.title.lower()
+                ):
+                    best = m
+                    break
+            logger.info(
+                f"Resolved AniList media item #{best.id} for watch history"
+            )
+            return best
+    except Exception as e:
+        logger.warning(f"Could not resolve media item for watch history: {e}")
+    return None
