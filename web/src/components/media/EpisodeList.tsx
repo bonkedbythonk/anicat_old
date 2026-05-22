@@ -133,43 +133,37 @@ export default function EpisodeList({
             return (
               <div
                 key={epNum}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${isNext && !isUnaired ? 'bg-white/10 border border-white/20 shadow-lg' : 'bg-white/5 hover:bg-white/10'}`}
+                className={`flex items-center justify-between px-3 py-2 rounded-2xl transition-all group ${
+                  isNext && !isUnaired ? 'bg-white/10 border border-white/20 shadow-lg' : 
+                  isWatched ? 'opacity-50 hover:bg-white/5' : 
+                  'bg-white/5 hover:bg-white/10'
+                }`}
               >
                 <div className="flex items-center space-x-4 min-w-0">
-                  {/* UX-26: Episode thumbnail placeholder */}
-                  <div className="hidden sm:block w-16 h-9 rounded-md bg-white/[0.03] border border-white/[0.04] shrink-0 overflow-hidden">
-                    <div className="w-full h-full flex items-center justify-center text-[8px] text-gray-600 font-bold">
-                      {isWatched ? '✓' : `Ep ${epNum}`}
-                    </div>
+                  {/* Clean Episode Badge */}
+                  <div className={`w-10 h-10 shrink-0 flex items-center justify-center rounded-xl font-bold text-sm transition-colors ${
+                    isWatched ? "bg-white/5 text-gray-500" :
+                    isUnaired ? "bg-white/5 text-gray-700" :
+                    isNext ? "bg-accent text-white shadow-lg shadow-accent/20" :
+                    "bg-white/10 text-white group-hover:bg-white/20"
+                  }`}>
+                    {epNum}
                   </div>
-                  <div className="flex items-center space-x-1 w-10 justify-end shrink-0">
-                    {isWatched && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onUnwatch) onUnwatch(epNum);
-                        }}
-                        title={isManga ? "Backtrack to before this chapter" : "Mark as unwatched"}
-                        className="p-1.5 hover:bg-red-500/10 rounded-full transition-all group/unwatch relative"
-                      >
-                        <CheckCircle2 size={18} className="text-green-500 fill-green-500/10 shrink-0 group-hover/unwatch:opacity-0 transition-opacity" />
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/unwatch:opacity-100 transition-opacity">
-                          <XCircle size={18} className="text-red-500 fill-red-500/10" />
-                        </div>
-                      </button>
-                    )}
-                    <span className={`font-bold text-sm ${isWatched ? "text-green-500" : isUnaired ? "text-gray-600" : "text-accent"}`}>
-                      {epNum}
+                  
+                  <div className="flex flex-col min-w-0">
+                    <span className={`text-sm font-medium truncate transition-colors ${
+                      isWatched ? "text-gray-500" : 
+                      isUnaired ? "text-gray-600" : 
+                      "text-gray-200 group-hover:text-white"
+                    }`}>
+                      {ep.title.toLowerCase() === `episode ${epNum}` ? `Episode ${epNum}` : ep.title || `Episode ${epNum}`}
                     </span>
                   </div>
-                  <span className={`text-sm truncate group-hover:text-white transition-colors ${isWatched ? "text-gray-500" : isUnaired ? "text-gray-600" : "text-gray-300"}`}>
-                    {ep.title.toLowerCase() === `episode ${epNum}` ? "" : ep.title}
-                  </span>
                   {statusIcon(ep.download_status)}
                 </div>
 
                 {!isUnaired ? (
-                  <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <div className="flex items-center space-x-2 opacity-40 group-hover:opacity-100 transition-opacity shrink-0">
                     <button
                       onClick={() => handlePlay(epNum)}
                       disabled={playingEp === epNum}
@@ -194,6 +188,19 @@ export default function EpisodeList({
                       )}
                       <span>DL</span>
                     </button>
+                    {isWatched && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onUnwatch) onUnwatch(epNum);
+                        }}
+                        title={isManga ? "Backtrack to before this chapter" : "Mark as unwatched"}
+                        className="flex items-center space-x-1.5 bg-white/[0.06] text-gray-400 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-500/20 hover:text-red-400 transition-colors active:scale-95"
+                      >
+                        <XCircle size={12} />
+                        <span className="hidden sm:inline">Unwatch</span>
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 px-2.5 py-1 bg-white/10 border border-white/20 rounded-lg shrink-0">
