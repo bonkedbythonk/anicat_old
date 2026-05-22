@@ -378,7 +378,7 @@ export default function App() {
 
       {/* Main content */}
       <main
-        className="flex-1 ml-[72px] lg:ml-60 overflow-y-auto scrollbar-hide scroll-container relative"
+        className="flex-1 ml-[72px] lg:ml-60 overflow-y-auto scrollbar-hide scroll-container relative z-10"
         // UX-25: Pull-to-refresh — refresh all queries when scrolling to top
         onScroll={handleScroll}
       >
