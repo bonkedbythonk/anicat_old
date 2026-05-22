@@ -28,7 +28,7 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
     # Visual indicator for updates
     if state.update_available:
         console.print(Panel(
-            "[bold green]✨ A new update is available![/bold green]\n"
+            "[bold green]A new update is available![/bold green]\n"
             "Please select [bold cyan]Check for Updates[/bold cyan] in the menu to install the latest version.",
             title="[yellow]Update Notification[/yellow]",
             border_style="yellow",
@@ -36,64 +36,67 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
         ))
         console.print()
 
-    # --- App Dashboard ---
-    options: Dict[str, MenuAction] = {
-        f"{ICONS.get('HOME', icons)}Open App Dashboard": lambda: State(menu_name=MenuName.APP_HOME),
-    }
+    console.print("[bold cyan]  Anicat[/bold cyan]", highlight=False)
+    console.print()
 
-    # --- Search & Explore ---
-    options.update({
-        f"{ICONS.get('DYNAMIC_SEARCH', icons)}Dynamic Search": _create_dynamic_search_action(ctx, state),
-        f"{ICONS.get('SEARCH', icons)}Search Anime": _create_search_media_list(ctx, state),
-        f"{ICONS.get('SEARCH_MANGA', icons)}Search Manga": _create_search_manga_list(ctx, state),
+    # ── Home ──────────────────────────────────────────────────────
+    options: Dict[str, MenuAction] = {
+        f"{ICONS.get('RECENT', icons)}Continue Watching": _create_recent_anime_action(ctx, state),
         f"{ICONS.get('TRENDING', icons)}Trending": _create_media_list_action(ctx, state, MediaSort.TRENDING_DESC),
         f"{ICONS.get('POPULAR', icons)}Popular": _create_media_list_action(ctx, state, MediaSort.POPULARITY_DESC),
-        f"{ICONS.get('TOP_SCORED', icons)}Top Scored": _create_media_list_action(ctx, state, MediaSort.SCORE_DESC),
-        f"{ICONS.get('RANDOM', icons)}Random": _create_random_media_list(ctx, state),
-        f"{ICONS.get('UPCOMING', icons)}Upcoming": _create_media_list_action(ctx, state, MediaSort.POPULARITY_DESC, MediaStatus.NOT_YET_RELEASED),
-        f"{ICONS.get('BROWSER', icons)}Open GUI Dashboard": lambda: State(menu_name=MenuName.OPEN_GUI),
+    }
+
+    # ── Search ────────────────────────────────────────────────────
+    options.update({
+        f"{ICONS.get('SEARCH', icons)}Search Anime": _create_search_media_list(ctx, state),
+        f"{ICONS.get('SEARCH_MANGA', icons)}Search Manga": _create_search_manga_list(ctx, state),
+        f"{ICONS.get('DYNAMIC_SEARCH', icons)}Dynamic Search": _create_dynamic_search_action(ctx, state),
     })
 
-    # --- My Anime ---
+    # ── My Lists ──────────────────────────────────────────────────
     options.update({
         f"{ICONS.get('WATCHING', icons)}Watching": _create_user_list_action(ctx, state, UserMediaListStatus.WATCHING),
-        f"{ICONS.get('RECENT', icons)}Recently Watched": _create_recent_anime_action(ctx, state),
+        f"{ICONS.get('PLANNED', icons)}Planning": _create_user_list_action(ctx, state, UserMediaListStatus.PLANNING),
+        f"{ICONS.get('COMPLETED', icons)}Completed": _create_user_list_action(ctx, state, UserMediaListStatus.COMPLETED),
+        f"{ICONS.get('PAUSED', icons)}Paused": _create_user_list_action(ctx, state, UserMediaListStatus.PAUSED),
+        f"{ICONS.get('DROPPED', icons)}Dropped": _create_user_list_action(ctx, state, UserMediaListStatus.DROPPED),
         f"{ICONS.get('REWATCHING', icons)}Rewatching": _create_user_list_action(ctx, state, UserMediaListStatus.REPEATING),
-        f"{ICONS.get('PAUSED', icons)}Paused Anime": _create_user_list_action(ctx, state, UserMediaListStatus.PAUSED),
-        f"{ICONS.get('PLANNED', icons)}Planned Anime": _create_user_list_action(ctx, state, UserMediaListStatus.PLANNING),
-        f"{ICONS.get('COMPLETED', icons)}Completed Anime": _create_user_list_action(ctx, state, UserMediaListStatus.COMPLETED),
-        f"{ICONS.get('DROPPED', icons)}Dropped Anime": _create_user_list_action(ctx, state, UserMediaListStatus.DROPPED),
     })
 
-    # --- My Manga ---
+    # ── Manga ─────────────────────────────────────────────────────
     options.update({
         f"{ICONS.get('READING', icons)}Reading": _create_user_list_action(ctx, state, UserMediaListStatus.WATCHING, MediaType.MANGA),
         f"{ICONS.get('RECENT', icons)}Recently Read": _create_recent_manga_action(ctx, state),
     })
 
-    # --- Local & Library ---
+    # ── Downloads / Library ───────────────────────────────────────
     options.update({
         f"{ICONS.get('DOWNLOADS', icons)}Downloads": _create_downloads_action(ctx, state),
         f"{ICONS.get('UPDATED', icons)}Recently Updated": _create_media_list_action(ctx, state, MediaSort.UPDATED_AT_DESC),
         f"{ICONS.get('FAVOURITES', icons)}Favourites": _create_media_list_action(ctx, state, MediaSort.FAVOURITES_DESC),
     })
 
-    # --- System ---
+    # ── Schedule ──────────────────────────────────────────────────
     options.update({
-        f"{ICONS.get('EDIT', icons)}Edit Config": lambda: InternalDirective.CONFIG_EDIT,
-        f"{ICONS.get('MANAGE', icons)}Manage Categories": _manage_categories_action(ctx, state),
+        f"{ICONS.get('UPCOMING', icons)}Schedule": _create_media_list_action(ctx, state, MediaSort.POPULARITY_DESC, MediaStatus.NOT_YET_RELEASED),
+        f"{ICONS.get('BROWSER', icons)}Airing Schedule": lambda: State(menu_name=MenuName.MEDIA_AIRING_SCHEDULE),
     })
 
-    # Build the "Check for Updates" label with a visual indicator if update is available
+    # ── Settings / System ─────────────────────────────────────────
     update_label = f"{ICONS.get('UPDATE', icons)}Check for Updates"
     if state.update_available:
         update_label += " (UPDATE AVAILABLE)"
     options[update_label] = _check_for_updates_action(ctx, state)
+    options.update({
+        f"{ICONS.get('EDIT', icons)}Settings": lambda: InternalDirective.CONFIG_EDIT,
+        f"{ICONS.get('MANAGE', icons)}Manage Categories": _manage_categories_action(ctx, state),
+    })
 
     options.update({
         f"{ICONS.get('LOGOUT' if ctx.media_api.is_authenticated() else 'LOGIN', icons)}{'Logout' if ctx.media_api.is_authenticated() else 'Login'}": _auth_action(
             ctx, state
         ),
+        f"{ICONS.get('BROWSER', icons)}Open GUI Dashboard": lambda: State(menu_name=MenuName.OPEN_GUI),
         f"{ICONS.get('EXIT', icons)}Exit": lambda: InternalDirective.EXIT,
     })
 

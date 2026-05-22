@@ -32,7 +32,6 @@ class MenuName(Enum):
     DOWNLOAD_EPISODES = "DOWNLOAD_EPISODES"
     LOCAL_LIBRARY = "LOCAL_LIBRARY"
     OPEN_GUI = "OPEN_GUI"
-    APP_HOME = "APP_HOME"
 
 
 class InternalDirective(Enum):
