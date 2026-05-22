@@ -16,7 +16,6 @@ import { AppStateProvider, useAppState } from "@/lib/AppStateContext";
 import { mediaApi, API_BASE_ORIGIN, type PlaybackStatus } from "@/lib/api";
 import { dispatchRefresh } from "@/lib/events";
 import Onboarding from "@/components/layout/Onboarding";
-import LiquidGlassOverlay from "@/components/LiquidGlassOverlay";
 import { X, WifiOff, RotateCw, Play } from "lucide-react";
 
 // View Components
@@ -49,7 +48,7 @@ export default function App() {
   } = useHealthPolling();
 
   // Liquid Glass visual system
-  const { enabled: liquidGlassEnabled, cursorRef } = useLiquidGlass();
+  const { enabled: liquidGlassEnabled } = useLiquidGlass();
 
   // --- App UI state ---
   const [activeView, setActiveView] = useState<ViewName>("home");
@@ -373,8 +372,7 @@ export default function App() {
     <div className="flex h-screen relative">
       <Sidebar activeView={activeView} onNavigate={setActiveView} notificationCount={notificationCount} health={healthStatus} />
 
-      {/* Liquid Glass refractive overlay — zero overhead when disabled */}
-      <LiquidGlassOverlay cursorRef={cursorRef} enabled={liquidGlassEnabled} />
+      {/* Liquid Glass — Native visionOS style doesn't use artificial cursor lights */}
 
       {/* Main content */}
       <main

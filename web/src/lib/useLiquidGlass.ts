@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const STORAGE_KEY = "anicat_liquid_glass";
 
@@ -15,8 +15,6 @@ const STORAGE_KEY = "anicat_liquid_glass";
  */
 export function useLiquidGlass() {
   const [enabled, setEnabled] = useState(false);
-  const cursorRef = useRef<{ x: number; y: number }>({ x: 0.5, y: 0.5 });
-  const rafRef = useRef<number | null>(null);
 
   // Initialize from localStorage on mount, defaulting to OFF for safety
   useEffect(() => {
@@ -45,32 +43,6 @@ export function useLiquidGlass() {
     }
   }, [enabled]);
 
-  // Track mouse position via requestAnimationFrame (not passive listeners
-  // that fire on every pixel move — this is throttled to 60fps)
-  useEffect(() => {
-    if (!enabled) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (rafRef.current !== null) return; // already scheduled
-      rafRef.current = requestAnimationFrame(() => {
-        cursorRef.current = {
-          x: e.clientX / window.innerWidth,
-          y: e.clientY / window.innerHeight,
-        };
-        rafRef.current = null;
-      });
-    };
-
-    window.addEventListener("mousemove", handleMouseMove, { passive: true });
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-  }, [enabled]);
-
   const toggle = useCallback(() => {
     setEnabled((prev) => {
       const next = !prev;
@@ -81,7 +53,7 @@ export function useLiquidGlass() {
     });
   }, []);
 
-  return { enabled, cursorRef, toggle, setEnabled };
+  return { enabled, toggle, setEnabled };
 }
 
 export default useLiquidGlass;
