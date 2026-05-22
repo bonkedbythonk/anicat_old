@@ -74,7 +74,7 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
           <button 
             onClick={handlePlay}
             disabled={isCaughtUp || clicked}
-            className="flex items-center space-x-3 bg-white text-black px-8 py-3.5 rounded-xl hover:bg-accent hover:text-white transition-all duration-300 font-bold text-sm active:scale-95 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-black"
+            className="flex items-center space-x-3 glass-button px-8 py-3.5 rounded-full font-bold text-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {clicked ? (
               <Loader2 size={18} className="animate-spin" />
@@ -97,7 +97,7 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
           
           <button 
             onClick={() => onSelect?.(item)}
-            className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm border border-white/10 text-white px-8 py-3.5 rounded-xl hover:bg-white/15 hover:border-white/20 transition-all font-bold text-sm"
+            className="flex items-center space-x-3 bg-white/10 text-white px-8 py-3.5 rounded-full hover:bg-white/20 transition-all font-bold text-sm active:scale-95"
           >
             <Maximize size={18} />
             <span>Details</span>

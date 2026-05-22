@@ -344,7 +344,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={theme}
                     onChange={(e) => handleThemeChange(e.target.value as "system" | "dark" | "light")}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="system">System Default</option>
                     <option value="dark">Dark</option>
@@ -359,7 +359,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={colorPreset}
                     onChange={(e) => handleColorPresetChange(e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="preset-default">Default (Indigo)</option>
                     <option value="preset-sakura">Sakura (Pink)</option>
@@ -379,7 +379,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={String(config.general?.time_format || "12h")}
                     onChange={(e) => updateField("general", "time_format", e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="12h">12-hour (AM/PM)</option>
                     <option value="24h">24-hour</option>
@@ -395,7 +395,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={String(config.general?.provider || "animepahe")}
                     onChange={(e) => updateField("general", "provider", e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="animepahe">AnimePahe</option>
                     <option value="anizone">AniZone</option>
@@ -433,7 +433,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                               const cleaned = newFallbacks.filter(v => v && v !== "none");
                               updateField("general", "provider_fallbacks", cleaned);
                             }}
-                            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                            className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                           >
                             <option value="none">-- Disabled --</option>
                             {allProviders
@@ -462,7 +462,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={String(config.general?.manga_provider || "mangakatana")}
                     onChange={(e) => updateField("general", "manga_provider", e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="mangakatana">MangaKatana</option>
                   </select>
@@ -475,7 +475,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={String(config.general?.media_api || "anilist")}
                     onChange={(e) => updateField("general", "media_api", e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="anilist">AniList</option>
                     <option value="jikan">Jikan (MyAnimeList - Fallback)</option>
@@ -492,7 +492,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={String(config.stream?.quality || "1080")}
                     onChange={(e) => updateField("stream", "quality", e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     {(options?.stream?.quality ?? ["1080", "720", "480", "360"]).map((q: string) => (
                       <option key={q} value={q}>{q.endsWith('p') ? q : `${q}p`}</option>
@@ -504,7 +504,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={String(config.stream?.translation_type || "sub")}
                     onChange={(e) => updateField("stream", "translation_type", e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="sub">Subtitled (Japanese)</option>
                     <option value="dub">Dubbed (English)</option>
@@ -519,7 +519,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                       setAutoSkip(val);
                       localStorage.setItem("anicat_auto_skip", String(val));
                     }}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="false">Manual (Show Skip Intro button)</option>
                     <option value="true">Automatic (skip without prompt)</option>
@@ -532,7 +532,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={String(config.stream?.player_type || "embedded")}
                     onChange={(e) => updateField("stream", "player_type", e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     {(options?.stream?.player_type ?? ["embedded", "external"]).map((p: string) => (
                       <option key={p} value={p}>{p === 'embedded' ? 'In-App Player' : 'External (MPV)'}</option>
@@ -544,7 +544,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={String(config.stream?.shader_profile || "balanced")}
                     onChange={(e) => updateField("stream", "shader_profile", e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer"
+                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="balanced">On</option>
                     <option value="off">Off</option>

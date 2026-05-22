@@ -14,18 +14,18 @@
 }
 
 :root {
-  --background: #000000;
+  --background: transparent;
   --foreground: #ffffff;
   --accent-color: #0A84FF;
   --accent-light: #5E5CE6;
   --secondary-color: #BF5AF2;
-  --card-color: #1c1c1e;
-  --surface-color: #1c1c1e;
+  --card-color: rgba(28, 28, 30, 0.4);
+  --surface-color: rgba(28, 28, 30, 0.4);
   --border-color: rgba(255, 255, 255, 0.08);
   --dynamic-white: #ffffff;
   --dynamic-black: #000000;
-  --glass-bg: rgba(28, 28, 30, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-bg: rgba(28, 28, 30, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.15);
 }
 
 /* Light mode — warm paper tones instead of cold white
@@ -102,24 +102,39 @@ html.light {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, fill 0.3s ease, stroke 0.3s ease, box-shadow 0.3s ease !important;
 }
 
-/* Glassmorphism — macOS 26 WKWebView safe: no backdrop-filter */
-.glass {
-  background: var(--glass-bg);
-  border-color: var(--glass-border);
+/* Unified Glass Panel — iOS 18 Control Center style */
+.glass-panel {
+  background-color: var(--glass-bg);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 4px 20px rgba(0,0,0,0.3);
+  border-radius: 24px;
 }
 
-/* Glass variant for fixed-position elements (sidebar, etc.).
-   backdrop-filter on fixed elements is extremely expensive at 120Hz because
-   the browser must recapture + blur background content on every scroll frame.
-   This variant uses a darker solid background instead. */
-.glass-fixed {
-  background: rgb(10, 10, 15);
-  border-color: var(--glass-border);
+html.light .glass-panel {
+  background-color: rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), inset 0 0 0 1px rgba(0, 0, 0, 0.05), 0 4px 20px rgba(0,0,0,0.1);
 }
 
-html.light .glass-fixed,
-html.system:not(.dark) .glass-fixed {
-  background: #fbf9f6;
+/* Unified Glass Button — Used for prominent circular / pill buttons */
+.glass-button {
+  background-color: rgba(40, 40, 40, 0.5);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 4px 10px rgba(0,0,0,0.2);
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.glass-button:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 4px 15px rgba(0,0,0,0.3);
+}
+
+html.light .glass-button {
+  background-color: rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(0, 0, 0, 0.1), 0 4px 10px rgba(0,0,0,0.1);
+  color: black;
 }
 
 /* Scroll container — apply to the main scrollable area for 120Hz performance */
@@ -173,6 +188,23 @@ html.system:not(.dark) .glass-fixed {
 }
 .animate-fade-in {
   animation: fadeIn 0.4s ease-out;
+}
+
+/* Blob animation */
+@keyframes blob {
+  0% { transform: scale(1) translate(0px, 0px); }
+  33% { transform: scale(1.1) translate(30px, -50px); }
+  66% { transform: scale(0.9) translate(-20px, 20px); }
+  100% { transform: scale(1) translate(0px, 0px); }
+}
+.animate-blob {
+  animation: blob 20s infinite alternate;
+}
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+.animation-delay-4000 {
+  animation-delay: 4s;
 }
 
 /* UX-20: Keyboard focus rings for accessibility */

@@ -88,7 +88,7 @@ const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10">
           <button 
             onClick={handlePlay}
-            className="ios-glass p-3.5 rounded-full hover:scale-110 hover:bg-white/10 active:scale-95 transition-all duration-200 shadow-xl text-white"
+            className="glass-button p-3.5 rounded-full hover:scale-110 active:scale-95 transition-all duration-200"
           >
             {isManga ? (
               <BookOpen size={20} />

@@ -274,10 +274,10 @@ export default function HomeView({ onSelect }: HomeViewProps) {
           <button
             key={mood.genre}
             onClick={() => setActiveGenre(activeGenre === mood.genre ? null : mood.genre)}
-            className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+            className={`shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all ${
               activeGenre === mood.genre
-                ? "bg-accent text-white border-accent shadow-lg shadow-accent/20"
-                : "bg-white/[0.02] text-gray-400 border-white/[0.05] hover:text-white hover:border-white/[0.1]"
+                ? "glass-button"
+                : "bg-white/5 text-gray-300 hover:text-white hover:bg-white/10"
             }`}
           >
             {mood.label}
@@ -286,8 +286,8 @@ export default function HomeView({ onSelect }: HomeViewProps) {
         {/* UX-22: Customize button */}
         <button
           onClick={() => setShowCustomizer(!showCustomizer)}
-          className={`shrink-0 p-2 rounded-xl transition-all border ${
-            showCustomizer ? "bg-accent/10 border-accent/20 text-accent" : "bg-white/[0.02] text-gray-500 border-white/[0.05] hover:text-white"
+          className={`shrink-0 p-2 rounded-full transition-all ${
+            showCustomizer ? "glass-button text-white" : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
           }`}
           title="Customize home layout"
         >
@@ -297,7 +297,7 @@ export default function HomeView({ onSelect }: HomeViewProps) {
 
       {/* UX-22: Row customizer panel */}
       {showCustomizer && (
-        <div className="mx-1 p-4 bg-white/[0.02] border border-white/[0.06] rounded-2xl space-y-2">
+        <div className="mx-1 p-4 glass-panel space-y-2">
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Visible Sections</h3>
           {rowConfig.map(row => (
             <label key={row.id} className="flex items-center space-x-3 cursor-pointer">

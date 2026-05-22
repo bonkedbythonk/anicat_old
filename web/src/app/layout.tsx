@@ -1,6 +1,8 @@
 import "./globals.css";
 import Providers from "@/components/Providers";
 
+import AmbientBackground from "@/components/layout/AmbientBackground";
+
 export default function RootLayout({
   children,
 }: {
@@ -36,7 +38,8 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
-      <body className="bg-background overflow-hidden">
+      <body className="bg-background overflow-hidden relative">
+        <AmbientBackground />
         <Providers>
           {children}
         </Providers>
