@@ -147,6 +147,10 @@ def _check_github_update(update_branch: str) -> dict:
 
     Uses COMMIT (baked into _version.py at CI build time) for nightly
     comparison instead of a fragile cache file.
+
+    For nightly: searches all releases for the one tagged 'nightly',
+    then compares the baked-in COMMIT against the release's commit.
+    This works even when stable releases appear first in the list.
     """
     import urllib.request
     import json
@@ -161,24 +165,52 @@ def _check_github_update(update_branch: str) -> dict:
 
     try:
         ctx_ssl = ssl._create_unverified_context()
-        if update_branch == "nightly":
-            url = "https://api.github.com/repos/bonkedbythonk/anicat/releases"
-        else:
-            url = "https://api.github.com/repos/bonkedbythonk/anicat/releases/latest"
+        url = "https://api.github.com/repos/bonkedbythonk/anicat/releases"
 
         req = urllib.request.Request(
             url,
             headers={"User-Agent": "Anicat-App"}
         )
         with urllib.request.urlopen(req, timeout=5, context=ctx_ssl) as response:
-            res_data = json.loads(response.read().decode())
-            if isinstance(res_data, list):
-                if not res_data:
-                    return result
-                latest = res_data[0]
-            else:
-                latest = res_data
+            all_releases = json.loads(response.read().decode())
 
+        if not isinstance(all_releases, list) or not all_releases:
+            return result
+
+        if update_branch == "nightly":
+            # Find the release tagged "nightly" (may not be the first one)
+            nightly_release = None
+            for r in all_releases:
+                if r.get("tag_name", "").lower() == "nightly":
+                    nightly_release = r
+                    break
+
+            if not nightly_release:
+                # No nightly release exists yet
+                return result
+
+            remote_sha = nightly_release.get("target_commitish", "") or ""
+            release_notes = nightly_release.get("body", "") or ""
+            release_url = nightly_release.get("html_url", "") or ""
+
+            if remote_sha and COMMIT:
+                # CI build — compare baked-in commit vs release commit
+                result["available"] = COMMIT != remote_sha
+            elif remote_sha and not COMMIT:
+                # Dev install (git checkout, no baked COMMIT) — always
+                # consider nightly available so it downloads the pre-built DMG
+                result["available"] = True
+            else:
+                # Fallback: no commit information, assume available
+                result["available"] = True
+
+            result["version"] = f"nightly ({remote_sha[:12]}...)" if remote_sha else "nightly"
+            result["release_notes"] = release_notes
+            result["release_url"] = release_url
+            return result
+
+        # Stable: always use the latest release
+        latest = all_releases[0]
         latest_tag = latest.get("tag_name", "")
         latest_version = _normalize_version(latest_tag)
         release_notes = latest.get("body", "") or ""
@@ -187,27 +219,6 @@ def _check_github_update(update_branch: str) -> dict:
         if not latest_tag:
             return result
 
-        if update_branch == "nightly" and latest_tag.lower() == "nightly":
-            # Use baked-in COMMIT (set by CI at build time) to compare
-            # against the release's target_commitish — the exact commit
-            # the DMG was built from.
-            remote_sha = latest.get("target_commitish", "") or ""
-            if remote_sha and COMMIT:
-                result["available"] = COMMIT != remote_sha
-                result["version"] = f"nightly ({remote_sha[:12]}...)"
-                result["release_notes"] = release_notes
-                result["release_url"] = release_url
-                return result
-            # Fallback: compare tag name
-            if remote_sha and not COMMIT:
-                result["available"] = True
-                result["version"] = f"nightly ({remote_sha[:12]}...)"
-                result["release_notes"] = release_notes
-                result["release_url"] = release_url
-                return result
-            return result
-
-        # Stable or standard branch: compare version tags
         current_version = _current_version_tag()
         result["available"] = not _version_tag_matches(latest_tag, current_version)
         if result["available"]:
