@@ -7,7 +7,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <title>anicat</title>
         <meta name="description" content="anicat PWA Dashboard — Search, stream, and download anime from your local machine." />
