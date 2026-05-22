@@ -221,41 +221,65 @@ def extract_episode_servers(raw_html: str) -> list[tuple[str, str]]:
 
     Returns a list of (server_name, embed_url) tuples from data-video attributes.
 
-    The episode page has server selection buttons with data-video attributes
-    pointing to external embed providers (VibePlayer, OtakuVid, etc.).
+    M1: Uses a single-pass approach that finds sibling elements containing both
+    data-video attributes and server name text, avoiding index misalignment.
     """
     servers: list[tuple[str, str]] = []
 
-    # Extract data-video attributes from server buttons/elements
-    data_video_matches = re.findall(r'data-video="([^"]+)"', raw_html)
-
-    # Extract associated server names
-    server_name_matches = re.findall(
-        r"(?:server-name|data-server)[^>]*>\s*([^<]+)\s*<",
-        raw_html,
-        re.IGNORECASE,
+    # Single-pass: find all elements with data-video, then locate the nearest
+    # preceding or following text node / button label as the server name.
+    data_video_pattern = re.compile(
+        r'<(\w+)[^>]*data-video="([^"]+)"([^>]*)>(.*?)</\1>',
+        re.DOTALL | re.IGNORECASE,
     )
 
-    # If no specific server names, use generic names
-    if not server_name_matches:
-        # Look for text in buttons near the data-video attributes
+    for match in data_video_pattern.finditer(raw_html):
+        embed_url = match.group(2)
+        tag_content = match.group(4)  # Content inside the element
+
+        # Extract server name from the element's own text content
+        name = re.sub(r"<[^>]+>", "", tag_content).strip()
+
+        if not name:
+            # Look for a sibling element with server name text before this element
+            before = raw_html[: match.start()]
+            # Find the last text node before the data-video element
+            text_before = re.findall(
+                r">\s*([^<]{2,30})\s*<", before
+            )
+            if text_before:
+                name = text_before[-1].strip()
+
+        if not name or len(name) < 2:
+            name = f"Server {len(servers) + 1}"
+
+        servers.append((name.strip(), embed_url))
+
+    if not servers:
+        # Fallback: original regex approach for legacy page structures
+        data_video_matches = re.findall(r'data-video="([^"]+)"', raw_html)
         server_name_matches = re.findall(
-            r"<(?:button|span|div)[^>]*>\s*(?:<[^>]+>)?\s*(?:Hard Sub|Sort Sub|Raw|HD|SD|Stream \d+)[^<]*<",
+            r"(?:server-name|data-server)[^>]*>\s*([^<]+)\s*<",
             raw_html,
             re.IGNORECASE,
         )
-        # Clean up
-        server_name_matches = [
-            re.sub(r"<[^>]+>", "", m).strip() for m in server_name_matches
-        ]
+        if not server_name_matches:
+            server_name_matches = re.findall(
+                r"<(?:button|span|div)[^>]*>\s*(?:<[^>]+>)?\s*(?:Hard Sub|Sort Sub|Raw|HD|SD|Stream \d+)[^<]*<",
+                raw_html,
+                re.IGNORECASE,
+            )
+            server_name_matches = [
+                re.sub(r"<[^>]+>", "", m).strip() for m in server_name_matches
+            ]
 
-    for i, embed_url in enumerate(data_video_matches):
-        name = (
-            server_name_matches[i]
-            if i < len(server_name_matches)
-            else f"Server {i + 1}"
-        )
-        servers.append((name.strip(), embed_url))
+        for i, embed_url in enumerate(data_video_matches):
+            name = (
+                server_name_matches[i]
+                if i < len(server_name_matches)
+                else f"Server {i + 1}"
+            )
+            servers.append((name.strip(), embed_url))
 
     return servers
 

@@ -44,7 +44,15 @@ def search(config: AppConfig, **options: "Unpack[Options]"):
     from ...libs.provider.anime.params import AnimeParams, SearchParams
     from ..interactive.session import Context
 
-    ctx = Context(config)
+    # L4: Use the shared API context when running inside the sidecar process.
+    # Check sys._anicat_ctx directly (type-safe) rather than importing get_ctx()
+    # which returns a _ContextProxy type incompatible with the rest of the CLI.
+    import sys
+    shared = getattr(sys, "_anicat_ctx", None)
+    if shared is not None and isinstance(shared, Context):
+        ctx = shared
+    else:
+        ctx = Context(config)
 
     if not options["anime_title"]:
         raw = ""

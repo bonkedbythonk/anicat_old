@@ -1,7 +1,11 @@
+// UX-01: Full macOS menu bar with standard items + keyboard shortcuts
 use tauri::{
-    menu::{Menu, MenuItem},
+    menu::{
+        MenuBuilder, MenuItemBuilder, SubmenuBuilder,
+        PredefinedMenuItem,
+    },
     tray::TrayIconBuilder,
-    Manager,
+    Manager, Emitter,
 };
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -180,6 +184,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_log::Builder::default().build())
+        // UX-03: Global shortcut plugin for Quick Pane (Cmd+Shift+Space)
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(sidecar_state)
         .invoke_handler(tauri::generate_handler![open_logs_folder, restart_backend])
         .setup(move |app| {
@@ -190,17 +196,184 @@ pub fn run() {
                 .arg("anicat-server")
                 .output();
 
-            // --- Tray Menu ---
-            let quit_i = MenuItem::with_id(app, "quit", "Quit Anicat", true, None::<&str>)?;
-            let show_i = MenuItem::with_id(app, "show", "Show Dashboard", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
+            // ── UX-01: Full macOS Menu Bar ──
+            let app_menu = SubmenuBuilder::new(app, "Anicat")
+                .item(&PredefinedMenuItem::about(app, Some("About Anicat"), None)?)
+                .separator()
+                .item(&MenuItemBuilder::with_id("preferences", "Preferences...")
+                    .accelerator("CmdOrCtrl+,")
+                    .build(app)?)
+                .separator()
+                .item(&PredefinedMenuItem::services(app, None)?)
+                .separator()
+                .item(&PredefinedMenuItem::hide(app, Some("Hide Anicat"))?)
+                .item(&PredefinedMenuItem::hide_others(app, Some("Hide Others"))?)
+                .item(&PredefinedMenuItem::show_all(app, Some("Show All"))?)
+                .separator()
+                .item(&PredefinedMenuItem::quit(app, Some("Quit Anicat"))?)
+                .build()?;
+
+            let file_menu = SubmenuBuilder::new(app, "File")
+                .item(&MenuItemBuilder::with_id("close_window", "Close Window")
+                    .accelerator("CmdOrCtrl+W")
+                    .build(app)?)
+                .build()?;
+
+            let edit_menu = SubmenuBuilder::new(app, "Edit")
+                .item(&PredefinedMenuItem::undo(app, Some("Undo"))?)
+                .item(&PredefinedMenuItem::redo(app, Some("Redo"))?)
+                .separator()
+                .item(&PredefinedMenuItem::cut(app, Some("Cut"))?)
+                .item(&PredefinedMenuItem::copy(app, Some("Copy"))?)
+                .item(&PredefinedMenuItem::paste(app, Some("Paste"))?)
+                .item(&PredefinedMenuItem::select_all(app, Some("Select All"))?)
+                .build()?;
+
+            let view_menu = SubmenuBuilder::new(app, "View")
+                .item(&MenuItemBuilder::with_id("toggle_fullscreen", "Toggle Full Screen")
+                    .accelerator("Ctrl+Cmd+F")
+                    .build(app)?)
+                .item(&MenuItemBuilder::with_id("toggle_sidebar", "Toggle Sidebar")
+                    .accelerator("CmdOrCtrl+B")
+                    .build(app)?)
+                .separator()
+                .item(&MenuItemBuilder::with_id("nav_home", "Home")
+                    .accelerator("CmdOrCtrl+1")
+                    .build(app)?)
+                .item(&MenuItemBuilder::with_id("nav_search", "Search")
+                    .accelerator("CmdOrCtrl+K")
+                    .build(app)?)
+                .item(&MenuItemBuilder::with_id("nav_library", "Library")
+                    .accelerator("CmdOrCtrl+2")
+                    .build(app)?)
+                .item(&MenuItemBuilder::with_id("nav_schedule", "Schedule")
+                    .accelerator("CmdOrCtrl+3")
+                    .build(app)?)
+                .build()?;
+
+            let help_menu = SubmenuBuilder::new(app, "Help")
+                .item(&MenuItemBuilder::with_id("keyboard_shortcuts", "Keyboard Shortcuts")
+                    .accelerator("CmdOrCtrl+?")
+                    .build(app)?)
+                .build()?;
+
+            let menu = MenuBuilder::new(app)
+                .item(&app_menu)
+                .item(&file_menu)
+                .item(&edit_menu)
+                .item(&view_menu)
+                .item(&help_menu)
+                .build()?;
+
+            app.set_menu(menu)?;
+
+            // Handle menu events
+            let app_handle = app.handle().clone();
+            app.on_menu_event(move |_app, event| {
+                match event.id().as_ref() {
+                    "preferences" => {
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('settings')");
+                        }
+                    }
+                    "nav_home" => {
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('home')");
+                        }
+                    }
+                    "nav_search" => {
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('search')");
+                        }
+                    }
+                    "nav_library" => {
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('library')");
+                        }
+                    }
+                    "nav_schedule" => {
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('schedule')");
+                        }
+                    }
+                    "keyboard_shortcuts" => {
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let _ = window.eval("window.__anicat_toggle_help__ && window.__anicat_toggle_help__()");
+                        }
+                    }
+                    "toggle_fullscreen" => {
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let is_fullscreen = window.is_fullscreen().unwrap_or(false);
+                            let _ = window.set_fullscreen(!is_fullscreen);
+                        }
+                    }
+                    "close_window" => {
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let _ = window.close();
+                        }
+                    }
+                    _ => {}
+                }
+            });
+
+            // ── UX-03: Global Shortcut for Quick Pane (Cmd+Shift+Space) ──
+            #[cfg(target_os = "macos")]
+            {
+                use tauri_plugin_global_shortcut::GlobalShortcutExt;
+                let qp_handle = app.handle().clone();
+                app.handle().plugin(
+                    tauri_plugin_global_shortcut::Builder::new()
+                        .with_handler(move |_app, shortcut, _event| {
+                            if shortcut.matches("CmdOrCtrl+Shift+Space") {
+                                // Toggle the Quick Pane window
+                                if let Some(qp_win) = qp_handle.get_webview_window("quick-pane") {
+                                    if qp_win.is_visible().unwrap_or(false) {
+                                        let _ = qp_win.hide();
+                                    } else {
+                                        let _ = qp_win.show();
+                                        let _ = qp_win.set_focus();
+                                    }
+                                }
+                            }
+                        })
+                        .build(),
+                )?;
+                app.handle().global_shortcut()
+                    .register("CmdOrCtrl+Shift+Space")?;
+            }
+
+            // ── UX-03: Quick Pane floating window ──
+            let qp_config = tauri::WebviewUrl::App("quick-pane.html".into());
+            let _quick_pane = tauri::WebviewWindowBuilder::new(
+                app,
+                "quick-pane",
+                qp_config,
+            )
+            .title("Quick Pane")
+            .inner_size(340.0, 480.0)
+            .resizable(false)
+            .decorations(false)
+            .always_on_top(true)
+            .visible(false)
+            .skip_taskbar(true)
+            .build()?;
+
+            // ── Tray Menu ──
+            let quit_i = MenuItemBuilder::with_id("quit", "Quit Anicat")
+                .build(app)?;
+            let show_i = MenuItemBuilder::with_id("show", "Show Dashboard")
+                .build(app)?;
+            let tray_menu = MenuBuilder::new(app)
+                .item(&show_i)
+                .item(&quit_i)
+                .build()?;
 
             let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray-icon.png"))?;
             let _tray = TrayIconBuilder::new()
                 .icon(tray_icon)
                 .icon_as_template(true)
-                .menu(&menu)
-                .on_menu_event(|app, event| match event.id.as_ref() {
+                .menu(&tray_menu)
+                .on_menu_event(|app, event| match event.id().as_ref() {
                     "quit" => app.exit(0),
                     "show" => {
                         if let Some(window) = app.get_webview_window("main") {

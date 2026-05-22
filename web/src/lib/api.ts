@@ -9,12 +9,13 @@ if (isBrowser) {
   console.log('API_BASE_URL:', API_BASE_URL);
 }
 
-export async function fetchFromApi(endpoint: string, options: RequestInit = {}) {
+export async function fetchFromApi(endpoint: string, options: RequestInit & { silent?: boolean } = {}) {
+  const { silent, ...fetchOptions } = options;
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
+    ...fetchOptions,
     headers: {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...fetchOptions.headers,
     },
   });
 
@@ -25,10 +26,10 @@ export async function fetchFromApi(endpoint: string, options: RequestInit = {}) 
     } catch (e) {
       // Ignored
     }
-    // Prefer structured detail (FastAPI uses `detail`) then `message`, else fallback
     const detail = errorData.detail ?? errorData.message ?? errorData ?? null;
     const message = detail ? (typeof detail === 'string' ? detail : JSON.stringify(detail)) : `API error: ${response.status} ${response.statusText}`;
-    if (isBrowser) {
+    // UX-19: Only log errors for non-silent (user-initiated) requests
+    if (!silent && isBrowser) {
       console.error('API ERROR', { endpoint, status: response.status, statusText: response.statusText, errorData });
     }
     throw new Error(`${endpoint} - ${message}`);
@@ -79,6 +80,8 @@ export type MediaItem = {
     progress?: number;
     score?: number;
   };
+  // UX-12: Smart Playlist recommendation reason
+  playlist_reason?: string;
 };
 
 export type Episode = {
@@ -278,6 +281,21 @@ export const mediaApi = {
   }> =>
     fetchFromApi(`/actions/play/${mediaId}/resolve${episode ? `?episode=${episode}` : ''}`, { method: 'POST' }),
 
+  // C4: Re-resolve an expired/failed stream URL without full playback re-init
+  renewStream: (mediaId: number, episode: string): Promise<{
+    stream_url: string;
+    raw_stream_url: string;
+    title: string;
+    episode: string;
+    start_time: number | null;
+    media_id: number;
+    headers: Record<string, string>;
+  }> =>
+    fetchFromApi('/actions/stream/renew', {
+      method: 'POST',
+      body: JSON.stringify({ media_id: mediaId, episode })
+    }),
+
   trackPlayback: (mediaId: number, episode: string, currentTime: number, totalTime: number): Promise<{
     status: string;
     completed: boolean;
@@ -368,4 +386,8 @@ export const mediaApi = {
 
   getLogs: (lines = 100): Promise<{ logs: string }> =>
     fetchFromApi(`/status/logs?lines=${lines}`),
+
+  // UX-27: Check if MPV is installed for onboarding
+  getMpvAvailable: (): Promise<{ available: boolean; path?: string }> =>
+    fetchFromApi('/status/mpv-available'),
 };

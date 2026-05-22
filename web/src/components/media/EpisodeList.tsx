@@ -136,6 +136,12 @@ export default function EpisodeList({
                 className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${isNext && !isUnaired ? 'bg-white/[0.04] border border-white/[0.05] shadow-lg' : 'hover:bg-white/[0.03]'}`}
               >
                 <div className="flex items-center space-x-4 min-w-0">
+                  {/* UX-26: Episode thumbnail placeholder */}
+                  <div className="hidden sm:block w-16 h-9 rounded-md bg-white/[0.03] border border-white/[0.04] shrink-0 overflow-hidden">
+                    <div className="w-full h-full flex items-center justify-center text-[8px] text-gray-600 font-bold">
+                      {isWatched ? '✓' : `Ep ${epNum}`}
+                    </div>
+                  </div>
                   <div className="flex items-center space-x-1 w-10 justify-end shrink-0">
                     {isWatched && (
                       <button 

@@ -38,6 +38,8 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
   const [shaderProfile, setShaderProfile] = useState("balanced");
   const [translationType, setTranslationType] = useState("sub");
   const [localAutoSkip, setLocalAutoSkip] = useState(false);
+  // UX-27: Auto-detect MPV availability
+  const [mpvAvailable, setMpvAvailable] = useState<boolean | null>(null);
 
   useEffect(() => {
     mediaApi.getConfig()
@@ -50,6 +52,11 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
         }
       })
       .catch(console.error);
+
+    // UX-27: Check MPV availability
+    mediaApi.getMpvAvailable()
+      .then(res => setMpvAvailable(res.available))
+      .catch(() => setMpvAvailable(false));
 
     if (typeof window !== "undefined") {
       const savedAutoSkip = localStorage.getItem("anicat_auto_skip");
@@ -183,8 +190,15 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                 className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
               >
                 <option value="embedded" className="bg-surface">Built-in Player (simple, no setup)</option>
-                <option value="external" className="bg-surface">External Player - MPV (best quality, GPU upscaling)</option>
+                <option value="external" className="bg-surface" disabled={mpvAvailable === false}>
+                  External Player - MPV (best quality, GPU upscaling){mpvAvailable === false ? ' [Not Installed]' : ''}
+                </option>
               </select>
+              {mpvAvailable === false && (
+                <p className="text-[10px] text-amber-400/80 font-medium mt-1">
+                  MPV is not detected on your system. Install it for the best viewing experience.
+                </p>
+              )}
             </div>
 
             {/* Shaders Quality */}

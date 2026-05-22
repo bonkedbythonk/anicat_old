@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useRef, memo } from "react";
-import { Play, BookOpen } from "lucide-react";
+import { useCallback, useRef, memo, useState } from "react";
+import { Play, BookOpen, Star, Tag } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import { type MediaItem, mediaApi } from "@/lib/api";
 
 interface MediaCardProps {
@@ -12,6 +13,8 @@ interface MediaCardProps {
 
 const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
   const queryClient = useQueryClient();
+  // UX-14: Rich hover preview state
+  const [isHovered, setIsHovered] = useState(false);
 
   const handlePlay = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -22,10 +25,10 @@ const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
   };
 
   // Smart pre-fetch: when user hovers for 300ms+, pre-load the detail
-  // and episode list so the detail drawer opens instantly.
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleMouseEnter = useCallback(() => {
+    setIsHovered(true);
     prefetchTimerRef.current = setTimeout(() => {
       queryClient.prefetchQuery({
         queryKey: ["media-detail", item.id],
@@ -41,6 +44,7 @@ const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
   }, [item.id, queryClient]);
 
   const handleMouseLeave = useCallback(() => {
+    setIsHovered(false);
     if (prefetchTimerRef.current) {
       clearTimeout(prefetchTimerRef.current);
       prefetchTimerRef.current = null;
@@ -53,7 +57,6 @@ const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
   const totalCount = item.episodes || item.chapters || 0;
   const nextEp = item.next_airing?.episode;
   
-  // Only treat this as "new" when there is an actual upcoming airing.
   let currentReleased = 0;
   if (nextEp) {
     currentReleased = nextEp - 1;
@@ -63,10 +66,6 @@ const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
   
   const isFinished = item.status === 'FINISHED' || (item.end_date && new Date(item.end_date) < new Date());
   
-  const isAiringNow = item.next_airing?.airing_at ? (
-    new Date(item.next_airing.airing_at + "Z") > new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
-  ) : !!nextEp;
-
   const hasNewEpisodes = 
     item.user_status?.status === 'watching' && 
     item.status === 'RELEASING' && 
@@ -79,10 +78,9 @@ const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
       onClick={() => onSelect?.(item)} 
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="group cursor-pointer flex flex-col space-y-2.5 w-full text-left"
+      className="group cursor-pointer flex flex-col space-y-2.5 w-full text-left relative"
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-surface card-glow">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img 
           src={item.cover_image.large} 
           alt={title} 
@@ -92,67 +90,94 @@ const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
         />
         
         {/* Play overlay */}
-        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10" style={{ transform: 'translateZ(1px)' }}>
+        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10">
           <button 
             onClick={handlePlay}
             className="bg-accent p-3.5 rounded-full hover:scale-110 active:scale-95 transition-transform duration-200 shadow-xl shadow-accent/30 text-white"
           >
             {isManga ? (
-              <BookOpen size={22} className="text-white" />
+              <BookOpen size={20} />
             ) : (
-              <Play fill="currentColor" size={22} className="ml-0.5" />
+              <Play size={20} fill="currentColor" />
             )}
           </button>
         </div>
 
-
-        {/* Score badge */}
-        {item.average_score && (
-          <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-0.5 rounded-md text-[10px] font-bold text-accent z-10">
-            ★ {(item.average_score / 10).toFixed(1)}
+        {/* UX-12: Recommendation reason pill */}
+        {item.playlist_reason && (
+          <div className="absolute top-2 left-2 z-20 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-sm border border-white/10 text-[9px] font-bold text-accent uppercase tracking-wider max-w-[90%] truncate">
+            {item.playlist_reason}
           </div>
         )}
 
+        {/* New episode badge */}
+        {hasNewEpisodes && (
+          <div className="absolute top-2 right-2 z-20 px-2 py-1 rounded-full bg-accent text-white text-[9px] font-bold uppercase tracking-wider shadow-lg">
+            New Ep
+          </div>
+        )}
+        
         {/* Progress bar */}
-        {item.user_status && progress > 0 && (
-          <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-black/60 z-10">
+        {item.user_status && totalCount > 0 && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10 z-10">
             <div 
-              className="h-full bg-accent rounded-full" 
-              style={{ width: `${Math.min((progress / (totalCount || currentReleased || 1)) * 100, 100)}%` }}
+              className="h-full bg-accent transition-all duration-700"
+              style={{ width: `${(progress / totalCount) * 100}%` }}
             />
           </div>
         )}
-
-        {/* New badge - Moved to bottom of container for better stacking */}
-        {hasNewEpisodes && (
-          <div 
-            className="absolute top-2 left-2 bg-accent text-white px-1.5 py-0.5 rounded text-[9px] font-black z-50 shadow-lg"
-            style={{ pointerEvents: 'none' }}
-          >
-            NEW
-          </div>
-        )}
       </div>
-      
-      <div className="flex flex-col space-y-0.5 px-0.5">
-        <h3 className="text-[13px] font-semibold text-gray-300 line-clamp-2 leading-snug group-hover:text-white transition-colors">
+
+      <div className="space-y-1 px-0.5">
+        <h3 className="text-sm font-bold text-white leading-tight line-clamp-2 group-hover:text-accent transition-colors">
           {title}
         </h3>
-        {item.user_status && progress > 0 ? (
-          <div className="flex items-center space-x-2">
-            <p className={`text-[11px] font-medium ${hasNewEpisodes ? "text-accent" : "text-gray-500"}`}>
-              {isManga ? "CH" : "EP"} {progress} / {totalCount || currentReleased || "?"}
-            </p>
-            {hasNewEpisodes && (
-              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            )}
-          </div>
-        ) : (
-          <p className="text-[11px] text-gray-500 font-medium">
-            {item.season && item.season.charAt(0) + item.season.slice(1).toLowerCase()} {item.seasonYear}
-          </p>
+        <div className="flex items-center space-x-2 text-[10px] text-gray-500 font-medium">
+          {item.average_score && (
+            <span className="flex items-center space-x-1">
+              <Star size={10} className="text-amber-400" fill="currentColor" />
+              <span>{item.average_score}%</span>
+            </span>
+          )}
+          {item.genres && item.genres.length > 0 && (
+            <span className="flex items-center space-x-1">
+              <Tag size={10} />
+              <span className="truncate max-w-[100px]">{item.genres.slice(0, 2).join(", ")}</span>
+            </span>
+          )}
+        </div>
+        {item.user_status && (
+          <span className="text-[10px] font-semibold text-gray-500">
+            {isFinished ? '✓ Finished' : `${progress}/${totalCount || '?'}`}
+          </span>
         )}
       </div>
+
+      {/* UX-14: Rich hover preview panel */}
+      <AnimatePresence>
+        {isHovered && item.description && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.15 }}
+            className="absolute left-0 right-0 -bottom-2 translate-y-full z-50 bg-surface/95 backdrop-blur-xl border border-white/[0.08] rounded-xl p-3 shadow-2xl shadow-black/50"
+          >
+            <p className="text-[11px] text-gray-400 line-clamp-3 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: item.description }}
+            />
+            {item.genres && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {item.genres.slice(0, 4).map(g => (
+                  <span key={g} className="px-1.5 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.06] text-[9px] font-medium text-gray-400">
+                    {g}
+                  </span>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 });

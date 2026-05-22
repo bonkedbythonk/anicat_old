@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { X, Play, Pause, RotateCcw, Volume2, VolumeX, Maximize, Minimize, Loader2, ArrowRight, Video, PictureInPicture2 } from "lucide-react";
+import { X, Play, Pause, RotateCcw, Volume2, VolumeX, Maximize, Minimize, Loader2, ArrowRight, Video, PictureInPicture2, Type } from "lucide-react";
 import { API_BASE_ORIGIN, mediaApi } from "@/lib/api";
 import { dispatchRefresh } from "@/lib/events";
 
@@ -28,6 +28,7 @@ export default function AnimePlayer({
 }: AnimePlayerProps) {
   const [resolved, setResolved] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingStep, setLoadingStep] = useState("Connecting...");
   const [error, setError] = useState<string | null>(null);
   
   const [isPlaying, setIsPlaying] = useState(false);
@@ -59,6 +60,21 @@ export default function AnimePlayer({
   const [isHoveredControls, setIsHoveredControls] = useState(false);
   const [autoSkipEnabled, setAutoSkipEnabled] = useState(false);
   
+  // UX-23: Subtitle customization
+  const [subtitleSize, setSubtitleSize] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("anicat_subtitle_size") || "medium";
+    }
+    return "medium";
+  });
+  const [subtitleBg, setSubtitleBg] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("anicat_subtitle_bg") || "semi";
+    }
+    return "semi";
+  });
+  const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
+  
   // Resume position persistence — save/restore playback position per episode
   const resumeKey = `anicat_resume_${mediaId}_${episodeNumber}`;
 
@@ -77,6 +93,7 @@ export default function AnimePlayer({
 
   // Fetch resolved stream URL on mount or episode change
   useEffect(() => {
+    // UX-06: Stream resolution progress steps
     setLoading(true);
     setError(null);
     setResolved(null);
@@ -84,13 +101,43 @@ export default function AnimePlayer({
     setCurrentTime(0);
     setDuration(0);
 
+    const progressMessages = [
+      "Searching provider...",
+      "Fetching episode servers...",
+      "Selecting best quality...",
+      "Loading HLS manifest...",
+    ];
+    let progressIdx = 0;
+    setLoadingStep(progressMessages[0]);
+    const progressInterval = setInterval(() => {
+      progressIdx++;
+      if (progressIdx < progressMessages.length) {
+        setLoadingStep(progressMessages[progressIdx]);
+      }
+    }, 700);
+
     mediaApi.resolveStream(mediaId, episodeNumber)
       .then(data => {
+        clearInterval(progressInterval);
         setResolved(data);
+        setError(null);
       })
       .catch(err => {
+        clearInterval(progressInterval);
         console.error("Failed to resolve stream:", err);
-        setError("Failed to locate high-quality video servers. Try again shortly.");
+        // UX-16: Differentiated error messages based on HTTP status
+        const msg = err?.message || "";
+        if (msg.includes("404") || msg.includes("not found")) {
+          setError("This episode isn't available on the current provider. Try switching providers in Settings.");
+        } else if (msg.includes("502") || msg.includes("provider")) {
+          setError("The streaming provider returned an error. The site may be restructuring — try again later or switch providers.");
+        } else if (msg.includes("timeout") || msg.includes("timed out")) {
+          setError("The streaming server is slow to respond. This is usually temporary — try again.");
+        } else if (msg.includes("403") || msg.includes("blocked")) {
+          setError("The provider blocked this request. Try again or switch providers in Settings.");
+        } else {
+          setError("Failed to locate high-quality video servers. Try again shortly.");
+        }
         setLoading(false);
       });
   }, [mediaId, episodeNumber]);
@@ -239,6 +286,36 @@ export default function AnimePlayer({
         let mediaRecoverAttempts = 0;
         let networkRecoverAttempts = 0;
 
+        // C4: Stream URL expiry — attempt to re-resolve from the backend
+        const attemptStreamRenewal = async () => {
+          console.log("[Player][C4] Attempting stream renewal for expired/failed URL...");
+          try {
+            const renewed = await mediaApi.renewStream(mediaId, episodeNumber);
+            console.log("[Player][C4] Stream renewed successfully:", renewed.stream_url);
+            const newUrl = renewed.stream_url.startsWith("http")
+              ? renewed.stream_url
+              : `${API_BASE_ORIGIN}${renewed.stream_url}`;
+            if (hlsRef.current) {
+              hlsRef.current.destroy();
+            }
+            const newHls = new Hls({
+              maxMaxBufferLength: 30,
+              enableWorker: true,
+              lowLatencyMode: true
+            });
+            hlsRef.current = newHls;
+            const video = videoRef.current;
+            if (video) {
+              newHls.loadSource(newUrl);
+              newHls.attachMedia(video);
+            }
+            return true;
+          } catch (err) {
+            console.error("[Player][C4] Stream renewal failed:", err);
+            return false;
+          }
+        };
+
         hls.on(Hls.Events.ERROR, (event, data) => {
           console.log("[Player][HLS Error]", { type: data.type, details: data.details, fatal: data.fatal });
           if (data.fatal) {
@@ -248,8 +325,12 @@ export default function AnimePlayer({
                 if (networkRecoverAttempts <= 3) {
                   console.log(`[Player][HLS Error] Fatal network error (attempt ${networkRecoverAttempts}/3). Attempting to reload HLS stream...`);
                   hls.startLoad();
+                } else if (networkRecoverAttempts <= 4) {
+                  // C4: Try stream renewal before giving up
+                  console.log("[Player][HLS Error] Network recovery exhausted — attempting stream renewal...");
+                  attemptStreamRenewal();
                 } else {
-                  console.log("[Player][HLS Error] Network recovery attempts exhausted.");
+                  console.log("[Player][HLS Error] Network recovery and renewal attempts exhausted.");
                   setError("Streaming connection timed out. Check your internet connection.");
                   hls.destroy();
                 }
@@ -271,8 +352,13 @@ export default function AnimePlayer({
                 break;
               default:
                 console.log("[Player][HLS Error] Fatal unrecoverable HLS error:", data.type, data.details);
-                setError("Streaming connection was unexpectedly closed.");
-                hls.destroy();
+                // C4: Try renewal before showing error
+                attemptStreamRenewal().then((renewed) => {
+                  if (!renewed) {
+                    setError("Streaming connection was unexpectedly closed.");
+                    hls.destroy();
+                  }
+                });
                 break;
             }
           }
@@ -661,7 +747,7 @@ export default function AnimePlayer({
       {loading && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 space-y-4 z-40">
           <Loader2 className="animate-spin text-accent" size={48} />
-          <p className="text-sm font-semibold tracking-wider text-white/60">Loading...</p>
+          <p className="text-sm font-semibold tracking-wider text-white/60">{loadingStep}</p>
         </div>
       )}
 
@@ -687,6 +773,18 @@ export default function AnimePlayer({
             >
               <Video size={14} />
               <span>Launch in MPV</span>
+            </button>
+            {/* UX-16: Quick link to switch provider */}
+            <button
+              onClick={() => {
+                handleClose();
+                if ((window as any).__anicat_navigate__) {
+                  (window as any).__anicat_navigate__('settings');
+                }
+              }}
+              className="px-5 py-2.5 bg-white/[0.04] border border-white/5 hover:bg-white/[0.08] text-white rounded-xl text-xs font-bold transition-all"
+            >
+              Switch Provider
             </button>
           </div>
         </div>
@@ -896,6 +994,67 @@ export default function AnimePlayer({
                 <span>Auto-Skip</span>
               </button>
             </div>
+            {/* UX-23: Subtitle Customization */}
+            <div className="relative">
+              <button
+                onClick={() => setShowSubtitleMenu(!showSubtitleMenu)}
+                className={`px-2.5 py-1 rounded-lg text-[9px] uppercase tracking-wider font-black transition-all border flex items-center space-x-1.5 active:scale-95 duration-200 ${
+                  showSubtitleMenu
+                    ? "bg-accent/10 border-accent/20 text-accent"
+                    : "bg-white/[0.04] border-white/5 text-white/50 hover:text-white/80 hover:bg-white/[0.08]"
+                }`}
+                title="Subtitle settings"
+              >
+                <Type size={12} />
+                <span>CC</span>
+              </button>
+              {showSubtitleMenu && (
+                <div className="absolute bottom-full mb-2 left-0 bg-surface/95 backdrop-blur-xl border border-white/[0.08] rounded-xl p-4 space-y-3 shadow-2xl min-w-[180px] z-[260]">
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Size</label>
+                    <div className="flex space-x-1">
+                      {["small", "medium", "large"].map(s => (
+                        <button
+                          key={s}
+                          onClick={() => {
+                            setSubtitleSize(s);
+                            localStorage.setItem("anicat_subtitle_size", s);
+                          }}
+                          className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                            subtitleSize === s ? "bg-accent text-white" : "bg-white/[0.04] text-white/60 hover:bg-white/[0.08]"
+                          }`}
+                        >
+                          {s === "small" ? "S" : s === "medium" ? "M" : "L"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Background</label>
+                    <div className="flex space-x-1">
+                      {[
+                        { key: "none", label: "None" },
+                        { key: "semi", label: "Semi" },
+                        { key: "solid", label: "Solid" },
+                      ].map(opt => (
+                        <button
+                          key={opt.key}
+                          onClick={() => {
+                            setSubtitleBg(opt.key);
+                            localStorage.setItem("anicat_subtitle_bg", opt.key);
+                          }}
+                          className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                            subtitleBg === opt.key ? "bg-accent text-white" : "bg-white/[0.04] text-white/60 hover:bg-white/[0.08]"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center space-x-6">
@@ -927,15 +1086,33 @@ export default function AnimePlayer({
         </div>
       </div>
 
-      {/* Skip Intro/Outro Overlay Button */}
+      {/* UX-08: AniSkip button — distinct Netflix-style pill with time remaining */}
       {activeSkip && (
-        <button
-          onClick={() => handleSeekAndPlay(activeSkip.end)}
-          className="absolute bottom-24 right-8 z-[240] flex items-center space-x-2 px-5 py-3 bg-black/60 hover:bg-black/85 backdrop-blur-xl border border-white/10 text-white font-extrabold rounded-xl shadow-2xl transition-all active:scale-95 animate-fade-in text-xs uppercase tracking-widest cursor-pointer group"
-        >
-          <span>Skip {activeSkip.type === 'op' ? 'Intro' : 'Outro'}</span>
-          <ArrowRight size={14} className="text-accent group-hover:translate-x-1 transition-transform" />
-        </button>
+        <div className="absolute bottom-24 right-8 z-[240] animate-slide-in-right">
+          <button
+            onClick={() => handleSeekAndPlay(activeSkip.end)}
+            className="flex items-center space-x-3 px-5 py-3 bg-black/70 backdrop-blur-xl border border-white/15 hover:border-white/25 text-white font-extrabold rounded-2xl shadow-2xl transition-all active:scale-95 group cursor-pointer"
+          >
+            <span className="text-xs uppercase tracking-[0.15em] text-white/90">
+              Skip {activeSkip.type === 'op' ? 'Intro' : 'Outro'}
+            </span>
+            <span className="flex items-center space-x-1.5 px-2.5 py-1 bg-white/10 rounded-lg">
+              <ArrowRight size={12} className="text-accent group-hover:translate-x-0.5 transition-transform" />
+              <span className="text-[10px] font-mono text-white/60 tabular-nums">
+                {Math.ceil(activeSkip.end - currentTime)}s
+              </span>
+            </span>
+            {/* Time-remaining progress bar */}
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/10 rounded-b-2xl overflow-hidden">
+              <div
+                className="h-full bg-accent transition-all duration-300"
+                style={{
+                  width: `${((currentTime - activeSkip.start) / (activeSkip.end - activeSkip.start)) * 100}%`
+                }}
+              />
+            </div>
+          </button>
+        </div>
       )}
 
       {/* End-of-Series Rating Modal */}

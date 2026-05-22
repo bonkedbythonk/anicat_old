@@ -8,13 +8,20 @@ interface HelpModalProps {
 
 export default function HelpModal({ onClose }: HelpModalProps) {
   const shortcuts = [
-    { key: "/", desc: "Search" },
-    { key: "Esc", desc: "Close detail panel" },
-    { key: "h", desc: "Home" },
-    { key: "n", desc: "Notifications" },
-    { key: "l", desc: "My Lists" },
-    { key: "d", desc: "Downloads" },
-    { key: "?", desc: "Toggle this help menu" },
+    { key: "⌘K  or  /", desc: "Search" },
+    { key: "Esc", desc: "Close detail panel / player" },
+    { key: "⌘1", desc: "Home" },
+    { key: "⌘2", desc: "Library" },
+    { key: "⌘3", desc: "Schedule" },
+    { key: "⌘,", desc: "Settings" },
+    { key: "⌘⇧Space", desc: "Quick Pane (global)" },
+    { key: "⌘⇧?", desc: "Toggle this help menu" },
+    { key: "Ctrl ⌘F", desc: "Toggle Fullscreen" },
+    { key: "Space", desc: "Play / Pause" },
+    { key: "← →", desc: "Seek 10s" },
+    { key: "↑ ↓", desc: "Volume" },
+    { key: "F", desc: "Fullscreen" },
+    { key: "M", desc: "Mute" },
   ];
 
   return (

@@ -2,14 +2,19 @@
 
 import { useEffect } from "react";
 
+// UX-21: Map month to season for attic renovation theme
+function getSeasonClass(): string {
+  const month = new Date().getMonth(); // 0-11
+  if (month >= 11 || month <= 1) return "season-winter";
+  if (month >= 2 && month <= 4) return "season-spring";
+  if (month >= 5 && month <= 7) return "season-summer";
+  return "season-autumn";
+}
+
 /**
  * Listens to system-level `prefers-color-scheme` changes and
  * localStorage `anicat_theme` overrides to keep `<html>` class
- * attributes in sync.
- *
- * Supported theme values: "light", "dark", "system".
- *
- * Returns nothing — this is a pure side-effect hook.
+ * attributes in sync. Also applies seasonal accent variants (UX-21).
  */
 export function useTheme() {
   useEffect(() => {
@@ -31,7 +36,16 @@ export function useTheme() {
       }
     };
 
+    const applySeason = () => {
+      // Remove old season classes
+      document.documentElement.classList.remove(
+        "season-winter", "season-spring", "season-summer", "season-autumn"
+      );
+      document.documentElement.classList.add(getSeasonClass());
+    };
+
     applyTheme();
+    applySeason();
 
     const listener = () => {
       const theme = localStorage.getItem("anicat_theme") || "system";

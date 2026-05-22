@@ -166,6 +166,49 @@ html.system:not(.dark) .glass-fixed {
   animation: fadeIn 0.4s ease-out;
 }
 
+/* UX-20: Keyboard focus rings for accessibility */
+*:focus-visible {
+  outline: none !important;
+  ring: 2px solid var(--accent-color);
+  ring-offset: 2px;
+  border-radius: 4px;
+}
+
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent-color), 0 0 0 4px rgba(99, 102, 241, 0.2);
+}
+
+/* UX-21: Seasonal accent color variants — subtle shifts for attic renovation theme */
+/* Winter (Dec-Feb): Cool indigo-blue */
+html.season-winter {
+  --accent-color: #818cf8;
+  --accent-light: #a5b4fc;
+  --secondary-color: #93c5fd;
+}
+/* Spring (Mar-May): Cherry blossom pink */
+html.season-spring {
+  --accent-color: #f472b6;
+  --accent-light: #f9a8d4;
+  --secondary-color: #c084fc;
+}
+/* Summer (Jun-Aug): Warm teal-green */
+html.season-summer {
+  --accent-color: #2dd4bf;
+  --accent-light: #5eead4;
+  --secondary-color: #34d399;
+}
+/* Autumn (Sep-Nov): Amber-red */
+html.season-autumn {
+  --accent-color: #fb923c;
+  --accent-light: #fdba74;
+  --secondary-color: #f87171;
+}
+
 /* Slide in from right */
 @keyframes slideInRight {
   from { opacity: 0; transform: translateX(24px); }

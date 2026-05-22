@@ -1,21 +1,21 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Sidebar, { type ViewName } from "@/components/layout/Sidebar";
 import NowPlaying from "@/components/layout/NowPlaying";
 import MediaDetail from "@/components/media/MediaDetail";
 import MangaReader from "@/components/media/MangaReader";
 import AnimePlayer from "@/components/media/AnimePlayer";
-import useKeyboardShortcuts from "@/lib/useKeyboardShortcuts";
+import useKeyboardShortcuts, { getPreviousView } from "@/lib/useKeyboardShortcuts";
 import { useRemoteLogging } from "@/lib/useRemoteLogging";
 import { useTheme } from "@/lib/useTheme";
 import { useHealthPolling } from "@/lib/useHealthPolling";
 import { AppStateProvider, useAppState } from "@/lib/AppStateContext";
-import { mediaApi, API_BASE_ORIGIN } from "@/lib/api";
+import { mediaApi, API_BASE_ORIGIN, type PlaybackStatus } from "@/lib/api";
 import { dispatchRefresh } from "@/lib/events";
 import Onboarding from "@/components/layout/Onboarding";
-import { X, WifiOff, RotateCw } from "lucide-react";
+import { X, WifiOff, RotateCw, Play } from "lucide-react";
 
 // View Components
 import HomeView from "@/components/views/HomeView";
@@ -188,6 +188,17 @@ export default function App() {
     }
   };
 
+  // UX-05: During startup polling, check if there's a last playback to resume
+  const [startupPlayback, setStartupPlayback] = useState<PlaybackStatus>(null);
+
+  useEffect(() => {
+    if (connectionStatus === "checking" && !healthStatus?.updating) {
+      mediaApi.getPlaybackStatus()
+        .then(data => setStartupPlayback(data))
+        .catch(() => setStartupPlayback(null));
+    }
+  }, [connectionStatus, healthStatus?.updating]);
+
   if (connectionStatus === "checking" && !healthStatus?.updating) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#050505] text-white p-6 font-sans">
@@ -216,6 +227,22 @@ export default function App() {
               Anicat is preparing everything. This usually only takes a moment.
             </p>
           </div>
+
+          {/* UX-05: Resume Last — skip straight to player from startup */}
+          {startupPlayback && (
+            <button
+              onClick={() => {
+                appState.startPlayback(
+                  { id: startupPlayback.media_id, title: { english: startupPlayback.media_title, romaji: startupPlayback.media_title }, cover_image: { large: "" } } as any,
+                  startupPlayback.episode
+                );
+              }}
+              className="inline-flex items-center space-x-3 px-6 py-3 bg-accent/20 hover:bg-accent/30 border border-accent/30 text-accent font-bold rounded-xl text-sm transition-all active:scale-95"
+            >
+              <Play size={16} fill="currentColor" />
+              <span>Resume {startupPlayback.media_title} Ep {startupPlayback.episode}</span>
+            </button>
+          )}
 
           <div className="w-48 mx-auto h-1.5 bg-white/[0.04] border border-white/[0.08] rounded-full overflow-hidden">
             <div className="h-full bg-accent rounded-full" style={{
@@ -331,7 +358,22 @@ export default function App() {
       <Sidebar activeView={activeView} onNavigate={setActiveView} notificationCount={notificationCount} health={healthStatus} />
 
       {/* Main content */}
-      <main className="flex-1 ml-[72px] lg:ml-60 overflow-y-auto scrollbar-hide scroll-container relative">
+      <main
+        className="flex-1 ml-[72px] lg:ml-60 overflow-y-auto scrollbar-hide scroll-container relative"
+        // UX-25: Pull-to-refresh — refresh all queries when scrolling to top
+        onScroll={useCallback((e: React.UIEvent<HTMLElement>) => {
+          const target = e.currentTarget;
+          if (target.scrollTop === 0) {
+            target.style.setProperty('--pull-indicator-opacity', '1');
+          } else {
+            target.style.setProperty('--pull-indicator-opacity', '0');
+          }
+        }, [])}
+      >
+        {/* UX-25: Pull-to-refresh indicator bar */}
+        <div className="sticky top-0 left-0 right-0 z-[200] h-0.5 bg-accent/0 transition-all duration-300"
+          style={{ opacity: 'var(--pull-indicator-opacity, 0)', boxShadow: 'var(--pull-indicator-opacity, 0) === "1" ? "0 2px 20px rgba(236,72,153,0.3)" : "none"' }}
+        />
         {/* Offline / Provider-Status Banner */}
         {isOffline && !dismissedOffline && (
           <div className="absolute top-0 left-0 right-0 z-[300] animate-slide-down">
@@ -500,6 +542,8 @@ export default function App() {
           totalEpisodes={appState.playingItem.episodes || undefined}
           onClose={() => {
             appState.closePlayback();
+            // UX-28: Navigate back to the view that launched the player
+            setActiveView(getPreviousView());
             dispatchRefresh();
           }}
           onEpisodeCompleted={async (num) => {

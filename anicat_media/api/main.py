@@ -117,13 +117,13 @@ def setup_logging():
 def _cleanup_stale_resources():
     """Remove stale resources left by force-closed previous runs.
 
-    - Orphaned MPV IPC sockets in /tmp
+    - Orphaned MPV IPC sockets in the temp directory
     - Stale playback status from the status router module
     """
     import glob
 
-    # Clean up stale MPV IPC sockets
-    for sock in glob.glob("/tmp/anicat-mpv-*.sock"):
+    # L2: Clean up stale MPV IPC sockets using the actual naming pattern
+    for sock in glob.glob("/tmp/mpv_ipc_*.sock"):
         try:
             os.unlink(sock)
             logger.info(f"Cleaned up stale MPV socket: {sock}")
@@ -160,9 +160,17 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
 
     app = FastAPI(title="Anicat API", version=VERSION)
 
+    # L1: Tighten CORS — allow only Tauri WebView origins for local desktop use
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=[
+            "http://127.0.0.1:13370",
+            "http://localhost:13370",
+            "http://127.0.0.1:3000",
+            "http://localhost:3000",
+            "tauri://localhost",
+            "https://tauri.localhost",
+        ],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

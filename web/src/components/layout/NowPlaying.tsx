@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Play, X, CheckCircle2, Loader2, Music, ArrowRight } from "lucide-react";
 import { mediaApi, type PlaybackStatus } from "@/lib/api";
-import { dispatchRefresh } from "@/lib/events";
+import { useUpdateProgress } from "@/lib/useUpdateProgress";
 
 interface NowPlayingProps {
   onPlay?: (mediaId: number, episode: string) => void;
@@ -12,6 +12,8 @@ interface NowPlayingProps {
 
 export default function NowPlaying({ onPlay }: NowPlayingProps) {
   const queryClient = useQueryClient();
+  // UX-10: Optimistic progress mutation
+  const updateProgress = useUpdateProgress();
   const [marking, setMarking] = useState(false);
   const [marked, setMarked] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -37,9 +39,12 @@ export default function NowPlaying({ onPlay }: NowPlayingProps) {
     setMarking(true);
     try {
       const epNum = parseInt(playback.episode);
-      await mediaApi.updateStatus(playback.media_id, undefined, undefined, epNum);
+      // UX-10: Optimistic update via mutation hook
+      await updateProgress.mutateAsync({
+        mediaId: playback.media_id,
+        progress: epNum,
+      });
       setMarked(true);
-      dispatchRefresh();
       setTimeout(() => {
         setDismissed(true);
       }, 2000);

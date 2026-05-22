@@ -397,13 +397,21 @@ class MpvIPCPlayer(BaseIPCPlayer):
             self._cleanup()
 
     def _start_mpv_process(self, player: BasePlayer, params: PlayerParams) -> None:
-        """Start MPV process with IPC enabled."""
+        """Start MPV process with IPC enabled.
+
+        L2: Uses a random hex suffix to prevent predictable socket paths
+        that could be targeted by other local processes.
+        """
         if hasattr(socket, "AF_UNIX"):
+            import secrets
             temp_dir = Path(tempfile.gettempdir())
-            self.socket_path = str(temp_dir / f"mpv_ipc_{time.time()}.sock")
+            rand_hex = secrets.token_hex(8)
+            self.socket_path = str(temp_dir / f"mpv_ipc_{int(time.time())}_{rand_hex}.sock")
         else:
             # Windows MPV IPC uses named pipes.
-            self.socket_path = f"\\\\.\\pipe\\mpv_ipc_{int(time.time() * 1000)}"
+            import secrets
+            rand_hex = secrets.token_hex(8)
+            self.socket_path = f"\\\\.\\pipe\\mpv_ipc_{int(time.time() * 1000)}_{rand_hex}"
         self.mpv_process = player.play_with_ipc(params, self.socket_path)
         time.sleep(1.0)
 

@@ -66,6 +66,27 @@ async def get_logs(lines: int = 100):
 
 from ..deps import get_ctx
 
+# UX-27: MPV availability detection for onboarding
+class MpvAvailableResponse(BaseModel):
+    available: bool
+    path: Optional[str] = None
+
+@router.get("/mpv-available", response_model=MpvAvailableResponse)
+async def mpv_available():
+    """Check if MPV is installed and accessible on the system PATH."""
+    mpv_path = shutil.which("mpv")
+    if mpv_path:
+        return {"available": True, "path": mpv_path}
+    # Also check bundled MPV paths
+    bundled_paths = [
+        os.path.join(os.path.dirname(sys.executable), "..", "Resources", "resources", "mpv"),
+        os.path.join(os.path.dirname(sys.executable), "..", "Resources", "mpv"),
+    ]
+    for p in bundled_paths:
+        if os.path.exists(p):
+            return {"available": True, "path": p}
+    return {"available": False, "path": None}
+
 class PlaybackInfo(BaseModel):
     media_id: int
     media_title: str

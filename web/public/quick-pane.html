@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quick Pane</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: rgba(10, 10, 15, 0.95);
+      color: #fff;
+      overflow: hidden;
+      height: 100vh;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      -webkit-app-region: drag;
+    }
+    .container {
+      padding: 20px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      -webkit-app-region: no-drag;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h2 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.6);
+    }
+    .section {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(236, 72, 153, 0.8);
+      margin-bottom: 10px;
+    }
+    .now-playing {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .np-icon {
+      width: 36px; height: 36px;
+      background: rgba(236,72,153,0.15);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .np-info {
+      flex: 1; min-width: 0;
+    }
+    .np-title {
+      font-size: 13px; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .np-ep {
+      font-size: 11px; color: rgba(255,255,255,0.4);
+    }
+    .airing-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .airing-item:last-child { border-bottom: none; }
+    .airing-time {
+      font-size: 11px; font-weight: 700;
+      color: rgba(120, 220, 180, 0.9);
+      min-width: 48px;
+    }
+    .airing-title {
+      font-size: 12px; font-weight: 600;
+      flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .airing-ep {
+      font-size: 10px; color: rgba(255,255,255,0.35);
+    }
+    .progress-bar {
+      height: 3px; background: rgba(255,255,255,0.06);
+      border-radius: 2px; margin-top: 4px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; background: rgba(236,72,153,0.6);
+      border-radius: 2px; transition: width 1s ease;
+    }
+    .empty-state {
+      font-size: 11px; color: rgba(255,255,255,0.25);
+      text-align: center; padding: 12px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Quick Pane</h2>
+      <span style="font-size:10px;color:rgba(255,255,255,0.3)">⌘⇧Space</span>
+    </div>
+
+    <div class="section" id="now-playing-section">
+      <div class="section-title">Now Playing</div>
+      <div id="now-playing-content" class="empty-state">Nothing playing</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Airing Soon</div>
+      <div id="airing-content" class="empty-state">Loading...</div>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://127.0.0.1:13370/api';
+
+    async function fetchJSON(path) {
+      try {
+        const r = await fetch(API + path);
+        if (!r.ok) return null;
+        return r.json();
+      } catch { return null; }
+    }
+
+    function renderNowPlaying(data) {
+      const el = document.getElementById('now-playing-content');
+      if (!data) {
+        el.className = 'empty-state';
+        el.textContent = 'Nothing playing';
+        return;
+      }
+      el.className = '';
+      el.innerHTML = `
+        <div class="now-playing">
+          <div class="np-icon">&#9654;</div>
+          <div class="np-info">
+            <div class="np-title">${escapeHtml(data.media_title)}</div>
+            <div class="np-ep">Episode ${data.episode}</div>
+          </div>
+        </div>`;
+    }
+
+    function renderAiring(data) {
+      const el = document.getElementById('airing-content');
+      if (!data || !data.media || data.media.length === 0) {
+        el.className = 'empty-state';
+        el.textContent = 'No upcoming episodes';
+        return;
+      }
+      el.className = '';
+      const items = data.media.slice(0, 4).map(m => {
+        const title = m.title?.english || m.title?.romaji || 'Unknown';
+        const ep = m.next_airing?.episode || '?';
+        const airingAt = m.next_airing?.airing_at || '';
+        let timeStr = '';
+        if (airingAt) {
+          const d = new Date(airingAt + 'Z');
+          const now = new Date();
+          const diffHours = Math.round((d - now) / 3600000);
+          if (diffHours <= 0) timeStr = 'Now';
+          else if (diffHours < 24) timeStr = diffHours + 'h';
+          else timeStr = Math.round(diffHours / 24) + 'd';
+        }
+        return `<div class="airing-item">
+          <span class="airing-time">${timeStr || '--'}</span>
+          <span class="airing-title">${escapeHtml(title)}</span>
+          <span class="airing-ep">Ep ${ep}</span>
+        </div>`;
+      }).join('');
+      el.innerHTML = items;
+    }
+
+    function escapeHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    async function refresh() {
+      const [playback, schedule] = await Promise.all([
+        fetchJSON('/status/playback'),
+        fetchJSON('/media/schedule?days_before=0&days_after=1&per_page=5')
+      ]);
+      renderNowPlaying(playback);
+      renderAiring(schedule);
+    }
+
+    refresh();
+    setInterval(refresh, 15000);
+  </script>
+</body>
+</html>

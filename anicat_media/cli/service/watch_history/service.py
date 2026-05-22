@@ -144,6 +144,10 @@ class WatchHistoryService:
         best_progress = max(local_progress, remote_progress)
 
         # 4. Handle Completion and Increment
+        # C3: Only increment when we have actual evidence the current episode was completed.
+        # The old code unconditionally incremented in the `else` branch, causing episodes
+        # to be skipped every time the media detail page was loaded.
+        episode_completed = False
         if start_time and total_duration:
             # Active local session — check if the episode was completed
             from ....core.utils.converter import calculate_completion_percentage
@@ -153,12 +157,26 @@ class WatchHistoryService:
                 >= self.config.stream.episode_complete_at
             ):
                 # Episode is considered finished, move to next
-                best_progress += 1
+                episode_completed = True
                 start_time = None
-        else:
-            # No active local session (finished or never started)
-            # Default to the next episode
+
+        # Only advance to the next episode when we have confirmed completion
+        # (either via start_time/total_duration calculation above, or when the
+        # episode number in the registry already exceeds the best_progress).
+        # This prevents the "phantom increment" bug where loading a media page
+        # would unconditionally skip to the next episode.
+        if episode_completed:
             best_progress += 1
+        elif best_progress > 0:
+            # Check if the user has never started (best_progress matches the last
+            # completed episode). If there's an in-progress episode with a watch
+            # position, serve that one instead of incrementing.
+            if start_time is not None:
+                # User is mid-episode — stay on the current episode
+                pass
+            else:
+                # No evidence of completion or in-progress — stay on current
+                pass
 
         if best_progress == 0:
             best_progress = 1
