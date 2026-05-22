@@ -26,6 +26,10 @@ def strip_css(css: str) -> str:
     # Remove backface-visibility declarations
     css = re.sub(r"-?backface-visibility:\s*[^;}\"]+[;\"]?", "", css)
 
+    # Remove backdrop-filter — #1 WKWebView crash trigger on macOS 26
+    css = re.sub(r"-webkit-backdrop-filter:\s*[^;}\"]+[;\"]?", "", css)
+    css = re.sub(r"backdrop-filter:\s*[^;}\"]+[;\"]?", "", css)
+
     return css
 
 

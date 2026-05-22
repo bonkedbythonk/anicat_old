@@ -102,11 +102,9 @@ html.light {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, fill 0.3s ease, stroke 0.3s ease, box-shadow 0.3s ease !important;
 }
 
-/* Glassmorphism */
+/* Glassmorphism — backdrop-filter disabled for macOS 26 WKWebView compatibility */
 .glass {
   background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-color: var(--glass-border);
 }
 
