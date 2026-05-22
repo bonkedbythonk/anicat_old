@@ -1,13 +1,18 @@
 import logging
+import random
 from typing import Callable, Dict
 
+from .....libs.media_api.params import MediaSearchParams, UserMediaListSearchParams
 from .....libs.media_api.types import (
+    MediaSort,
+    MediaStatus,
     MediaType,
     UserMediaListStatus,
 )
 from ...session import Context, session
-from ...state import InternalDirective, MenuName, State
+from ...state import InternalDirective, MediaApiState, MenuName, State
 from anicat_media.core.theme import ICONS
+from ....service.feedback.service import console
 
 logger = logging.getLogger(__name__)
 MenuAction = Callable[[], State | InternalDirective]
