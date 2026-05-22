@@ -540,8 +540,51 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
         repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
         is_git_install = os.path.exists(os.path.join(repo_root, ".git"))
 
+        # ── Fast path: download pre-built DMG from GitHub Releases ──
+        # The CI workflow (nightly.yml) already builds and uploads release
+        # DMGs. Downloading is much faster than rebuilding from source.
+        _log_update("Checking for pre-built release...")
+        release_info = _check_github_update(update_branch)
+        if release_info.get("available") and release_info.get("release_url"):
+            _log_update(f"Pre-built release found: {release_info.get('version', 'unknown')}")
+            # Use install_macos.sh which downloads and installs the DMG
+            if os.name == "posix" and sys.platform == "darwin":
+                _log_update("Starting DMG download via install_macos.sh...")
+                UPDATE_IN_PROGRESS_FILE.write_text("1", encoding="utf-8")
+                local_script = os.path.join(repo_root, "scripts", "install_macos.sh")
+                if os.path.exists(local_script):
+                    _log_update(f"Running: {local_script}")
+                    with open(UPDATE_LOG_FILE, "a") as log:
+                        proc = subprocess.Popen(
+                            ["bash", local_script],
+                            start_new_session=True,
+                            stdout=log,
+                            stderr=subprocess.STDOUT,
+                        )
+                    if proc:
+                        _log_update(f"DMG installer started (PID {proc.pid})")
+                else:
+                    _log_update("No local installer — downloading from GitHub")
+                    branch_name = "nightly" if update_branch == "nightly" else "master"
+                    with open(UPDATE_LOG_FILE, "a") as log:
+                        proc = subprocess.Popen(
+                            f"curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/{branch_name}/scripts/install_macos.sh | bash",
+                            shell=True,
+                            start_new_session=True,
+                            stdout=log,
+                            stderr=subprocess.STDOUT,
+                        )
+                    if proc:
+                        _log_update(f"Remote installer started (PID {proc.pid})")
+                _last_update_check = datetime.now()
+                _cached_update_available = False
+                return {"status": "success", "message": "Downloading pre-built DMG from GitHub Releases. The app will install and restart automatically."}
+            else:
+                _log_update("Not on macOS — falling back to git update")
+
+        # ── Fallback: git-based update (dev checkouts, non-macOS) ──
         if is_git_install:
-            _log_update("Detected git-based install")
+            _log_update("Falling back to git-based update")
             from anicat_media.utils.subprocess import run_cmd
             rc, stdout, _ = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=5, cwd=repo_root)
             current_branch = stdout.strip() if (rc == 0 and stdout) else "master"
@@ -551,8 +594,6 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
                 target_branch = "nightly"
             else:
                 target_branch = "master"
-
-            _log_update(f"Target branch: {target_branch}")
 
             subprocess.run(["git", "stash"], cwd=repo_root, capture_output=True)
             _log_update("Stashed local changes")
@@ -565,13 +606,11 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
             result = subprocess.run(["git", "pull", "origin", target_branch], cwd=repo_root, capture_output=True, text=True, timeout=60)
             subprocess.run(["git", "stash", "pop"], cwd=repo_root, capture_output=True)
             _log_update(f"Git pull completed (exit code {result.returncode})")
-            _log_update(f"Output: {result.stdout.strip()[-200:]}")
 
             _last_update_check = datetime.now()
             _cached_update_available = False
 
             if result.returncode == 0:
-                # Check if frontend files changed — skip rebuild if not
                 frontend_changed = False
                 try:
                     diff_result = subprocess.run(
@@ -581,41 +620,35 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
                     changed = diff_result.stdout.strip().split("\n") if diff_result.stdout.strip() else []
                     frontend_changed = any(f.startswith("web/") or f.startswith("src-tauri/") or f == "package.json" for f in changed)
                 except Exception:
-                    frontend_changed = True  # safer to rebuild if we can't check
+                    frontend_changed = True
 
-                install_script = os.path.join(repo_root, "scripts", "install.sh")
-                if frontend_changed and os.path.exists(install_script):
-                    subprocess.Popen(
-                        ["bash", install_script, "--no-launch"],
-                        cwd=repo_root, start_new_session=True
-                    )
-                    return {"status": "success", "message": f"Update in progress (Git branch {target_branch}). Rebuilding frontend..."}
-                elif frontend_changed:
-                    return {"status": "success", "message": f"Frontend changed but no install.sh found. Please rebuild manually."}
+                if frontend_changed:
+                    _log_update("Frontend files changed — rebuilding...")
+                    install_script = os.path.join(repo_root, "scripts", "install.sh")
+                    if os.path.exists(install_script):
+                        subprocess.Popen(
+                            ["bash", install_script, "--no-launch"],
+                            cwd=repo_root, start_new_session=True
+                        )
+                        return {"status": "success", "message": f"Frontend changed. Rebuilding from source (this may take a minute)..."}
+                    return {"status": "success", "message": f"Frontend changed but no install.sh found."}
                 else:
-                    # No frontend changes — just restart the backend process
                     subprocess.Popen(
                         ["bash", "-c", "sleep 2 && lsof -ti :13370 | xargs kill -HUP 2>/dev/null"],
                         start_new_session=True
                     )
-                    return {"status": "success", "message": f"Updated (Git branch {target_branch}). Backend will restart momentarily."}
+                    return {"status": "success", "message": f"Updated. Backend restarting..."}
             else:
                 return {"status": "error", "message": f"Git pull failed: {result.stderr.strip() or result.stdout.strip()}"}
 
-        # Release install (DMG/binary) — macOS native app update
+        # ── Pure native/DMG fallback (no .git, not macOS from release) ──
         import platform
         if platform.system() == "Darwin":
-            _log_update("Starting macOS native update")
+            _log_update("No git repo — downloading DMG from GitHub Releases")
             UPDATE_IN_PROGRESS_FILE.write_text("1", encoding="utf-8")
-
-            logger.info("[UPDATE] Triggering macOS native update via installer script")
             local_script = os.path.join(repo_root, "scripts", "install_macos.sh")
-
             branch_name = "nightly" if update_branch == "nightly" else "master"
-
             if os.path.exists(local_script):
-                _log_update(f"Using local installer: {local_script}")
-                logger.info(f"[UPDATE] Running local installer script: {local_script}")
                 with open(UPDATE_LOG_FILE, "a") as log:
                     proc = subprocess.Popen(
                         ["bash", local_script],
@@ -626,7 +659,6 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
                 if proc:
                     _log_update(f"Installer script started (PID {proc.pid})")
             else:
-                _log_update("No local installer found — downloading from GitHub")
                 with open(UPDATE_LOG_FILE, "a") as log:
                     proc = subprocess.Popen(
                         f"curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/{branch_name}/scripts/install_macos.sh | bash",
@@ -639,7 +671,7 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
                     _log_update(f"Remote installer started (PID {proc.pid})")
             _last_update_check = datetime.now()
             _cached_update_available = False
-            return {"status": "success", "message": "Native update triggered! The application will download the latest version and restart shortly. Please wait a few moments."}
+            return {"status": "success", "message": "Downloading pre-built DMG from GitHub Releases. The app will install and restart automatically."}
 
         return {"status": "error", "message": "Could not determine update method for this platform."}
 
