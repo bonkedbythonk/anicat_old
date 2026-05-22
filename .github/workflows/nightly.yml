@@ -148,6 +148,18 @@ jobs:
           gh release delete "$RELEASE_TAG" --yes --cleanup-tag 2>/dev/null || true
           echo "Pre-cleaned tag: $RELEASE_TAG"
 
+      # Auto-push the semver tag (e.g. v4.19.0) for master builds so
+      # release.yml (triggered by v* tags) also fires after the build.
+      - name: Push version tag (master only)
+        if: github.ref_name == 'master' && matrix.platform == 'macos-14'
+        run: |
+          VERSION=$(cat version.txt)
+          TAG="v${VERSION}"
+          # Create lightweight tag pointing to HEAD
+          git tag -f "$TAG"
+          git push origin "$TAG" || echo "Tag $TAG already exists remotely"
+          echo "Pushed version tag: $TAG"
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
