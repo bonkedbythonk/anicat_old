@@ -163,7 +163,7 @@ export default function EpisodeList({
                     </span>
                   </div>
                   <span className={`text-sm truncate group-hover:text-white transition-colors ${isWatched ? "text-gray-500" : isUnaired ? "text-gray-600" : "text-gray-300"}`}>
-                    {ep.title}
+                    {ep.title.toLowerCase() === `episode ${epNum}` ? "" : ep.title}
                   </span>
                   {statusIcon(ep.download_status)}
                 </div>

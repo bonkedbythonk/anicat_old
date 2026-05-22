@@ -237,7 +237,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
         </button>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide z-10 relative bg-transparent">
+        <div className="flex-1 overflow-y-auto scrollbar-hide z-10 relative bg-transparent transform-gpu translate-z-0 will-change-scroll">
           {/* Header Banner */}
           <div className="relative h-72 w-full flex-shrink-0">
              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent z-[1]" />

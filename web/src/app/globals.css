@@ -14,18 +14,18 @@
 }
 
 :root {
-  --background: #050505;
+  --background: #000000;
   --foreground: #ffffff;
-  --accent-color: #6366f1;
-  --accent-light: #818cf8;
-  --secondary-color: #a78bfa;
-  --card-color: #0c0c0f;
-  --surface-color: #111116;
-  --border-color: rgba(255, 255, 255, 0.06);
+  --accent-color: #0A84FF;
+  --accent-light: #5E5CE6;
+  --secondary-color: #BF5AF2;
+  --card-color: #1c1c1e;
+  --surface-color: #1c1c1e;
+  --border-color: rgba(255, 255, 255, 0.08);
   --dynamic-white: #ffffff;
   --dynamic-black: #000000;
-  --glass-bg: rgba(10, 10, 15, 0.85);
-  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-bg: rgba(28, 28, 30, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.08);
 }
 
 /* Light mode — warm paper tones instead of cold white

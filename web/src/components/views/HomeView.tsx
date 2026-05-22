@@ -321,7 +321,7 @@ export default function HomeView({ onSelect }: HomeViewProps) {
           airingTodayQuery.data?.media && airingTodayQuery.data.media.length > 0 && (
             <MediaRow
               title="Airing Today"
-              items={airingTodayQuery.data.media}
+              items={filterByGenre(airingTodayQuery.data.media)}
               onSelect={onSelect}
             />
           )
@@ -337,13 +337,13 @@ export default function HomeView({ onSelect }: HomeViewProps) {
           <MediaRowSkeleton title="New for You" />
         ) : (
           recentReleasesQuery.data && recentReleasesQuery.data.length > 0 && (
-            <MediaRow title="New for You" items={recentReleasesQuery.data} onSelect={onSelect} />
+            <MediaRow title="New for You" items={filterByGenre(recentReleasesQuery.data)} onSelect={onSelect} />
           )
         )
       )}
 
       {isRowVisible("smartPlaylist") && smartPlaylistQuery.data?.media && smartPlaylistQuery.data.media.length > 0 && (
-        <MediaRow title="Smart Playlist" items={smartPlaylistQuery.data.media} onSelect={onSelect} />
+        <MediaRow title="Smart Playlist" items={filterByGenre(smartPlaylistQuery.data.media)} onSelect={onSelect} />
       )}
 
       {isRowVisible("trending") && (

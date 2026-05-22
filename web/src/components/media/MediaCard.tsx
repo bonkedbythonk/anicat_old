@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useRef, memo, useState } from "react";
+import { useCallback, useRef, memo } from "react";
 import { Play, BookOpen, Star, Tag } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
 import { type MediaItem, mediaApi } from "@/lib/api";
 
 interface MediaCardProps {
@@ -13,8 +12,6 @@ interface MediaCardProps {
 
 const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
   const queryClient = useQueryClient();
-  // UX-14: Rich hover preview state
-  const [isHovered, setIsHovered] = useState(false);
 
   const handlePlay = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -28,7 +25,6 @@ const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleMouseEnter = useCallback(() => {
-    setIsHovered(true);
     prefetchTimerRef.current = setTimeout(() => {
       queryClient.prefetchQuery({
         queryKey: ["media-detail", item.id],
@@ -44,7 +40,6 @@ const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
   }, [item.id, queryClient]);
 
   const handleMouseLeave = useCallback(() => {
-    setIsHovered(false);
     if (prefetchTimerRef.current) {
       clearTimeout(prefetchTimerRef.current);
       prefetchTimerRef.current = null;
@@ -112,7 +107,7 @@ const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
 
         {/* New episode badge */}
         {hasNewEpisodes && (
-          <div className="absolute top-2 right-2 z-20 px-2 py-1 rounded-full bg-accent text-white text-[9px] font-bold uppercase tracking-wider shadow-lg">
+          <div className="absolute top-3 right-3 z-20 px-2.5 py-1 rounded-full bg-accent text-white text-[9px] font-bold uppercase tracking-wider shadow-lg">
             New Ep
           </div>
         )}
@@ -152,34 +147,7 @@ const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
           </span>
         )}
       </div>
-
-      {/* UX-14: Rich hover preview panel */}
-      <AnimatePresence>
-        {isHovered && item.description && (
-          <motion.div
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ duration: 0.15 }}
-            className="absolute left-0 right-0 -bottom-2 translate-y-full z-50 bg-surface/95 backdrop-blur-xl border border-white/[0.08] rounded-xl p-3 shadow-2xl shadow-black/50"
-          >
-            <p className="text-[11px] text-gray-400 line-clamp-3 leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: item.description }}
-            />
-            {item.genres && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {item.genres.slice(0, 4).map(g => (
-                  <span key={g} className="px-1.5 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.06] text-[9px] font-medium text-gray-400">
-                    {g}
-                  </span>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 });
-
 export default MediaCard;
