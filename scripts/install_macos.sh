@@ -77,16 +77,29 @@ fi
 
 TMP_DMG="/tmp/anicat_latest.dmg"
 echo "Step 2: Downloading... (this might take a minute)"
-curl -L -o "$TMP_DMG" "$DOWNLOAD_URL" --progress-bar
+if [ -t 2 ]; then
+    curl -L -o "$TMP_DMG" "$DOWNLOAD_URL" --progress-bar
+else
+    curl -L -sS -o "$TMP_DMG" "$DOWNLOAD_URL"
+fi
 
 # Clean up any stuck mounts
-echo "Step 3: Installing..."
+echo "Step 3: Preparing installation..."
+
+# Close existing running instances first to release file locks on the app bundle and the server port
+killall "Anicat" 2>/dev/null || true
+killall "Anicat Dev" 2>/dev/null || true
+killall "anicat-server" 2>/dev/null || true
+lsof -ti :13370 | xargs kill -9 2>/dev/null || true
+sleep 2
+
 for volume in /Volumes/Anicat*; do
     if [ -d "$volume" ]; then
         hdiutil detach -force "$volume" 2>/dev/null || true
     fi
 done
 
+echo "Mounting DMG and copying application..."
 MOUNT_POINT=$(hdiutil mount "$TMP_DMG" | tail -n 1 | awk -F '\t' '{print $3}')
 
 if [ -d "$INSTALL_PATH" ]; then
@@ -122,17 +135,8 @@ fi
 
 # Start Anicat
 echo "Step 4: Opening Anicat..."
-killall "Anicat" 2>/dev/null || true
-killall "Anicat Dev" 2>/dev/null || true
-killall "anicat-server" 2>/dev/null || true
-lsof -ti :13370 | xargs kill -9 2>/dev/null || true
-sleep 2
-
-SIDECAR_PATH="$INSTALL_PATH/Contents/MacOS/anicat-server"
-if [ -f "$SIDECAR_PATH" ]; then
-    nohup "$SIDECAR_PATH" >/dev/null 2>&1 &
-fi
-
+# We don't start the sidecar manually here, as the Tauri application's Rust core
+# handles spawning and lifecycle management of its bundled anicat-server sidecar automatically.
 open -a "$INSTALL_PATH"
 
 echo ""
