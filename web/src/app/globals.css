@@ -28,36 +28,51 @@
   --glass-border: rgba(255, 255, 255, 0.06);
 }
 
-/* Light mode overrides */
+/* Light mode — warm paper tones instead of cold white
+ *
+ * The dark theme uses a deep, atmospheric backdrop with glassmorphic cards.
+ * Mirroring that in light mode with pure white #ffffff creates blinding
+ * contrast. Instead, use a warm cream palette inspired by Japanese washi
+ * paper and modern "warm minimal" design (Linear, Notion, Bear):
+ *
+ *   Background:  warm ivory (#f6f3ef)
+ *   Surface:     slightly lighter (#fbf9f6)
+ *   Card:        same as surface (no card-background separation)
+ *   Foreground:  soft charcoal (#26231f) instead of pure black
+ *   Accent:      deeper, warm indigo (#4338ca) with refined glow
+ *
+ * The result: feels bright and clean without eye strain.
+ */
+
 html.light,
 html.system:not(.dark) {
   @media (prefers-color-scheme: light) {
-    --background: #f8fafc;
-    --foreground: #0f172a;
-    --accent-color: #4f46e5;
+    --background: #f6f3ef;
+    --foreground: #26231f;
+    --accent-color: #4338ca;
     --accent-light: #6366f1;
-    --secondary-color: #7c3aed;
-    --card-color: #ffffff;
-    --surface-color: #f1f5f9;
-    --border-color: rgba(15, 23, 42, 0.08);
-    --dynamic-white: #0f172a;
-    --dynamic-black: #ffffff;
-    --glass-bg: rgba(255, 255, 255, 0.85);
-    --glass-border: rgba(15, 23, 42, 0.08);
+    --secondary-color: #6d28d9;
+    --card-color: #fbf9f6;
+    --surface-color: #fbf9f6;
+    --border-color: rgba(38, 35, 31, 0.06);
+    --dynamic-white: #26231f;
+    --dynamic-black: #fbf9f6;
+    --glass-bg: rgba(251, 249, 246, 0.85);
+    --glass-border: rgba(38, 35, 31, 0.06);
   }
 }
 
 html.light {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --accent-color: #4f46e5;
+  --background: #f6f3ef;
+  --foreground: #26231f;
+  --accent-color: #4338ca;
   --accent-light: #6366f1;
-  --secondary-color: #7c3aed;
-  --card-color: #ffffff;
-  --surface-color: #f1f5f9;
-  --border-color: rgba(15, 23, 42, 0.08);
-  --dynamic-white: #0f172a;
-  --dynamic-black: #ffffff;
+  --secondary-color: #6d28d9;
+  --card-color: #fbf9f6;
+  --surface-color: #fbf9f6;
+  --border-color: rgba(38, 35, 31, 0.06);
+  --dynamic-white: #26231f;
+  --dynamic-black: #fbf9f6;
   --glass-bg: rgba(255, 255, 255, 0.85);
   --glass-border: rgba(15, 23, 42, 0.08);
 }
@@ -106,7 +121,7 @@ html.light {
 
 html.light .glass-fixed,
 html.system:not(.dark) .glass-fixed {
-  background: rgb(248, 250, 252);
+  background: #fbf9f6;
 }
 
 /* Scroll container — apply to the main scrollable area for 120Hz performance */
