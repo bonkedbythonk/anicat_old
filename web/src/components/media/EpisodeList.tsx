@@ -133,21 +133,29 @@ export default function EpisodeList({
             return (
               <div
                 key={epNum}
-                className={`flex items-center justify-between px-3 py-2 rounded-2xl transition-all group ${
-                  isNext && !isUnaired ? 'bg-white/10 border border-white/20 shadow-lg' : 
-                  isWatched ? 'opacity-50 hover:bg-white/5' : 
-                  'bg-white/5 hover:bg-white/10'
+                onClick={() => !isUnaired && handlePlay(epNum)}
+                className={`flex items-center justify-between px-4 py-2.5 rounded-lg transition-all group ${!isUnaired ? 'cursor-pointer' : ''} ${
+                  isNext && !isUnaired ? 'bg-accent/10 border border-accent/20 shadow-lg shadow-accent/5' : 
+                  isWatched ? 'opacity-50 hover:bg-white/[0.04] border border-transparent' : 
+                  'bg-white/[0.02] border border-white/[0.02] hover:bg-white/[0.06] hover:border-white/[0.08]'
                 }`}
               >
                 <div className="flex items-center space-x-4 min-w-0">
                   {/* Clean Episode Badge */}
-                  <div className={`w-10 h-10 shrink-0 flex items-center justify-center rounded-xl font-bold text-sm transition-colors ${
+                  <div className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-[14px] font-bold text-sm transition-all ${
                     isWatched ? "bg-white/5 text-gray-500" :
                     isUnaired ? "bg-white/5 text-gray-700" :
-                    isNext ? "bg-accent text-white shadow-lg shadow-accent/20" :
-                    "bg-white/10 text-white group-hover:bg-white/20"
+                    isNext ? "bg-accent text-white shadow-md shadow-accent/20" :
+                    "bg-white/[0.06] text-white group-hover:bg-accent group-hover:text-white"
                   }`}>
-                    {epNum}
+                    {playingEp === epNum ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <div className="relative flex items-center justify-center w-full h-full">
+                        <span className="group-hover:opacity-0 transition-opacity absolute">{epNum}</span>
+                        <Play size={16} fill="currentColor" className="opacity-0 group-hover:opacity-100 transition-opacity absolute" />
+                      </div>
+                    )}
                   </div>
                   
                   <div className="flex flex-col min-w-0">
@@ -163,30 +171,21 @@ export default function EpisodeList({
                 </div>
 
                 {!isUnaired ? (
-                  <div className="flex items-center space-x-2 opacity-40 group-hover:opacity-100 transition-opacity shrink-0">
+                  <div className="flex items-center space-x-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                     <button
-                      onClick={() => handlePlay(epNum)}
-                      disabled={playingEp === epNum}
-                      className="flex items-center space-x-1.5 bg-accent text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-accent-light transition-colors active:scale-95"
-                    >
-                      {playingEp === epNum ? (
-                        <Loader2 size={12} className="animate-spin" />
-                      ) : (
-                        isManga ? <BookOpen size={12} /> : <Play fill="currentColor" size={12} />
-                      )}
-                      <span>{isManga ? "Read" : "Play"}</span>
-                    </button>
-                    <button
-                      onClick={() => handleQueue(epNum)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleQueue(epNum);
+                      }}
                       disabled={queueingEp === epNum || ep.download_status === "completed"}
-                      className="flex items-center space-x-1.5 bg-white/[0.06] text-gray-300 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-white/10 transition-colors disabled:opacity-30 active:scale-95"
+                      title="Download"
+                      className="flex items-center justify-center w-9 h-9 bg-white/[0.04] text-gray-300 rounded-xl hover:bg-white/10 hover:text-white transition-all disabled:opacity-30 active:scale-90"
                     >
                       {queueingEp === epNum ? (
-                        <Loader2 size={12} className="animate-spin" />
+                        <Loader2 size={16} className="animate-spin" />
                       ) : (
-                        <Download size={12} />
+                        <Download size={16} />
                       )}
-                      <span>DL</span>
                     </button>
                     {isWatched && (
                       <button
@@ -195,15 +194,14 @@ export default function EpisodeList({
                           if (onUnwatch) onUnwatch(epNum);
                         }}
                         title={isManga ? "Backtrack to before this chapter" : "Mark as unwatched"}
-                        className="flex items-center space-x-1.5 bg-white/[0.06] text-gray-400 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-500/20 hover:text-red-400 transition-colors active:scale-95"
+                        className="flex items-center justify-center w-9 h-9 bg-white/[0.04] text-gray-400 rounded-xl hover:bg-red-500/20 hover:text-red-400 transition-all active:scale-90"
                       >
-                        <XCircle size={12} />
-                        <span className="hidden sm:inline">Unwatch</span>
+                        <XCircle size={16} />
                       </button>
                     )}
                   </div>
                 ) : (
-                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 px-2.5 py-1 bg-white/10 border border-white/20 rounded-lg shrink-0">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-[10px] shrink-0">
                     Airing Soon
                   </span>
                 )}

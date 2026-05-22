@@ -6,8 +6,7 @@ import LazyCard from "@/components/media/LazyCard";
 import InfiniteScroll from "@/components/shared/InfiniteScroll";
 import MediaTypeToggle from "@/components/shared/MediaTypeToggle";
 import { usePaginatedList } from "@/lib/usePaginatedList";
-import { mediaApi, type MediaItem } from "@/lib/api";
-import { useRefreshTrigger } from "@/lib/events";
+import { mediaApi, type MediaItem, type WatchStatus } from "@/lib/api";
 
 const LIST_TABS = [
   { key: "watching", label: "Reading/Watching", icon: Monitor },
@@ -37,8 +36,7 @@ function ListSkeletonGrid() {
 }
 
 export default function ListsView({ onSelect }: ListsViewProps) {
-  const refreshKey = useRefreshTrigger();
-  const [activeTab, setActiveTab] = useState("watching");
+  const [activeTab, setActiveTab] = useState<WatchStatus>("watching");
   const [type, setType] = useState<"ANIME" | "MANGA">("ANIME");
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
@@ -51,7 +49,7 @@ export default function ListsView({ onSelect }: ListsViewProps) {
           hasNextPage: data.page_info?.has_next_page || false,
         };
       },
-      deps: [activeTab, type, refreshKey],
+      queryKey: ["lists", activeTab, type],
     });
 
   // Track first successful load so we can show skeleton instead of spinner on tab switches

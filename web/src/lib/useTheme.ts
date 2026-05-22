@@ -2,19 +2,19 @@
 
 import { useEffect } from "react";
 
-// UX-21: Map month to season for attic renovation theme
-function getSeasonClass(): string {
+// Map month to preset for seasonal option
+function getSeasonPreset(): string {
   const month = new Date().getMonth(); // 0-11
-  if (month >= 11 || month <= 1) return "season-winter";
-  if (month >= 2 && month <= 4) return "season-spring";
-  if (month >= 5 && month <= 7) return "season-summer";
-  return "season-autumn";
+  if (month >= 11 || month <= 1) return "preset-ocean";
+  if (month >= 2 && month <= 4) return "preset-sakura";
+  if (month >= 5 && month <= 7) return "preset-forest";
+  return "preset-sunset";
 }
 
 /**
  * Listens to system-level `prefers-color-scheme` changes and
  * localStorage `anicat_theme` overrides to keep `<html>` class
- * attributes in sync. Also applies seasonal accent variants (UX-21).
+ * attributes in sync. Also applies color presets.
  */
 export function useTheme() {
   useEffect(() => {
@@ -36,16 +36,23 @@ export function useTheme() {
       }
     };
 
-    const applySeason = () => {
-      // Remove old season classes
+    const applyPreset = () => {
+      const preset = localStorage.getItem("anicat_color_preset") || "preset-default";
+      
       document.documentElement.classList.remove(
-        "season-winter", "season-spring", "season-summer", "season-autumn"
+        "preset-sakura", "preset-ocean", "preset-forest", 
+        "preset-sunset", "preset-amethyst", "preset-ruby", "preset-default"
       );
-      document.documentElement.classList.add(getSeasonClass());
+
+      if (preset === "seasonal") {
+        document.documentElement.classList.add(getSeasonPreset());
+      } else if (preset !== "preset-default") {
+        document.documentElement.classList.add(preset);
+      }
     };
 
     applyTheme();
-    applySeason();
+    applyPreset();
 
     const listener = () => {
       const theme = localStorage.getItem("anicat_theme") || "system";
@@ -64,6 +71,13 @@ export function useTheme() {
       if (e.key === "anicat_theme") {
         document.documentElement.classList.add("theme-transition");
         applyTheme();
+        setTimeout(() => {
+          document.documentElement.classList.remove("theme-transition");
+        }, 300);
+      }
+      if (e.key === "anicat_color_preset") {
+        document.documentElement.classList.add("theme-transition");
+        applyPreset();
         setTimeout(() => {
           document.documentElement.classList.remove("theme-transition");
         }, 300);

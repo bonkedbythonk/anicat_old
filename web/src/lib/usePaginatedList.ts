@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
 
 export interface PageResult<T> {
   /** The items for this page. */
@@ -10,13 +11,12 @@ export interface PageResult<T> {
 }
 
 export interface UsePaginatedListOptions<T> {
+  /** React Query key to identify this list and trigger refetches */
+  queryKey: unknown[];
   /** Function that fetches a page of results. Receives page number (1-based). */
   fetchFn: (page: number) => Promise<PageResult<T>>;
-  /**
-   * Dependencies that should trigger a full reset to page 1.
-   * Follows the same rules as useEffect deps.
-   */
-  deps: React.DependencyList;
+  /** Optional flag to delay fetching */
+  enabled?: boolean;
 }
 
 export interface UsePaginatedListReturn<T> {
@@ -37,63 +37,45 @@ export interface UsePaginatedListReturn<T> {
  *
  * Handles the common pattern found in SearchView, LibraryView, and
  * ListsView where data is loaded page-by-page with "load more"
- * infinite scroll.
- *
- * - Resets to page 1 whenever any dependency in `deps` changes.
- * - Appends subsequent pages via `loadMore()`.
+ * infinite scroll. Now backed by React Query for automatic caching
+ * and refresh-event invalidation.
  */
 export function usePaginatedList<T>({
+  queryKey,
   fetchFn,
-  deps,
+  enabled = true,
 }: UsePaginatedListOptions<T>): UsePaginatedListReturn<T> {
-  const [items, setItems] = useState<T[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery({
+    queryKey,
+    queryFn: ({ pageParam = 1 }) => fetchFn(pageParam),
+    getNextPageParam: (lastPage, allPages) => 
+      lastPage.hasNextPage ? allPages.length + 1 : undefined,
+    initialPageParam: 1,
+    enabled,
+  });
 
-  // Initial load (reset on dependency change)
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      setLoading(true);
-      try {
-        const data = await fetchFn(1);
-        if (cancelled) return;
-        setItems(data.items);
-        setHasMore(data.hasNextPage);
-        setPage(1);
-      } catch {
-        if (!cancelled) setItems([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    load();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  const items = useMemo(() => {
+    if (!data) return [];
+    return data.pages.flatMap((page) => page.items);
+  }, [data]);
 
   const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    try {
-      const nextPage = page + 1;
-      const data = await fetchFn(nextPage);
-      setItems((prev) => [...prev, ...data.items]);
-      setHasMore(data.hasNextPage);
-      setPage(nextPage);
-    } catch {
-      // Silently fail — previous items remain visible
-    } finally {
-      setLoadingMore(false);
+    if (!isFetchingNextPage && hasNextPage) {
+      await fetchNextPage();
     }
-  }, [fetchFn, loadingMore, hasMore, page]);
+  }, [fetchNextPage, isFetchingNextPage, hasNextPage]);
 
-  return { items, loading, loadingMore, hasMore, loadMore };
+  return {
+    items,
+    loading: isLoading,
+    loadingMore: isFetchingNextPage,
+    hasMore: !!hasNextPage,
+    loadMore,
+  };
 }

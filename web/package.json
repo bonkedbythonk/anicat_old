@@ -1,6 +1,6 @@
 {
   "name": "web",
-  "version": "4.27.3",
+  "version": "4.27.4",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "tauri": "tauri",
-    "build:sidecar": "cd ../ && python3 -m pip install pyinstaller --break-system-packages && python3 -m PyInstaller --onefile --name anicat-server web/src-tauri/binaries/anicat-server.py && mkdir -p web/src-tauri/binaries && cp dist/anicat-server web/src-tauri/binaries/anicat-server-aarch64-apple-darwin",
+    "build:sidecar": "cd ../build_sidecar && uv run pyinstaller sidecar.spec && mkdir -p ../web/src-tauri/binaries && cp dist/anicat-server ../web/src-tauri/binaries/anicat-server-aarch64-apple-darwin",
     "dev:full": "npm run build:sidecar && npm run tauri:dev",
     "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
     "test:e2e": "npx playwright test"

@@ -7,14 +7,11 @@ import InfiniteScroll from "@/components/shared/InfiniteScroll";
 import MediaTypeToggle from "@/components/shared/MediaTypeToggle";
 import { usePaginatedList } from "@/lib/usePaginatedList";
 import { mediaApi, type MediaItem } from "@/lib/api";
-import { useRefreshTrigger } from "@/lib/events";
-
 interface LibraryViewProps {
   onSelect: (item: MediaItem) => void;
 }
 
 export default function LibraryView({ onSelect }: LibraryViewProps) {
-  const refreshKey = useRefreshTrigger();
   const [type, setType] = useState<"ANIME" | "MANGA">("ANIME");
 
   const { items, loading, loadingMore, hasMore, loadMore } =
@@ -26,7 +23,7 @@ export default function LibraryView({ onSelect }: LibraryViewProps) {
           hasNextPage: data.page_info?.has_next_page || false,
         };
       },
-      deps: [type, refreshKey],
+      queryKey: ["library", type],
     });
 
   return (

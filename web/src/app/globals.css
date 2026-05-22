@@ -11,6 +11,13 @@
   --color-border: var(--border-color);
   --color-white: var(--dynamic-white);
   --color-black: var(--dynamic-black);
+  
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-3xl: 40px;
 }
 
 :root {

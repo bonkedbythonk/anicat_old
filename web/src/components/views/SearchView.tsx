@@ -40,7 +40,8 @@ export default function SearchView({ onSelect }: SearchViewProps) {
         hasNextPage: data.page_info?.has_next_page || false,
       };
     },
-    deps: [debouncedQueryRef.current, type, filters],
+    queryKey: ["search", debouncedQueryRef.current, type, filters],
+    enabled: Boolean(debouncedQueryRef.current),
   });
 
   // Debounce the search query (400ms) so usePaginatedList only fires after settling

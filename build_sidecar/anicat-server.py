@@ -30,6 +30,25 @@ def main():
     
     app = create_app()
     
+    # Start a background thread to monitor the parent process.
+    # If the parent Tauri process dies (e.g. ungraceful shutdown or dev reload),
+    # this sidecar will be reparented to PID 1. If that happens, we must exit
+    # to avoid leaving ghost processes that block the 13370 port.
+    import threading
+    import time
+    def monitor_parent():
+        original_ppid = os.getppid()
+        while True:
+            time.sleep(2)
+            current_ppid = os.getppid()
+            if current_ppid == 1 or (current_ppid != original_ppid and current_ppid == 1):
+                print("Parent process died. Shutting down sidecar.", flush=True)
+                os._exit(0)
+    
+    # Only monitor if running as a bundled sidecar or if not running directly from terminal
+    if getattr(sys, 'frozen', False):
+        threading.Thread(target=monitor_parent, daemon=True).start()
+    
     # Run the server on localhost
     # We use 127.0.0.1 for maximum privacy and to avoid firewall prompts
     uvicorn.run(app, host="127.0.0.1", port=13370, log_level="info")
