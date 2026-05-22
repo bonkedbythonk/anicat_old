@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Loader2, CheckCircle2, Save, Cpu, PlayCircle, HardDrive, Globe, Activity, RotateCcw, XCircle, AlertCircle, Download } from "lucide-react";
+import { Loader2, CheckCircle2, Save, Cpu, PlayCircle, HardDrive, Globe, Activity, RotateCcw, XCircle, AlertCircle, Download, Sparkles } from "lucide-react";
 import { mediaApi, type HealthStatus, API_BASE_ORIGIN } from "@/lib/api";
 import { useTheme } from "@/lib/useTheme";
 import { useLiquidGlass } from "@/lib/useLiquidGlass";
@@ -318,24 +318,49 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
           {activeTab === "general" && (
             <div className="space-y-6 animate-fade-in">
               <CardSection title="Appearance">
-                <SettingField
-                  label="Liquid Glass Effect"
-                  description="Enable the premium iOS 18 Control Center glass aesthetic. May impact performance."
-                >
-                  <label className="relative inline-flex items-center cursor-pointer">
+                <div className={`p-5 rounded-xl border transition-all duration-300 flex items-center justify-between gap-6 ${
+                  liquidGlassEnabled 
+                    ? "bg-accent/[0.03] border-accent/20 shadow-[0_0_20px_rgba(10,132,255,0.05)]" 
+                    : "bg-white/[0.01] border-white/[0.04] hover:bg-white/[0.02]"
+                }`}>
+                  <div className="flex items-start gap-4">
+                    <div className={`p-2.5 rounded-lg transition-all duration-300 ${
+                      liquidGlassEnabled 
+                        ? "bg-accent/10 text-accent shadow-sm shadow-accent/20" 
+                        : "bg-white/[0.04] text-gray-400"
+                    }`}>
+                      <Sparkles size={20} className={liquidGlassEnabled ? "animate-pulse text-accent" : ""} />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-white tracking-wide">Liquid Glass Engine</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider uppercase transition-all duration-300 ${
+                          liquidGlassEnabled 
+                            ? "bg-accent/20 text-accent" 
+                            : "bg-white/[0.06] text-gray-500"
+                        }`}>
+                          iOS 26
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 max-w-md leading-relaxed">
+                        Enables deep glassmorphism elevation, micro-refractive card glows, and fluid layout physics.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
                     <input
                       type="checkbox"
                       checked={liquidGlassEnabled}
                       onChange={() => {
                         toggleLiquidGlass();
-                        // Also trigger a page refresh after a tiny delay so the change takes full effect everywhere
-                        setTimeout(() => window.location.reload(), 300);
+                        setTimeout(() => window.location.reload(), 200);
                       }}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-white/[0.1] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent shadow-inner"></div>
+                    <div className="w-11 h-6 bg-white/[0.08] rounded-full peer peer-focus:outline-none peer-checked:bg-accent after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full shadow-inner border border-white/[0.05] hover:border-white/10 transition-all"></div>
                   </label>
-                </SettingField>
+                </div>
 
                 <SettingField
                   label="Theme"
