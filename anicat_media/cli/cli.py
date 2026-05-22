@@ -87,7 +87,7 @@ def cli(ctx: click.Context, **options: "Unpack[Options]"):
     """
     Anicat — watch, track, and download anime & manga.
 
-    Run anicat to see what to watch next. Commands match the app navigation: home, manga, search, lists, downloads, library, schedule, notifications, profile, settings.
+    Run anicat to see available commands. Commands match the app navigation: home, manga, search, lists, downloads, library, schedule, notifications, profile, settings.
     """
     setup_logging(options["log"])
     setup_exceptions_handler(
@@ -128,6 +128,5 @@ def cli(ctx: click.Context, **options: "Unpack[Options]"):
 
 
     if ctx.invoked_subcommand is None:
-        from .commands.home import home  # noqa: PLC0415
-
-        ctx.invoke(home)
+        click.echo(ctx.get_help())
+        ctx.exit()
