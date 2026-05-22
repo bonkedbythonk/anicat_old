@@ -55,10 +55,9 @@ interface SidebarProps {
   notificationCount?: number;
   health?: HealthStatus | null;
 }
-
 export default function Sidebar({ activeView, onNavigate, notificationCount = 0, health }: SidebarProps) {
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-[72px] lg:w-60 glass-fixed border-r border-border z-50 flex flex-col py-6 transition-all duration-300">
+    <aside className="fixed left-0 top-0 bottom-0 w-[72px] lg:w-60 ios-glass border-r border-white/5 z-50 flex flex-col py-6 transition-all duration-300">
 
       {/* Logo */}
       <div className="flex flex-col items-center justify-center px-4 mb-10 pt-2">
@@ -72,6 +71,21 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0,
           <span className="mt-1.5 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest bg-purple-500/10 text-purple-400 border border-purple-500/25 rounded-md select-none font-mono">
             Local Dev
           </span>
+        )}
+
+        {/* UX-09: Sync indicator + UX-11: Offline queued changes badge (Moved from bottom) */}
+        {health && (
+          <div className="mt-4 flex items-center justify-center space-x-2 px-3 py-1.5 rounded-full bg-white/[0.02] border border-white/[0.04]">
+            <div className={`w-2 h-2 rounded-full ${health.api_connected ? 'bg-green-400 animate-pulse shadow-[0_0_6px_rgba(74,222,128,0.5)]' : 'bg-amber-400'}`} />
+            <span className="hidden lg:block text-[10px] font-medium text-gray-500">
+              {health.api_connected ? 'Synced' : 'Offline'}
+            </span>
+            {!health.api_connected && (
+              <span className="hidden lg:flex items-center justify-center min-w-[18px] h-[18px] bg-amber-500 text-white text-[9px] font-bold rounded-full px-1">
+                <OfflinePendingCount />
+              </span>
+            )}
+          </div>
         )}
       </div>
 
@@ -146,23 +160,6 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0,
         })}
       </nav>
 
-      {/* UX-09: Sync indicator + UX-11: Offline queued changes badge */}
-      <div className="px-3 pb-3 space-y-2">
-        {health && (
-          <div className="flex items-center justify-center lg:justify-start space-x-2 px-3 py-2 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-            <div className={`w-2 h-2 rounded-full ${health.api_connected ? 'bg-green-400 animate-pulse shadow-[0_0_6px_rgba(74,222,128,0.5)]' : 'bg-amber-400'}`} />
-            <span className="hidden lg:block text-[10px] font-medium text-gray-500">
-              {health.api_connected ? 'Synced' : 'Offline'}
-            </span>
-            {/* UX-11: Offline queued changes counter */}
-            {!health.api_connected && (
-              <span className="hidden lg:flex items-center justify-center min-w-[18px] h-[18px] bg-amber-500 text-white text-[9px] font-bold rounded-full px-1">
-                <OfflinePendingCount />
-              </span>
-            )}
-          </div>
-        )}
-      </div>
     </aside>
   );
 }

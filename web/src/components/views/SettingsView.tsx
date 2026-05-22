@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Loader2, CheckCircle2, Save, Cpu, PlayCircle, HardDrive, Globe, Activity, RotateCcw, XCircle, AlertCircle, Download } from "lucide-react";
 import { mediaApi, type HealthStatus, API_BASE_ORIGIN } from "@/lib/api";
+import { useTheme } from "@/lib/useTheme";
+import { useLiquidGlass } from "@/lib/useLiquidGlass";
 import ErrorBanner from "@/components/ErrorBanner";
 
 interface SettingsViewProps {
@@ -29,7 +31,9 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [autoSkip, setAutoSkip] = useState(false);
   const [theme, setTheme] = useState<"system" | "dark" | "light">("system");
+  const [colorPreset, setColorPreset] = useState<string>("seasonal");
   const hasUpdate = Boolean(health?.update_available || stagedHasUpdate);
+  const { enabled: liquidGlassEnabled, toggle: toggleLiquidGlass } = useLiquidGlass();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -39,6 +43,11 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
       const savedTheme = localStorage.getItem("anicat_theme") as "system" | "dark" | "light" | null;
       if (savedTheme) {
         setTheme(savedTheme);
+      }
+
+      const savedPreset = localStorage.getItem("anicat_color_preset");
+      if (savedPreset) {
+        setColorPreset(savedPreset);
       }
     }
   }, []);
@@ -61,6 +70,17 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
     window.dispatchEvent(new StorageEvent('storage', { key: 'anicat_theme', newValue: newTheme }));
 
     // Clean up transition class after animation completes
+    setTimeout(() => {
+      document.documentElement.classList.remove("theme-transition");
+    }, 300);
+  };
+
+  const handleColorPresetChange = (newPreset: string) => {
+    document.documentElement.classList.add("theme-transition");
+    setColorPreset(newPreset);
+    localStorage.setItem("anicat_color_preset", newPreset);
+    window.dispatchEvent(new StorageEvent('storage', { key: 'anicat_color_preset', newValue: newPreset }));
+    
     setTimeout(() => {
       document.documentElement.classList.remove("theme-transition");
     }, 300);
@@ -299,6 +319,25 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
             <div className="space-y-6 animate-fade-in">
               <CardSection title="Appearance">
                 <SettingField
+                  label="Liquid Glass Effect"
+                  description="Enable the premium iOS 18 Control Center glass aesthetic. May impact performance."
+                >
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={liquidGlassEnabled}
+                      onChange={() => {
+                        toggleLiquidGlass();
+                        // Also trigger a page refresh after a tiny delay so the change takes full effect everywhere
+                        setTimeout(() => window.location.reload(), 300);
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-white/[0.1] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent shadow-inner"></div>
+                  </label>
+                </SettingField>
+
+                <SettingField
                   label="Theme"
                   description="Choose your preferred visual theme."
                 >
@@ -310,6 +349,26 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                     <option value="system">System Default</option>
                     <option value="dark">Dark</option>
                     <option value="light">Light</option>
+                  </select>
+                </SettingField>
+
+                <SettingField
+                  label="Color Preset"
+                  description="Choose your preferred accent color."
+                >
+                  <select
+                    value={colorPreset}
+                    onChange={(e) => handleColorPresetChange(e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                  >
+                    <option value="preset-default">Default (Indigo)</option>
+                    <option value="preset-sakura">Sakura (Pink)</option>
+                    <option value="preset-ocean">Ocean (Blue)</option>
+                    <option value="preset-forest">Forest (Teal)</option>
+                    <option value="preset-sunset">Sunset (Orange)</option>
+                    <option value="preset-amethyst">Amethyst (Purple)</option>
+                    <option value="preset-ruby">Ruby (Red)</option>
+                    <option value="seasonal">Seasonal (Auto-changing)</option>
                   </select>
                 </SettingField>
 
