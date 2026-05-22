@@ -87,15 +87,7 @@ def cli(ctx: click.Context, **options: "Unpack[Options]"):
     """
     Anicat — watch, track, and download anime & manga.
 
-    Run [bold]anicat[/bold] to see what to watch next.
-
-    Quick shortcuts:
-      anicat search <query>       Search and stream
-      anicat watching             Currently watching
-      anicat schedule             Upcoming episodes
-      anicat manga                Trending & popular manga
-      anicat lists                View your lists
-      anicat settings             Open configuration
+    Run anicat to see what to watch next. Commands match the app navigation: home, manga, search, lists, downloads, library, schedule, notifications, profile, settings.
     """
     setup_logging(options["log"])
     setup_exceptions_handler(
