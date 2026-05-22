@@ -6,9 +6,11 @@ import LazyCard from "@/components/media/LazyCard";
 import InfiniteScroll from "@/components/shared/InfiniteScroll";
 import MediaTypeToggle from "@/components/shared/MediaTypeToggle";
 import { usePaginatedList } from "@/lib/usePaginatedList";
-import { mediaApi, type MediaItem, type WatchStatus } from "@/lib/api";
+import { mediaApi, type MediaItem } from "@/lib/api";
 
-const LIST_TABS = [
+type WatchStatus = "watching" | "completed" | "planning" | "paused" | "dropped";
+
+const LIST_TABS: { key: WatchStatus; label: string; icon: any }[] = [
   { key: "watching", label: "Reading/Watching", icon: Monitor },
   { key: "completed", label: "Completed", icon: CheckCircle2 },
   { key: "planning", label: "Planning", icon: Bookmark },
