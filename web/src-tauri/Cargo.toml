@@ -25,3 +25,9 @@ tauri = { version = "2.11.1", features = ["tray-icon", "image-png", "image-ico",
 tauri-plugin-log = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-global-shortcut = "2"
+
+# Use tao from git dev branch with local patch that replaces
+# activateIgnoringOtherApps: (removed in macOS 26) with activateWithOptions:
+# (available since macOS 10.6). Remove once tao v0.35.3+ is released.
+[patch.crates-io]
+tao = { git = "https://github.com/tauri-apps/tao", branch = "dev" }
