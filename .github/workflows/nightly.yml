@@ -183,14 +183,16 @@ jobs:
         if: github.ref_name == 'master' && matrix.platform == 'macos-14'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
+          set +e
           CURRENT_TAG="$RELEASE_TAG"
           # Only clean up if the current release was actually created
           if gh release view "$CURRENT_TAG" --json tagName --jq '.tagName' 2>/dev/null; then
             echo "Current release exists. Removing older stable releases (keeping $CURRENT_TAG)..."
-            gh release list --limit 100 --json tagName --jq '.[].tagName' \
-              | grep -- '-stable$' \
-              | grep -v "$CURRENT_TAG" \
+            gh release list --limit 100 --json tagName --jq '.[].tagName' 2>/dev/null \
+              | grep -- '-stable$' || true \
+              | grep -v "$CURRENT_TAG" || true \
               | while read -r old_tag; do
                   echo "  Deleting: $old_tag"
                   gh release delete "$old_tag" --yes --cleanup-tag || true
@@ -199,3 +201,4 @@ jobs:
           else
             echo "Current release $CURRENT_TAG was not created. Skipping cleanup to preserve existing releases."
           fi
+          set -e
