@@ -52,7 +52,7 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
         f"{ICONS.get('RANDOM', icons)}Random": _create_random_media_list(ctx, state),
         f"{ICONS.get('UPCOMING', icons)}Upcoming": _create_media_list_action(ctx, state, MediaSort.POPULARITY_DESC, MediaStatus.NOT_YET_RELEASED),
         f"{ICONS.get('BROWSER', icons)}Open GUI Dashboard": lambda: State(menu_name=MenuName.OPEN_GUI),
-    }
+    })
 
     # --- My Anime ---
     options.update({
