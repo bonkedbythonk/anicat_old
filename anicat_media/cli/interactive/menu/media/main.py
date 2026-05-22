@@ -1,19 +1,13 @@
 import logging
-import random
 from typing import Callable, Dict
 
-from .....libs.media_api.params import MediaSearchParams, UserMediaListSearchParams
 from .....libs.media_api.types import (
-    MediaSort,
-    MediaStatus,
     MediaType,
     UserMediaListStatus,
 )
-from rich.panel import Panel
 from ...session import Context, session
-from ...state import InternalDirective, MediaApiState, MenuName, State
+from ...state import InternalDirective, MenuName, State
 from anicat_media.core.theme import ICONS
-from ....service.feedback.service import console
 
 logger = logging.getLogger(__name__)
 MenuAction = Callable[[], State | InternalDirective]
@@ -25,105 +19,32 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
     feedback = ctx.feedback
     feedback.clear_console()
 
-    # Visual indicator for updates
-    if state.update_available:
-        console.print(Panel(
-            "[bold green]A new update is available![/bold green]\n"
-            "Please select [bold cyan]Check for Updates[/bold cyan] in the menu to install the latest version.",
-            title="[yellow]Update Notification[/yellow]",
-            border_style="yellow",
-            expand=False,
-        ))
-        console.print()
+    console.print("[bold magenta]  anicat[/bold magenta]\n")
 
-    console.print("[bold cyan]  Anicat[/bold cyan]", highlight=False)
-    console.print()
-
-    # ── Home ──────────────────────────────────────────────────────
     options: Dict[str, MenuAction] = {
-        f"{ICONS.get('RECENT', icons)}Continue Watching": _create_recent_anime_action(ctx, state),
-        f"{ICONS.get('TRENDING', icons)}Trending": _create_media_list_action(ctx, state, MediaSort.TRENDING_DESC),
-        f"{ICONS.get('POPULAR', icons)}Popular": _create_media_list_action(ctx, state, MediaSort.POPULARITY_DESC),
+        f"{ICONS.get('RECENT', icons)}Home": _create_recent_anime_action(ctx, state),
+        f"{ICONS.get('SEARCH_MANGA', icons)}Manga": _create_user_list_action(ctx, state, UserMediaListStatus.WATCHING, MediaType.MANGA),
+        f"{ICONS.get('SEARCH', icons)}Search": _create_search_media_list(ctx, state),
+        f"{ICONS.get('WATCHING', icons)}My Lists": _create_user_list_action(ctx, state, UserMediaListStatus.WATCHING),
+        f"{ICONS.get('DOWNLOADS', icons)}Downloads": _create_downloads_action(ctx, state),
+        f"{ICONS.get('COMPLETED', icons)}Library": _create_user_list_action(ctx, state, UserMediaListStatus.COMPLETED),
+        f"{ICONS.get('UPCOMING', icons)}Schedule": lambda: State(menu_name=MenuName.MEDIA_AIRING_SCHEDULE),
+        f"{ICONS.get('EDIT', icons)}Settings": lambda: InternalDirective.CONFIG_EDIT,
+        f"{ICONS.get('EXIT', icons)}Exit": lambda: InternalDirective.EXIT,
     }
 
-    # ── Search ────────────────────────────────────────────────────
-    options.update({
-        f"{ICONS.get('SEARCH', icons)}Search Anime": _create_search_media_list(ctx, state),
-        f"{ICONS.get('SEARCH_MANGA', icons)}Search Manga": _create_search_manga_list(ctx, state),
-        f"{ICONS.get('DYNAMIC_SEARCH', icons)}Dynamic Search": _create_dynamic_search_action(ctx, state),
-    })
-
-    # ── My Lists ──────────────────────────────────────────────────
-    options.update({
-        f"{ICONS.get('WATCHING', icons)}Watching": _create_user_list_action(ctx, state, UserMediaListStatus.WATCHING),
-        f"{ICONS.get('PLANNED', icons)}Planning": _create_user_list_action(ctx, state, UserMediaListStatus.PLANNING),
-        f"{ICONS.get('COMPLETED', icons)}Completed": _create_user_list_action(ctx, state, UserMediaListStatus.COMPLETED),
-        f"{ICONS.get('PAUSED', icons)}Paused": _create_user_list_action(ctx, state, UserMediaListStatus.PAUSED),
-        f"{ICONS.get('DROPPED', icons)}Dropped": _create_user_list_action(ctx, state, UserMediaListStatus.DROPPED),
-        f"{ICONS.get('REWATCHING', icons)}Rewatching": _create_user_list_action(ctx, state, UserMediaListStatus.REPEATING),
-    })
-
-    # ── Manga ─────────────────────────────────────────────────────
-    options.update({
-        f"{ICONS.get('READING', icons)}Reading": _create_user_list_action(ctx, state, UserMediaListStatus.WATCHING, MediaType.MANGA),
-        f"{ICONS.get('RECENT', icons)}Recently Read": _create_recent_manga_action(ctx, state),
-    })
-
-    # ── Downloads / Library ───────────────────────────────────────
-    options.update({
-        f"{ICONS.get('DOWNLOADS', icons)}Downloads": _create_downloads_action(ctx, state),
-        f"{ICONS.get('UPDATED', icons)}Recently Updated": _create_media_list_action(ctx, state, MediaSort.UPDATED_AT_DESC),
-        f"{ICONS.get('FAVOURITES', icons)}Favourites": _create_media_list_action(ctx, state, MediaSort.FAVOURITES_DESC),
-    })
-
-    # ── Schedule ──────────────────────────────────────────────────
-    options.update({
-        f"{ICONS.get('UPCOMING', icons)}Schedule": _create_media_list_action(ctx, state, MediaSort.POPULARITY_DESC, MediaStatus.NOT_YET_RELEASED),
-        f"{ICONS.get('BROWSER', icons)}Airing Schedule": lambda: State(menu_name=MenuName.MEDIA_AIRING_SCHEDULE),
-    })
-
-    # ── Settings / System ─────────────────────────────────────────
-    update_label = f"{ICONS.get('UPDATE', icons)}Check for Updates"
-    if state.update_available:
-        update_label += " (UPDATE AVAILABLE)"
-    options[update_label] = _check_for_updates_action(ctx, state)
-    options.update({
-        f"{ICONS.get('EDIT', icons)}Settings": lambda: InternalDirective.CONFIG_EDIT,
-        f"{ICONS.get('MANAGE', icons)}Manage Categories": _manage_categories_action(ctx, state),
-    })
-
-    options.update({
-        f"{ICONS.get('LOGOUT' if ctx.media_api.is_authenticated() else 'LOGIN', icons)}{'Logout' if ctx.media_api.is_authenticated() else 'Login'}": _auth_action(
-            ctx, state
-        ),
-        f"{ICONS.get('BROWSER', icons)}Open GUI Dashboard": lambda: State(menu_name=MenuName.OPEN_GUI),
-        f"{ICONS.get('EXIT', icons)}Exit": lambda: InternalDirective.EXIT,
-    })
-
     if not ctx.config.anilist.token:
-        login_label = f"{'🔑 ' if icons else '-> '}Login to AniList"
-        new_options: Dict[str, MenuAction] = {login_label: lambda: InternalDirective.LOGIN}
-        new_options.update(options)
-        options = new_options
-
-    # Filter out hidden categories from the menu
-    hidden = ctx.config.general.hidden_categories
-    if hidden:
-        options = {
-            k: v
-            for k, v in options.items()
-            if not any(h.lower() in k.lower() for h in hidden)
-        }
+        login_label = f"{'🔑' if icons else '>'}Login to AniList"
+        options = {login_label: lambda: InternalDirective.LOGIN, **options}
 
     choice = ctx.selector.choose(
-        prompt="Select Category",
+        prompt="Select",
         choices=list(options.keys()),
     )
     if not choice:
         return InternalDirective.MAIN
 
     selected_action = options[choice]
-
     next_step = selected_action()
     return next_step
 
