@@ -450,6 +450,7 @@ class MpvPlayer(BasePlayer):
                         os.path.join(app_dir, "..", "Resources", "resources")
                     ),
                     os.path.abspath(os.path.join(app_dir, "..", "Resources")),
+                    os.path.abspath(os.path.join(app_dir, "resources")),
                 ]
             )
         else:
