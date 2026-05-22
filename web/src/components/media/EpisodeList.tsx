@@ -133,7 +133,7 @@ export default function EpisodeList({
             return (
               <div
                 key={epNum}
-                className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${isNext && !isUnaired ? 'bg-white/[0.04] border border-white/[0.05] shadow-lg' : 'hover:bg-white/[0.03]'}`}
+                className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${isNext && !isUnaired ? 'bg-white/10 border border-white/20 shadow-lg' : 'bg-white/5 hover:bg-white/10'}`}
               >
                 <div className="flex items-center space-x-4 min-w-0">
                   {/* UX-26: Episode thumbnail placeholder */}
@@ -196,7 +196,7 @@ export default function EpisodeList({
                     </button>
                   </div>
                 ) : (
-                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 px-2.5 py-1 bg-white/[0.02] border border-white/[0.04] rounded-lg shrink-0">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 px-2.5 py-1 bg-white/10 border border-white/20 rounded-lg shrink-0">
                     Airing Soon
                   </span>
                 )}

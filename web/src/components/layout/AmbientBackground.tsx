@@ -18,7 +18,7 @@ export default function AmbientBackground() {
       
       {/* Animated Mesh Gradient blobs */}
       <div 
-        className="absolute w-[80vw] h-[80vw] rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-blob"
+        className="absolute w-[80vw] h-[80vw] rounded-full mix-blend-screen filter blur-[100px] opacity-[0.15] animate-blob"
         style={{
           background: 'radial-gradient(circle, rgba(94,92,230,0.8) 0%, rgba(94,92,230,0) 70%)',
           top: '-10%',
@@ -27,7 +27,7 @@ export default function AmbientBackground() {
         }}
       />
       <div 
-        className="absolute w-[70vw] h-[70vw] rounded-full mix-blend-screen filter blur-[120px] opacity-30 animate-blob animation-delay-2000"
+        className="absolute w-[70vw] h-[70vw] rounded-full mix-blend-screen filter blur-[120px] opacity-10 animate-blob animation-delay-2000"
         style={{
           background: 'radial-gradient(circle, rgba(191,90,242,0.6) 0%, rgba(191,90,242,0) 70%)',
           top: '40%',
@@ -36,7 +36,7 @@ export default function AmbientBackground() {
         }}
       />
       <div 
-        className="absolute w-[90vw] h-[90vw] rounded-full mix-blend-screen filter blur-[150px] opacity-20 animate-blob animation-delay-4000"
+        className="absolute w-[90vw] h-[90vw] rounded-full mix-blend-screen filter blur-[150px] opacity-[0.05] animate-blob animation-delay-4000"
         style={{
           background: 'radial-gradient(circle, rgba(10,132,255,0.5) 0%, rgba(10,132,255,0) 70%)',
           bottom: '-20%',

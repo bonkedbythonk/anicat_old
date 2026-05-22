@@ -206,7 +206,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
         exit={{ x: "100%" }}
         transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
         style={{ willChange: "transform" }}
-        className="relative w-full max-w-2xl h-full bg-background/95 border-l border-border shadow-[-20px_0_50px_rgba(0,0,0,0.15)] dark:shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col transform-gpu overflow-hidden"
+        className="relative w-full max-w-2xl h-full bg-[#050505]/95 border-l border-border shadow-[-20px_0_50px_rgba(0,0,0,0.15)] dark:shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col transform-gpu overflow-hidden"
       >
         {/* Ambient Glow Backdrop Lighting */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
