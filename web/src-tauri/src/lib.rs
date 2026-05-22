@@ -184,8 +184,9 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_log::Builder::default().build())
-        // UX-03: Global shortcut plugin for Quick Pane (Cmd+Shift+Space)
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        // UX-03: Global shortcut disabled on macOS 26 — the accessibility API
+        // path changed, causing a hard crash. Re-enable once
+        // tauri-plugin-global-shortcut supports macOS 26 natively.
         .manage(sidecar_state)
         .invoke_handler(tauri::generate_handler![open_logs_folder, restart_backend])
         .setup(move |app| {
@@ -316,33 +317,11 @@ pub fn run() {
                 }
             });
 
-            // ── UX-03: Global Shortcut for Quick Pane (Cmd+Shift+Space) ──
-            #[cfg(target_os = "macos")]
-            {
-                use tauri_plugin_global_shortcut::{
-                    GlobalShortcutExt, Modifiers, Code,
-                };
-                let qp_handle = app.handle().clone();
-                app.handle().plugin(
-                    tauri_plugin_global_shortcut::Builder::new()
-                        .with_handler(move |_app, shortcut, _event| {
-                            if shortcut.matches(Modifiers::SUPER | Modifiers::SHIFT, Code::Space) {
-                                // Toggle the Quick Pane window
-                                if let Some(qp_win) = qp_handle.get_webview_window("quick-pane") {
-                                    if qp_win.is_visible().unwrap_or(false) {
-                                        let _ = qp_win.hide();
-                                    } else {
-                                        let _ = qp_win.show();
-                                        let _ = qp_win.set_focus();
-                                    }
-                                }
-                            }
-                        })
-                        .build(),
-                )?;
-                app.handle().global_shortcut()
-                    .register("CmdOrCtrl+Shift+Space")?;
-            }
+            // ── UX-03: Global Shortcut disabled on macOS 26 ──
+            // The accessibility API path changed in macOS 26, causing
+            // a hard crash when initializing the global-shortcut plugin.
+            // Quick Pane can still be toggled via the tray menu.
+            log::info!("[plugins] Global shortcut disabled on macOS 26. Quick Pane requires manual activation.");
 
             // ── UX-03: Quick Pane floating window ──
             let qp_config = tauri::WebviewUrl::App("quick-pane.html".into());

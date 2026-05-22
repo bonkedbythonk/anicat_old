@@ -130,17 +130,13 @@ html.system:not(.dark) .glass-fixed {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Card hover glow */
+/* Card hover glow — GPU hints removed for macOS 26 WKWebView compatibility */
 .card-glow {
   transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-  will-change: transform, box-shadow;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  transform: translateZ(0);
 }
 
 .card-glow:hover {
-  transform: translateY(-6px) translateZ(0);
+  transform: translateY(-6px);
   box-shadow: 
     0 15px 35px -5px rgba(0, 0, 0, 0.9),
     0 0 20px -5px rgba(99, 102, 241, 0.4);
@@ -293,8 +289,6 @@ select option {
 /* Fix Safari 1px vertical white lines / border artifacts on <video> elements */
 video {
   isolation: isolate;
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
   outline: none;
 }
 
