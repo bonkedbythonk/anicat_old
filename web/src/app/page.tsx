@@ -11,10 +11,12 @@ import useKeyboardShortcuts, { getPreviousView } from "@/lib/useKeyboardShortcut
 import { useRemoteLogging } from "@/lib/useRemoteLogging";
 import { useTheme } from "@/lib/useTheme";
 import { useHealthPolling } from "@/lib/useHealthPolling";
+import { useLiquidGlass } from "@/lib/useLiquidGlass";
 import { AppStateProvider, useAppState } from "@/lib/AppStateContext";
 import { mediaApi, API_BASE_ORIGIN, type PlaybackStatus } from "@/lib/api";
 import { dispatchRefresh } from "@/lib/events";
 import Onboarding from "@/components/layout/Onboarding";
+import LiquidGlassOverlay from "@/components/LiquidGlassOverlay";
 import { X, WifiOff, RotateCw, Play } from "lucide-react";
 
 // View Components
@@ -45,6 +47,9 @@ export default function App() {
     notificationCount,
     dismissOffline,
   } = useHealthPolling();
+
+  // Liquid Glass visual system
+  const { enabled: liquidGlassEnabled, cursorRef } = useLiquidGlass();
 
   // --- App UI state ---
   const [activeView, setActiveView] = useState<ViewName>("home");
@@ -107,6 +112,16 @@ export default function App() {
     onCloseDetail: appState.closeDetail,
     onToggleHelp: () => setShowHelp(h => !h),
   });
+
+  // UX-25: Pull-to-refresh — refresh all queries when scrolling to top
+  const handleScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
+    const target = e.currentTarget;
+    if (target.scrollTop === 0) {
+      target.style.setProperty('--pull-indicator-opacity', '1');
+    } else {
+      target.style.setProperty('--pull-indicator-opacity', '0');
+    }
+  }, []);
 
   const renderView = () => {
     switch (activeView) {
@@ -358,18 +373,14 @@ export default function App() {
     <div className="flex h-screen relative">
       <Sidebar activeView={activeView} onNavigate={setActiveView} notificationCount={notificationCount} health={healthStatus} />
 
+      {/* Liquid Glass refractive overlay — zero overhead when disabled */}
+      <LiquidGlassOverlay cursorRef={cursorRef} enabled={liquidGlassEnabled} />
+
       {/* Main content */}
       <main
         className="flex-1 ml-[72px] lg:ml-60 overflow-y-auto scrollbar-hide scroll-container relative"
         // UX-25: Pull-to-refresh — refresh all queries when scrolling to top
-        onScroll={useCallback((e: React.UIEvent<HTMLElement>) => {
-          const target = e.currentTarget;
-          if (target.scrollTop === 0) {
-            target.style.setProperty('--pull-indicator-opacity', '1');
-          } else {
-            target.style.setProperty('--pull-indicator-opacity', '0');
-          }
-        }, [])}
+        onScroll={handleScroll}
       >
         {/* UX-25: Pull-to-refresh indicator bar */}
         <div className="sticky top-0 left-0 right-0 z-[200] h-0.5 bg-accent/0 transition-all duration-300"
