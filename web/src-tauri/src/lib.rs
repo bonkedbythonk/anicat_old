@@ -5,7 +5,7 @@ use tauri::{
         PredefinedMenuItem,
     },
     tray::TrayIconBuilder,
-    Manager, Emitter,
+    Manager,
 };
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -319,12 +319,14 @@ pub fn run() {
             // ── UX-03: Global Shortcut for Quick Pane (Cmd+Shift+Space) ──
             #[cfg(target_os = "macos")]
             {
-                use tauri_plugin_global_shortcut::GlobalShortcutExt;
+                use tauri_plugin_global_shortcut::{
+                    GlobalShortcutExt, Modifiers, Code,
+                };
                 let qp_handle = app.handle().clone();
                 app.handle().plugin(
                     tauri_plugin_global_shortcut::Builder::new()
                         .with_handler(move |_app, shortcut, _event| {
-                            if shortcut.matches("CmdOrCtrl+Shift+Space") {
+                            if shortcut.matches(Modifiers::SUPER | Modifiers::SHIFT, Code::Space) {
                                 // Toggle the Quick Pane window
                                 if let Some(qp_win) = qp_handle.get_webview_window("quick-pane") {
                                     if qp_win.is_visible().unwrap_or(false) {
