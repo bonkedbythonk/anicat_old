@@ -408,7 +408,10 @@ class MpvPlayer(BasePlayer):
                     end = int(s.get("end") or 0)
                     parts.append(f"{t},{start},{end}")
                 encoded = ";".join(parts)
-                mpv_args.append(f"--script-opts=anicat_ui-skip_times={encoded}")
+                # MPV's --script-opts uses commas to separate key=value pairs.
+                # If a value contains a comma, the comma must be escaped as \,
+                encoded_escaped = encoded.replace(",", "\\,")
+                mpv_args.append(f"--script-opts=anicat_ui-skip_times={encoded_escaped}")
                 logger.debug(f"Injected AniCat skip_times script-opts: {encoded}")
             except Exception:
                 logger.debug("Failed to append AniCat skip_times to MPV args")
