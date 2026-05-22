@@ -362,6 +362,10 @@ export const mediaApi = {
   wipeRegistry: () =>
     fetchFromApi('/registry/wipe', { method: 'POST' }),
 
+  // ─── Update Logs ──────────────────────────────────
+  getUpdateLogs: (lines = 200): Promise<{ logs: string; updating: boolean }> =>
+    fetchFromApi('/status/update/logs', { method: 'GET' }),
+
   checkUpdate: (): Promise<{ status: string; update_available: boolean; message: string; version?: string; release_notes?: string; release_url?: string }> =>
     fetchFromApi('/status/check-update', { method: 'POST' }),
 

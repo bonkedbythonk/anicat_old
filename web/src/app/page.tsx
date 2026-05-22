@@ -29,6 +29,7 @@ import SettingsView from "@/components/views/SettingsView";
 import NotificationsView from "@/components/views/NotificationsView";
 import ProfileView from "@/components/views/ProfileView";
 import HelpModal from "@/components/modals/HelpModal";
+import UpdateLogViewer from "@/components/modals/UpdateLogViewer";
 
 export default function App() {
   // --- Extracted side-effect hooks (replace 2 large useEffect blocks) ---
@@ -457,6 +458,9 @@ export default function App() {
                   ? "The application will close and restart automatically. Please do not close the app."
                   : "Refreshing view automatically in a few seconds..."}
               </p>
+
+              {/* Update Logs: Show/Hide button + live feed */}
+              <UpdateLogViewer />
             </div>
           </div>
         )}

@@ -5,12 +5,24 @@ import os
 from fastapi import APIRouter
 from pydantic import BaseModel
 import subprocess
-from anicat_media.core.constants import VERSION, COMMIT, LOG_FILE, UPDATE_IN_PROGRESS_FILE
+from anicat_media.core.constants import VERSION, COMMIT, LOG_FILE, UPDATE_LOG_FILE, UPDATE_IN_PROGRESS_FILE
 from anicat_media.cli.config import ConfigLoader
 import shutil
 import sys
 
 logger = logging.getLogger(__name__)
+
+
+# Update log helper — appends timestamped lines so the frontend can tail them
+def _log_update(message: str) -> None:
+    """Append a timestamped line to the update log file."""
+    try:
+        UPDATE_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(UPDATE_LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(f"[{timestamp}] {message}\n")
+    except Exception as e:
+        logger.warning(f"Failed to write update log: {e}")
 
 
 class UpdateTriggerRequest(BaseModel):
@@ -496,44 +508,64 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
     """Trigger the official installation script to update the application."""
     global _last_update_check, _cached_update_available
     try:
+        # Clear previous update log
+        try:
+            UPDATE_LOG_FILE.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+        _log_update("Update process started")
+
         # Respect opt-out environment variable for automated updates
         if os.environ.get("ANICAT_DISABLE_AUTO_UPDATE", "0") == "1":
+            _log_update("Auto-updates disabled by environment variable")
             return {"status": "error", "message": "Auto-updates disabled by environment"}
 
-        # Respect user's config setting (allow disabling update actions via AppConfig)
+        # Respect user's config setting
         try:
             loader = ConfigLoader()
             current_config = loader.load(allow_setup=False)
             if not getattr(current_config.general, "check_for_updates", True):
+                _log_update("Auto-updates disabled in configuration")
                 return {"status": "error", "message": "Auto-updates disabled in configuration"}
             update_branch = getattr(current_config.general, "update_branch", "stable")
         except Exception:
-            # If config can't be read, continue with env-only check
             update_branch = "stable"
 
         if req and req.branch in ("stable", "nightly"):
             update_branch = req.branch
 
-        # Determine the repo root once
+        _log_update(f"Update target branch: {update_branch}")
+
         repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
         is_git_install = os.path.exists(os.path.join(repo_root, ".git"))
 
         if is_git_install:
-            # Git-based install (dev checkout) — pull the latest code regardless of platform
+            _log_update("Detected git-based install")
             from anicat_media.utils.subprocess import run_cmd
             rc, stdout, _ = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=5, cwd=repo_root)
             current_branch = stdout.strip() if (rc == 0 and stdout) else "master"
+            _log_update(f"Current branch: {current_branch}")
 
             if update_branch == "nightly":
                 target_branch = "nightly"
             else:
                 target_branch = "master"
 
+            _log_update(f"Target branch: {target_branch}")
+
             subprocess.run(["git", "stash"], cwd=repo_root, capture_output=True)
+            _log_update("Stashed local changes")
+
             if current_branch != target_branch:
                 subprocess.run(["git", "checkout", target_branch], cwd=repo_root, capture_output=True)
+                _log_update(f"Switched to branch {target_branch}")
+
+            _log_update("Running git pull...")
             result = subprocess.run(["git", "pull", "origin", target_branch], cwd=repo_root, capture_output=True, text=True, timeout=60)
             subprocess.run(["git", "stash", "pop"], cwd=repo_root, capture_output=True)
+            _log_update(f"Git pull completed (exit code {result.returncode})")
+            _log_update(f"Output: {result.stdout.strip()[-200:]}")
 
             _last_update_check = datetime.now()
             _cached_update_available = False
@@ -573,6 +605,7 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
         # Release install (DMG/binary) — macOS native app update
         import platform
         if platform.system() == "Darwin":
+            _log_update("Starting macOS native update")
             UPDATE_IN_PROGRESS_FILE.write_text("1", encoding="utf-8")
 
             logger.info("[UPDATE] Triggering macOS native update via installer script")
@@ -581,32 +614,76 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
             branch_name = "nightly" if update_branch == "nightly" else "master"
 
             if os.path.exists(local_script):
+                _log_update(f"Using local installer: {local_script}")
                 logger.info(f"[UPDATE] Running local installer script: {local_script}")
-                with open(LOG_FILE, "a") as log:
-                    subprocess.Popen(
+                with open(UPDATE_LOG_FILE, "a") as log:
+                    proc = subprocess.Popen(
                         ["bash", local_script],
                         start_new_session=True,
                         stdout=log,
                         stderr=subprocess.STDOUT,
                     )
+                if proc:
+                    _log_update(f"Installer script started (PID {proc.pid})")
             else:
-                subprocess.Popen(
-                    f"curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/{branch_name}/scripts/install_macos.sh | bash",
-                    shell=True,
-                    start_new_session=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
-                )
+                _log_update("No local installer found — downloading from GitHub")
+                with open(UPDATE_LOG_FILE, "a") as log:
+                    proc = subprocess.Popen(
+                        f"curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/{branch_name}/scripts/install_macos.sh | bash",
+                        shell=True,
+                        start_new_session=True,
+                        stdout=log,
+                        stderr=subprocess.STDOUT,
+                    )
+                if proc:
+                    _log_update(f"Remote installer started (PID {proc.pid})")
             _last_update_check = datetime.now()
             _cached_update_available = False
             return {"status": "success", "message": "Native update triggered! The application will download the latest version and restart shortly. Please wait a few moments."}
 
         return {"status": "error", "message": "Could not determine update method for this platform."}
-        
+
     except subprocess.TimeoutExpired:
+        _log_update("Update timed out")
         return {"status": "error", "message": "Update timed out. Please try running 'git pull' manually in the terminal."}
     except Exception as e:
+        _log_update(f"Update failed: {e}")
         return {"status": "error", "message": f"Unexpected error: {str(e)}"}
+
+# ── Update Log Stream Endpoint ──
+
+class UpdateLogsResponse(BaseModel):
+    logs: str
+    updating: bool
+
+@router.get("/update/logs", response_model=UpdateLogsResponse)
+async def get_update_logs(lines: int = 100):
+    """Return the last N lines from the update log file."""
+    updating = UPDATE_IN_PROGRESS_FILE.exists()
+    if not UPDATE_LOG_FILE.exists():
+        return {"logs": "Update has not started yet.\n", "updating": updating}
+    try:
+        def tail(path, n=100, buf_size=1024):
+            with open(path, "rb") as f:
+                f.seek(0, os.SEEK_END)
+                file_size = f.tell()
+                if file_size == 0:
+                    return ""
+                blocks = []
+                bytes_scanned = 0
+                while bytes_scanned < file_size:
+                    read_size = min(buf_size, file_size - bytes_scanned)
+                    f.seek(max(0, file_size - bytes_scanned - read_size))
+                    chunk = f.read(read_size)
+                    blocks.insert(0, chunk)
+                    bytes_scanned += read_size
+                    data = b"".join(blocks)
+                    if len(data.splitlines()) >= n:
+                        return b"\n".join(data.splitlines()[-n:]).decode("utf-8", errors="replace")
+                return b"\n".join(data.splitlines()[-n:]).decode("utf-8", errors="replace")
+        return {"logs": tail(UPDATE_LOG_FILE, lines), "updating": updating}
+    except Exception as e:
+        return {"logs": f"Error reading update logs: {e}", "updating": updating}
 
 @router.post("/reconnect")
 async def reconnect():
