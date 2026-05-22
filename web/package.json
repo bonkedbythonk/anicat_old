@@ -1,11 +1,10 @@
 {
   "name": "web",
-  "version": "4.21.6",
+  "version": "4.21.7",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "postbuild": "python3 ../scripts/fix-css-macos26.py",
     "start": "next start",
     "lint": "eslint",
     "tauri": "tauri",
