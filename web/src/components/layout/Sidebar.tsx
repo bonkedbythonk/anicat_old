@@ -57,7 +57,7 @@ interface SidebarProps {
 }
 export default function Sidebar({ activeView, onNavigate, notificationCount = 0, health }: SidebarProps) {
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-[72px] lg:w-60 z-50 flex flex-col py-6 transition-all duration-300">
+    <aside className="fixed left-0 top-0 bottom-0 w-[72px] lg:w-56 z-50 flex flex-col py-6 transition-all duration-300">
 
       {/* Logo — pushed down to clear macOS traffic lights */}
       <div className="flex flex-col items-center justify-center px-4 mb-10 pt-14">
