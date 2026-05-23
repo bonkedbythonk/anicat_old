@@ -104,7 +104,9 @@ class MpvPlayer(BasePlayer):
                         )
                         logger.info("Cleared macOS quarantine on bundled resources.")
                     except Exception as e:
-                        logger.warning(f"Could not clear macOS quarantine dynamically: {e}")
+                        logger.warning(
+                            f"Could not clear macOS quarantine dynamically: {e}"
+                        )
                 break
 
         # Only check system-installed MPV locations if no bundled MPV was found (e.g. running in CLI dev mode)
@@ -307,8 +309,9 @@ class MpvPlayer(BasePlayer):
         if sys.platform == "darwin":
             mpv_args.append("--vo=gpu")
 
-        if getattr(params, "subtitles", None):
-            for sub_url in params.subtitles:
+        subtitles = getattr(params, "subtitles", None)
+        if subtitles:
+            for sub_url in subtitles:
                 mpv_args.append(f"--sub-file={sub_url}")
 
         if getattr(params, "fullscreen", False):
@@ -398,19 +401,20 @@ class MpvPlayer(BasePlayer):
                     "GPU upscaling shaders are disabled (Battery Saver / Low-End profile)."
                 )
 
-        # Pass AniSkip skip times to the AniCat UI script if available
-        if getattr(params, "skip_times", None):
+        skip_times = getattr(params, "skip_times", None)
+        if skip_times:
             try:
                 parts = []
-                for s in params.skip_times:
+                for s in skip_times:
                     t = s.get("type")
                     start = int(s.get("start") or 0)
                     end = int(s.get("end") or 0)
                     parts.append(f"{t},{start},{end}")
                 encoded = ";".join(parts)
                 # MPV's --script-opts uses commas to separate key=value pairs.
-                # If a value contains a comma, the comma must be escaped as \,
-                encoded_escaped = encoded.replace(",", "\\,")
+                # If a value contains a comma, we must wrap it in bracket quotes [value]
+                # to prevent the MPV suboption parser from splitting it.
+                encoded_escaped = f"[{encoded}]"
                 mpv_args.append(f"--script-opts=anicat_ui-skip_times={encoded_escaped}")
                 logger.debug(f"Injected AniCat skip_times script-opts: {encoded}")
             except Exception:
