@@ -82,15 +82,12 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0,
             <button
               key={item.view}
               onClick={() => onNavigate(item.view)}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${isActive
-                  ? "bg-accent/10 text-foreground font-bold"
+              className={`w-full flex items-center justify-center lg:justify-start lg:space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${isActive
+                  ? "bg-accent/10 text-accent font-bold"
                   : "text-gray-500 dark:text-gray-400 hover:text-foreground hover:bg-foreground/[0.04]"
                 }`}
             >
-              <div className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${isActive ? "bg-accent text-white shadow-lg shadow-accent/25" : "group-hover:text-accent"
-                }`}>
-                <item.icon size={18} />
-              </div>
+              <item.icon size={20} className={`shrink-0 transition-colors ${isActive ? "text-accent" : "text-gray-500 dark:text-gray-400 group-hover:text-accent"}`} />
               <span className="hidden lg:flex items-center justify-between flex-1 text-[13px] font-semibold tracking-wide">
                 <span>{item.label}</span>
                 {item.shortcut && (
@@ -115,19 +112,18 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0,
             <button
               key={item.view}
               onClick={() => onNavigate(item.view)}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${isActive
-                  ? "bg-accent/10 text-foreground font-bold"
+              className={`w-full flex items-center justify-center lg:justify-start lg:space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${isActive
+                  ? "bg-accent/10 text-accent font-bold"
                   : "text-gray-500 dark:text-gray-400 hover:text-foreground hover:bg-foreground/[0.04]"
                 }`}
             >
-              <div className={`relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${isActive ? "bg-accent text-white shadow-lg shadow-accent/25" : "group-hover:text-accent"
-                }`}>
-                <item.icon size={18} />
+              <div className="relative shrink-0 flex items-center justify-center">
+                <item.icon size={20} className={`transition-colors ${isActive ? "text-accent" : "text-gray-500 dark:text-gray-400 group-hover:text-accent"}`} />
                  {hasUpdate && (
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-card animate-pulse shadow-[0_0_12px_rgba(245,158,11,0.8)]" />
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-background animate-pulse shadow-[0_0_12px_rgba(245,158,11,0.8)]" />
                 )}
                 {item.view === "notifications" && notificationCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-card">
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] bg-red-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full border-2 border-background px-0.5">
                     {notificationCount > 9 ? "9+" : notificationCount}
                   </span>
                 )}
