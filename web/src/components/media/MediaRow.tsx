@@ -60,10 +60,10 @@ const MediaRow = memo(function MediaRow({ title, items, onSelect }: MediaRowProp
 
       <div className="relative">
         {/* Left arrow */}
-        <div className={`absolute left-0 top-0 bottom-6 w-14 bg-gradient-to-r from-background to-transparent z-40 flex items-center justify-start transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'} pointer-events-none`}>
+        <div className={`absolute left-0 top-0 bottom-6 w-12 z-40 flex items-center justify-start transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'} pointer-events-none`}>
           <button
             onClick={() => scroll("left")}
-            className="p-2 ml-1 rounded-full bg-black/80 hover:bg-accent hover:text-white transition-colors pointer-events-auto border border-white/10"
+            className="p-2 ml-1 rounded-full bg-black/80 hover:bg-accent hover:text-white transition-colors pointer-events-auto border border-white/10 shadow-lg"
           >
             <ChevronLeft size={20} />
           </button>
@@ -89,10 +89,10 @@ const MediaRow = memo(function MediaRow({ title, items, onSelect }: MediaRowProp
         </div>
 
         {/* Right arrow */}
-        <div className={`absolute right-0 top-0 bottom-6 w-14 bg-gradient-to-l from-background to-transparent z-40 flex items-center justify-end transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'} pointer-events-none`}>
+        <div className={`absolute right-0 top-0 bottom-6 w-12 z-40 flex items-center justify-end transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'} pointer-events-none`}>
           <button
             onClick={() => scroll("right")}
-            className="p-2 mr-1 rounded-full bg-black/80 hover:bg-accent hover:text-white transition-colors pointer-events-auto border border-white/10"
+            className="p-2 mr-1 rounded-full bg-black/80 hover:bg-accent hover:text-white transition-colors pointer-events-auto border border-white/10 shadow-lg"
           >
             <ChevronRight size={20} />
           </button>
