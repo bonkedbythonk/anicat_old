@@ -433,16 +433,13 @@ export default function App() {
         onNavigate={setActiveView}
         notificationCount={notificationCount}
         health={healthStatus}
-        isFullscreen={isFullscreen}
       />
 
       {/* Liquid Glass — Native visionOS style doesn't use artificial cursor lights */}
 
       {/* Main content */}
       <main
-        className={`flex-1 overflow-y-auto scrollbar-hide scroll-container relative z-10 transform-gpu translate-z-0 will-change-scroll transition-all duration-300 ${
-          isFullscreen ? "ml-0 lg:ml-0" : "ml-[104px] lg:ml-[272px]"
-        }`}
+        className="flex-1 ml-[72px] lg:ml-60 overflow-y-auto scrollbar-hide scroll-container relative z-10 transform-gpu translate-z-0 will-change-scroll"
         // UX-25: Pull-to-refresh — refresh all queries when scrolling to top
         onScroll={handleScroll}
       >
