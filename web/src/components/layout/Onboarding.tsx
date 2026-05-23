@@ -17,9 +17,7 @@ import {
   PlayCircle,
   RotateCcw,
   Calendar,
-  Bell,
-  Droplets,
-  EyeOff
+  Bell
 } from "lucide-react";
 import { mediaApi } from "@/lib/api";
 
@@ -42,8 +40,6 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
   const [localAutoSkip, setLocalAutoSkip] = useState(false);
   // UX-27: Auto-detect MPV availability
   const [mpvAvailable, setMpvAvailable] = useState<boolean | null>(null);
-  // Liquid Glass preference
-  const [liquidGlass, setLiquidGlass] = useState(true);
 
   useEffect(() => {
     mediaApi.getConfig()
@@ -80,7 +76,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
         }
       });
       localStorage.setItem("anicat_auto_skip", String(localAutoSkip));
-      setStep(4); // Advance to AniList connection step
+      setStep(3); // Advance to AniList connection step
     } catch (err: any) {
       setError("Failed to save playback preferences.");
     } finally {
@@ -180,76 +176,6 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
     },
     {
       id: 2,
-      title: "Choose Your Visual Style",
-      subtitle: "Pick how Anicat looks and feels",
-      content: (
-        <div className="space-y-6 animate-fade-in">
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={() => setLiquidGlass(true)}
-              className={`p-6 rounded-2xl border-2 text-left space-y-4 transition-all ${
-                liquidGlass
-                  ? "border-accent bg-accent/10 shadow-xl shadow-accent/10"
-                  : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]"
-              }`}
-            >
-              <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
-                <Droplets size={24} className="text-accent" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white">Liquid Glass</h3>
-                <p className="text-[12px] text-gray-400 leading-relaxed mt-1.5">
-                  Refractive, fluid surfaces that respond to your cursor. A tactile, premium Mac experience.
-                </p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setLiquidGlass(false)}
-              className={`p-6 rounded-2xl border-2 text-left space-y-4 transition-all ${
-                !liquidGlass
-                  ? "border-accent bg-accent/10 shadow-xl shadow-accent/10"
-                  : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]"
-              }`}
-            >
-              <div className="w-12 h-12 rounded-xl bg-white/[0.05] flex items-center justify-center">
-                <EyeOff size={24} className="text-gray-400" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white">Solid</h3>
-                <p className="text-[12px] text-gray-400 leading-relaxed mt-1.5">
-                  Clean, high-performance solid surfaces. Maximum battery life and zero visual overhead.
-                </p>
-              </div>
-            </button>
-          </div>
-
-          <p className="text-[11px] text-gray-500 text-center leading-relaxed px-4">
-            You can change this anytime in Settings. Liquid Glass creates depth and atmosphere; Solid is crisp and fast.
-          </p>
-
-          <button 
-            onClick={() => {
-              localStorage.setItem("anicat_liquid_glass", String(liquidGlass));
-              if (liquidGlass) {
-                document.documentElement.classList.add("liquid-glass");
-              } else {
-                document.documentElement.classList.remove("liquid-glass");
-              }
-              // Sync to backend
-              mediaApi.updateConfig({ general: { liquid_glass: liquidGlass } }).catch(() => {});
-              setStep(3);
-            }}
-            className="w-full bg-accent hover:bg-accent-light text-white font-bold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-accent/20 active:scale-95"
-          >
-            <span>Continue</span>
-            <ArrowRight size={18} />
-          </button>
-        </div>
-      )
-    },
-    {
-      id: 3,
       title: "Set Up Playback",
       subtitle: "Choose how you want to watch",
       content: (
@@ -339,7 +265,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
       )
     },
     {
-      id: 4,
+      id: 3,
       title: "Connect AniList",
       subtitle: "Sync your watch history and lists",
       content: (

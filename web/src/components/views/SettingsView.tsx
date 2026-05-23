@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Loader2, CheckCircle2, Save, Cpu, PlayCircle, HardDrive, Globe, Activity, RotateCcw, XCircle, AlertCircle, Download, Sparkles } from "lucide-react";
+import { Loader2, CheckCircle2, Save, Cpu, PlayCircle, HardDrive, Globe, Activity, RotateCcw, XCircle, AlertCircle, Download } from "lucide-react";
 import { mediaApi, type HealthStatus, API_BASE_ORIGIN } from "@/lib/api";
 import { useTheme } from "@/lib/useTheme";
-import { useLiquidGlass } from "@/lib/useLiquidGlass";
 import ErrorBanner from "@/components/ErrorBanner";
 
 interface SettingsViewProps {
@@ -33,7 +32,6 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
   const [theme, setTheme] = useState<"system" | "dark" | "light">("system");
   const [colorPreset, setColorPreset] = useState<string>("seasonal");
   const hasUpdate = Boolean(health?.update_available || stagedHasUpdate);
-  const { enabled: liquidGlassEnabled, toggle: toggleLiquidGlass } = useLiquidGlass();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -318,50 +316,6 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
           {activeTab === "general" && (
             <div className="space-y-6 animate-fade-in">
               <CardSection title="Appearance">
-                <div className={`p-5 rounded-xl border transition-all duration-300 flex items-center justify-between gap-6 ${
-                  liquidGlassEnabled 
-                    ? "bg-accent/[0.03] border-accent/20 shadow-[0_0_20px_rgba(10,132,255,0.05)]" 
-                    : "bg-white/[0.01] border-white/[0.04] hover:bg-white/[0.02]"
-                }`}>
-                  <div className="flex items-start gap-4">
-                    <div className={`p-2.5 rounded-lg transition-all duration-300 ${
-                      liquidGlassEnabled 
-                        ? "bg-accent/10 text-accent shadow-sm shadow-accent/20" 
-                        : "bg-white/[0.04] text-gray-400"
-                    }`}>
-                      <Sparkles size={20} className={liquidGlassEnabled ? "animate-pulse text-accent" : ""} />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-white tracking-wide">Liquid Glass Engine</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider uppercase transition-all duration-300 ${
-                          liquidGlassEnabled 
-                            ? "bg-accent/20 text-accent" 
-                            : "bg-white/[0.06] text-gray-500"
-                        }`}>
-                          iOS 26
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-400 max-w-md leading-relaxed">
-                        Enables deep glassmorphism elevation, micro-refractive card glows, and fluid layout physics.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                    <input
-                      type="checkbox"
-                      checked={liquidGlassEnabled}
-                      onChange={() => {
-                        toggleLiquidGlass();
-                        setTimeout(() => window.location.reload(), 200);
-                      }}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-white/[0.08] rounded-full peer peer-focus:outline-none peer-checked:bg-accent after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full shadow-inner border border-white/[0.05] hover:border-white/10 transition-all"></div>
-                  </label>
-                </div>
-
                 <SettingField
                   label="Theme"
                   description="Choose your preferred visual theme."
@@ -369,7 +323,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={theme}
                     onChange={(e) => handleThemeChange(e.target.value as "system" | "dark" | "light")}
-                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="system">System Default</option>
                     <option value="dark">Dark</option>
@@ -384,7 +338,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={colorPreset}
                     onChange={(e) => handleColorPresetChange(e.target.value)}
-                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="preset-default">Default (Indigo)</option>
                     <option value="preset-sakura">Sakura (Pink)</option>
@@ -404,7 +358,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={String(config.general?.time_format || "12h")}
                     onChange={(e) => updateField("general", "time_format", e.target.value)}
-                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="12h">12-hour (AM/PM)</option>
                     <option value="24h">24-hour</option>
@@ -420,7 +374,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={String(config.general?.provider || "animepahe")}
                     onChange={(e) => updateField("general", "provider", e.target.value)}
-                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="animepahe">AnimePahe</option>
                     <option value="anizone">AniZone</option>
@@ -458,7 +412,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                               const cleaned = newFallbacks.filter(v => v && v !== "none");
                               updateField("general", "provider_fallbacks", cleaned);
                             }}
-                            className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                           >
                             <option value="none">-- Disabled --</option>
                             {allProviders
@@ -487,7 +441,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={String(config.general?.manga_provider || "mangakatana")}
                     onChange={(e) => updateField("general", "manga_provider", e.target.value)}
-                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="mangakatana">MangaKatana</option>
                   </select>
@@ -500,7 +454,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={String(config.general?.media_api || "anilist")}
                     onChange={(e) => updateField("general", "media_api", e.target.value)}
-                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="anilist">AniList</option>
                     <option value="jikan">Jikan (MyAnimeList - Fallback)</option>
@@ -517,7 +471,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={String(config.stream?.quality || "1080")}
                     onChange={(e) => updateField("stream", "quality", e.target.value)}
-                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     {(options?.stream?.quality ?? ["1080", "720", "480", "360"]).map((q: string) => (
                       <option key={q} value={q}>{q.endsWith('p') ? q : `${q}p`}</option>
@@ -529,7 +483,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={String(config.stream?.translation_type || "sub")}
                     onChange={(e) => updateField("stream", "translation_type", e.target.value)}
-                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="sub">Subtitled (Japanese)</option>
                     <option value="dub">Dubbed (English)</option>
@@ -544,7 +498,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                       setAutoSkip(val);
                       localStorage.setItem("anicat_auto_skip", String(val));
                     }}
-                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="false">Manual (Show Skip Intro button)</option>
                     <option value="true">Automatic (skip without prompt)</option>
@@ -557,7 +511,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={String(config.stream?.player_type || "embedded")}
                     onChange={(e) => updateField("stream", "player_type", e.target.value)}
-                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     {(options?.stream?.player_type ?? ["embedded", "external"]).map((p: string) => (
                       <option key={p} value={p}>{p === 'embedded' ? 'In-App Player' : 'External (MPV)'}</option>
@@ -569,7 +523,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   <select
                     value={String(config.stream?.shader_profile || "balanced")}
                     onChange={(e) => updateField("stream", "shader_profile", e.target.value)}
-                    className="w-full glass-panel p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
                     <option value="balanced">On</option>
                     <option value="off">Off</option>

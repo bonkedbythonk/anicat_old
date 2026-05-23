@@ -21,8 +21,8 @@ export function useLiquidGlass() {
     if (typeof window === "undefined") return;
 
     const stored = localStorage.getItem(STORAGE_KEY);
-    // Default to enabled — user must explicitly opt out
-    const isEnabled = stored !== "0";
+    // Default to disabled
+    const isEnabled = stored === "1";
     setEnabled(isEnabled);
 
     // Sync the html.liquid-glass class (gates all liquid-glass CSS rules)
