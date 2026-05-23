@@ -72,21 +72,6 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0,
             Local Dev
           </span>
         )}
-
-        {/* UX-09: Sync indicator + UX-11: Offline queued changes badge (Moved from bottom) */}
-        {health && (
-          <div className="mt-4 flex items-center justify-center space-x-2 px-3 py-1.5 rounded-full bg-white/[0.02] border border-white/[0.04]">
-            <div className={`w-2 h-2 rounded-full ${health.api_connected ? 'bg-green-400 animate-pulse shadow-[0_0_6px_rgba(74,222,128,0.5)]' : 'bg-amber-400'}`} />
-            <span className="hidden lg:block text-[10px] font-medium text-gray-500">
-              {health.api_connected ? 'Synced' : 'Offline'}
-            </span>
-            {!health.api_connected && (
-              <span className="hidden lg:flex items-center justify-center min-w-[18px] h-[18px] bg-amber-500 text-white text-[9px] font-bold rounded-full px-1">
-                <OfflinePendingCount />
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Primary Nav */}
