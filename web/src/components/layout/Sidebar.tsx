@@ -72,7 +72,7 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0,
         onMouseLeave={() => setIsHovered(false)}
         className={
           isFullscreen
-            ? `fixed left-0 top-0 bottom-0 w-60 glass-fixed z-50 flex flex-col py-6 transition-all duration-300 shadow-2xl shadow-black/85 ${
+            ? `fixed left-0 top-0 bottom-0 w-60 bg-background z-50 flex flex-col py-6 transition-all duration-300 shadow-2xl shadow-black/85 ${
                 isHovered ? "translate-x-0" : "-translate-x-full"
               }`
             : "fixed left-0 top-0 bottom-0 w-[72px] lg:w-60 z-50 flex flex-col py-6 transition-all duration-300"
