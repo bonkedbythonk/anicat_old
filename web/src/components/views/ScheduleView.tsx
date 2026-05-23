@@ -14,9 +14,10 @@ export default function ScheduleView({ onSelect }: ScheduleViewProps) {
   const [loading, setLoading] = useState(true);
   const [watchingOnly, setWatchingOnly] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("anicat_schedule_watching_only") === "true";
+      const saved = localStorage.getItem("anicat_schedule_watching_only");
+      return saved === null ? true : saved === "true";
     }
-    return false;
+    return true;
   });
 
   const handleToggleWatchingOnly = (value: boolean) => {

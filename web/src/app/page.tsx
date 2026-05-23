@@ -52,6 +52,64 @@ export default function App() {
 
   // --- App UI state ---
   const [activeView, setActiveView] = useState<ViewName>("home");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Sync window fullscreen state (both Tauri window and HTML fullscreen)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    let unlisten: (() => void) | null = null;
+    let active = true;
+
+    async function setupFullscreenListener() {
+      try {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+        const appWindow = getCurrentWindow();
+        
+        // Initial check
+        const initialFullscreen = await appWindow.isFullscreen();
+        if (active) setIsFullscreen(initialFullscreen);
+
+        // Resize triggers on entering/exiting fullscreen on macOS
+        const unlistenFn = await appWindow.onResized(async () => {
+          const fullscreen = await appWindow.isFullscreen();
+          if (active) setIsFullscreen(fullscreen);
+        });
+        unlisten = unlistenFn;
+      } catch (err) {
+        console.warn("Failed to listen to Tauri window resize / fullscreen events:", err);
+      }
+    }
+
+    setupFullscreenListener();
+
+    const handleHtmlFullscreenChange = () => {
+      const isHtmlFull = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+      setIsFullscreen(isHtmlFull);
+    };
+
+    document.addEventListener("fullscreenchange", handleHtmlFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleHtmlFullscreenChange);
+    document.addEventListener("mozfullscreenchange", handleHtmlFullscreenChange);
+    document.addEventListener("MSFullscreenChange", handleHtmlFullscreenChange);
+
+    return () => {
+      active = false;
+      if (unlisten) {
+        unlisten();
+      }
+      document.removeEventListener("fullscreenchange", handleHtmlFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleHtmlFullscreenChange);
+      document.removeEventListener("mozfullscreenchange", handleHtmlFullscreenChange);
+      document.removeEventListener("MSFullscreenChange", handleHtmlFullscreenChange);
+    };
+  }, []);
+
   const [showHelp, setShowHelp] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -370,13 +428,21 @@ export default function App() {
 
   return (
     <div className="flex h-screen relative">
-      <Sidebar activeView={activeView} onNavigate={setActiveView} notificationCount={notificationCount} health={healthStatus} />
+      <Sidebar
+        activeView={activeView}
+        onNavigate={setActiveView}
+        notificationCount={notificationCount}
+        health={healthStatus}
+        isFullscreen={isFullscreen}
+      />
 
       {/* Liquid Glass — Native visionOS style doesn't use artificial cursor lights */}
 
       {/* Main content */}
       <main
-        className="flex-1 ml-[72px] lg:ml-60 overflow-y-auto scrollbar-hide scroll-container relative z-10 transform-gpu translate-z-0 will-change-scroll"
+        className={`flex-1 overflow-y-auto scrollbar-hide scroll-container relative z-10 transform-gpu translate-z-0 will-change-scroll transition-all duration-300 ${
+          isFullscreen ? "ml-0 lg:ml-0" : "ml-[72px] lg:ml-60"
+        }`}
         // UX-25: Pull-to-refresh — refresh all queries when scrolling to top
         onScroll={handleScroll}
       >
