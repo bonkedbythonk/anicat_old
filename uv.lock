@@ -22,7 +22,7 @@ wheels = [
 
 [[package]]
 name = "anicat"
-version = "4.29.1"
+version = "4.31.3"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },

@@ -14,6 +14,7 @@ from ....libs.media_api.types import (
     MediaType,
     PageInfo,
     UserMediaListStatus,
+    UserListItem,
 )
 from .models import (
     REGISTRY_VERSION,
@@ -254,6 +255,38 @@ class MediaRegistryService:
             self._save_index(index)
             logger.info("Cleaned ghost entries from registry (entries with last_watched but no watch activity)")
 
+    def _get_media_item_with_local_status(self, entry: MediaRegistryIndexEntry) -> Optional[MediaItem]:
+        record = self.get_media_record(entry.media_id)
+        if not record:
+            return None
+        
+        media_item = record.media_item
+        # Merge with local registry status/progress/score
+        if not media_item.user_status:
+            media_item.user_status = UserListItem(
+                status=entry.status,
+                progress=int(entry.progress) if entry.progress.isdigit() else 0,
+                score=entry.score,
+                repeat=entry.repeat,
+                notes=entry.notes,
+            )
+        else:
+            if entry.progress.isdigit():
+                local_progress = int(entry.progress)
+                if media_item.user_status.progress is None:
+                    media_item.user_status.progress = local_progress
+                elif local_progress > media_item.user_status.progress:
+                    media_item.user_status.progress = local_progress
+            if entry.status:
+                media_item.user_status.status = entry.status
+            if entry.score is not None:
+                media_item.user_status.score = entry.score
+            if entry.repeat is not None:
+                media_item.user_status.repeat = entry.repeat
+            if entry.notes is not None:
+                media_item.user_status.notes = entry.notes
+        return media_item
+
     # TODO: standardize params passed to this
     def get_recently_watched(self, limit: Optional[int] = None, type: Optional[MediaType] = None) -> MediaSearchResult:
         """Get recently watched anime or read manga."""
@@ -276,9 +309,9 @@ class MediaRegistryService:
         recent_media: List[MediaItem] = []
         for entry in sorted_entries:
             try:
-                record = self.get_media_record(entry.media_id)
-                if record:
-                    recent_media.append(record.media_item)
+                media_item = self._get_media_item_with_local_status(entry)
+                if media_item:
+                    recent_media.append(media_item)
             except Exception as e:
                 logger.warning(f"Failed to load media record {entry.media_id}: {e}")
 
@@ -313,10 +346,12 @@ class MediaRegistryService:
 
         # Get all media records and attach user status
         for entry in index.media_index.values():
-            record = self.get_media_record(entry.media_id)
-            if record:
-                # Create UserListItem from index entry
-                all_media.append(record.media_item)
+            try:
+                media_item = self._get_media_item_with_local_status(entry)
+                if media_item:
+                    all_media.append(media_item)
+            except Exception as e:
+                logger.warning(f"Failed to load media record {entry.media_id}: {e}")
 
         # Apply filters based on search parameters
         filtered_media = self._apply_search_filters(all_media, params, index)
@@ -521,10 +556,12 @@ class MediaRegistryService:
         # Get media items for these entries
         media_list: List[MediaItem] = []
         for entry in status_entries:
-            record = self.get_media_record(entry.media_id)
-            if record:
-                # Create UserListItem from index entry
-                media_list.append(record.media_item)
+            try:
+                media_item = self._get_media_item_with_local_status(entry)
+                if media_item:
+                    media_list.append(media_item)
+            except Exception as e:
+                logger.warning(f"Failed to load media record {entry.media_id}: {e}")
 
         # Sort by last watched
         sorted_media = sorted(
