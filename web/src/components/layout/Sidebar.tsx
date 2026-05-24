@@ -82,9 +82,9 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0,
             <button
               key={item.view}
               onClick={() => onNavigate(item.view)}
-              className={`w-full flex items-center justify-center lg:justify-start lg:space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${isActive
-                  ? "bg-accent/10 text-accent font-bold"
-                  : "text-gray-500 dark:text-gray-400 hover:text-foreground hover:bg-foreground/[0.04]"
+              className={`w-full flex items-center justify-center lg:justify-start lg:space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 group border cursor-pointer ${isActive
+                  ? "bg-gradient-to-r from-accent/15 to-accent-light/10 border-accent/15 shadow-[0_0_15px_rgba(0,0,0,0.15)] shadow-accent/10 text-accent font-bold"
+                  : "text-gray-500 dark:text-gray-400 hover:text-foreground hover:bg-foreground/[0.04] border-transparent"
                 }`}
             >
               <item.icon size={20} className={`shrink-0 transition-colors ${isActive ? "text-accent" : "text-gray-500 dark:text-gray-400 group-hover:text-accent"}`} />
@@ -112,9 +112,9 @@ export default function Sidebar({ activeView, onNavigate, notificationCount = 0,
             <button
               key={item.view}
               onClick={() => onNavigate(item.view)}
-              className={`w-full flex items-center justify-center lg:justify-start lg:space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${isActive
-                  ? "bg-accent/10 text-accent font-bold"
-                  : "text-gray-500 dark:text-gray-400 hover:text-foreground hover:bg-foreground/[0.04]"
+              className={`w-full flex items-center justify-center lg:justify-start lg:space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 group border cursor-pointer ${isActive
+                  ? "bg-gradient-to-r from-accent/15 to-accent-light/10 border-accent/15 shadow-[0_0_15px_rgba(0,0,0,0.15)] shadow-accent/10 text-accent font-bold"
+                  : "text-gray-500 dark:text-gray-400 hover:text-foreground hover:bg-foreground/[0.04] border-transparent"
                 }`}
             >
               <div className="relative shrink-0 flex items-center justify-center">

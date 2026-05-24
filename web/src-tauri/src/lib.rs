@@ -177,6 +177,21 @@ fn restart_backend(state: tauri::State<'_, SidecarState>) -> Result<String, Stri
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    std::panic::set_hook(Box::new(|info| {
+        eprintln!("--- RUST PANIC DETECTED ---");
+        eprintln!("Panic info: {:?}", info);
+        if let Some(s) = info.payload().downcast_ref::<&str>() {
+            eprintln!("Panic payload (str): {}", s);
+        }
+        if let Some(s) = info.payload().downcast_ref::<String>() {
+            eprintln!("Panic payload (String): {}", s);
+        }
+        if let Some(loc) = info.location() {
+            eprintln!("Panic location: {}:{}:{}", loc.file(), loc.line(), loc.column());
+        }
+        eprintln!("---------------------------");
+    }));
+
     let sidecar_state = SidecarState::new();
     let child_arc = sidecar_state.child.clone();
     let restart_count_arc = sidecar_state.restart_count.clone();
@@ -191,291 +206,299 @@ pub fn run() {
         .manage(sidecar_state)
         .invoke_handler(tauri::generate_handler![open_logs_folder, restart_backend])
         .setup(move |app| {
-            // --- Clean up stale processes on port 13370 ---
-            #[cfg(target_os = "macos")]
-            {
-                // Kill any process holding port 13370 (stale sidecar from previous run)
-                let _ = std::process::Command::new("sh")
-                    .arg("-c")
-                    .arg("lsof -ti :13370 | xargs kill -9 2>/dev/null; pkill -9 -f anicat-server 2>/dev/null; true")
-                    .output();
-                // Brief pause to let the OS release the port
-                std::thread::sleep(std::time::Duration::from_millis(500));
-            }
-
-            // ── macOS 26 note: WKWebView may log "web content process terminated"
-            //    during startup — this is normal process-pool lifecycle on macOS 26
-            //    and does NOT indicate a crash. The webview auto-recovers. ──
-            log::info!("[setup] macOS 26 detected — WKWebView process lifecycle messages are normal");
-
-            // ── UX-01: Full macOS Menu Bar ──
-            let app_menu = SubmenuBuilder::new(app, "Anicat")
-                .item(&PredefinedMenuItem::about(app, Some("About Anicat"), None)?)
-                .separator()
-                .item(&MenuItemBuilder::with_id("preferences", "Preferences...")
-                    .accelerator("CmdOrCtrl+,")
-                    .build(app)?)
-                .separator()
-                .item(&PredefinedMenuItem::services(app, None)?)
-                .separator()
-                .item(&PredefinedMenuItem::hide(app, Some("Hide Anicat"))?)
-                .item(&PredefinedMenuItem::hide_others(app, Some("Hide Others"))?)
-                .item(&PredefinedMenuItem::show_all(app, Some("Show All"))?)
-                .separator()
-                .item(&PredefinedMenuItem::quit(app, Some("Quit Anicat"))?)
-                .build()?;
-
-            let file_menu = SubmenuBuilder::new(app, "File")
-                .item(&MenuItemBuilder::with_id("close_window", "Close Window")
-                    .accelerator("CmdOrCtrl+W")
-                    .build(app)?)
-                .build()?;
-
-            let edit_menu = SubmenuBuilder::new(app, "Edit")
-                .item(&PredefinedMenuItem::undo(app, Some("Undo"))?)
-                .item(&PredefinedMenuItem::redo(app, Some("Redo"))?)
-                .separator()
-                .item(&PredefinedMenuItem::cut(app, Some("Cut"))?)
-                .item(&PredefinedMenuItem::copy(app, Some("Copy"))?)
-                .item(&PredefinedMenuItem::paste(app, Some("Paste"))?)
-                .item(&PredefinedMenuItem::select_all(app, Some("Select All"))?)
-                .build()?;
-
-            let view_menu = SubmenuBuilder::new(app, "View")
-                .item(&MenuItemBuilder::with_id("toggle_fullscreen", "Toggle Full Screen")
-                    .accelerator("Ctrl+Cmd+F")
-                    .build(app)?)
-                .item(&MenuItemBuilder::with_id("toggle_sidebar", "Toggle Sidebar")
-                    .accelerator("CmdOrCtrl+B")
-                    .build(app)?)
-                .separator()
-                .item(&MenuItemBuilder::with_id("nav_home", "Home")
-                    .accelerator("CmdOrCtrl+1")
-                    .build(app)?)
-                .item(&MenuItemBuilder::with_id("nav_search", "Search")
-                    .accelerator("CmdOrCtrl+K")
-                    .build(app)?)
-                .item(&MenuItemBuilder::with_id("nav_library", "Library")
-                    .accelerator("CmdOrCtrl+2")
-                    .build(app)?)
-                .item(&MenuItemBuilder::with_id("nav_schedule", "Schedule")
-                    .accelerator("CmdOrCtrl+3")
-                    .build(app)?)
-                .build()?;
-
-            let help_menu = SubmenuBuilder::new(app, "Help")
-                .item(&MenuItemBuilder::with_id("keyboard_shortcuts", "Keyboard Shortcuts")
-                    .accelerator("CmdOrCtrl+?")
-                    .build(app)?)
-                .build()?;
-
-            let menu = MenuBuilder::new(app)
-                .item(&app_menu)
-                .item(&file_menu)
-                .item(&edit_menu)
-                .item(&view_menu)
-                .item(&help_menu)
-                .build()?;
-
-            app.set_menu(menu)?;
-
-            // Handle menu events
-            let app_handle = app.handle().clone();
-            app.on_menu_event(move |_app, event| {
-                match event.id().as_ref() {
-                    "preferences" => {
-                        if let Some(window) = app_handle.get_webview_window("main") {
-                            let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('settings')");
-                        }
-                    }
-                    "nav_home" => {
-                        if let Some(window) = app_handle.get_webview_window("main") {
-                            let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('home')");
-                        }
-                    }
-                    "nav_search" => {
-                        if let Some(window) = app_handle.get_webview_window("main") {
-                            let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('search')");
-                        }
-                    }
-                    "nav_library" => {
-                        if let Some(window) = app_handle.get_webview_window("main") {
-                            let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('library')");
-                        }
-                    }
-                    "nav_schedule" => {
-                        if let Some(window) = app_handle.get_webview_window("main") {
-                            let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('schedule')");
-                        }
-                    }
-                    "keyboard_shortcuts" => {
-                        if let Some(window) = app_handle.get_webview_window("main") {
-                            let _ = window.eval("window.__anicat_toggle_help__ && window.__anicat_toggle_help__()");
-                        }
-                    }
-                    "toggle_fullscreen" => {
-                        if let Some(window) = app_handle.get_webview_window("main") {
-                            let is_fullscreen = window.is_fullscreen().unwrap_or(false);
-                            let _ = window.set_fullscreen(!is_fullscreen);
-                        }
-                    }
-                    "close_window" => {
-                        if let Some(window) = app_handle.get_webview_window("main") {
-                            let _ = window.close();
-                        }
-                    }
-                    _ => {}
+            let setup_result = (|| -> Result<(), Box<dyn std::error::Error>> {
+                // --- Clean up stale processes on port 13370 ---
+                #[cfg(target_os = "macos")]
+                {
+                    // Kill any process holding port 13370 (stale sidecar from previous run)
+                    let _ = std::process::Command::new("sh")
+                        .arg("-c")
+                        .arg("lsof -ti :13370 | xargs kill -9 2>/dev/null; pkill -9 -f anicat-server 2>/dev/null; true")
+                        .output();
+                    // Brief pause to let the OS release the port
+                    std::thread::sleep(std::time::Duration::from_millis(500));
                 }
-            });
 
-            // ── UX-03: Global Shortcut disabled on macOS 26 ──
-            // The accessibility API path changed in macOS 26, causing
-            // a hard crash when initializing the global-shortcut plugin.
-            // Quick Pane can still be toggled via the tray menu.
-            log::info!("[plugins] Global shortcut disabled on macOS 26. Quick Pane requires manual activation.");
+                // ── macOS 26 note: WKWebView may log "web content process terminated"
+                //    during startup — this is normal process-pool lifecycle on macOS 26
+                //    and does NOT indicate a crash. The webview auto-recovers. ──
+                log::info!("[setup] macOS 26 detected — WKWebView process lifecycle messages are normal");
 
-            // ── UX-03: Quick Pane floating window ──
-            let qp_config = tauri::WebviewUrl::App("quick-pane.html".into());
-            let _quick_pane = tauri::WebviewWindowBuilder::new(
-                app,
-                "quick-pane",
-                qp_config,
-            )
-            .title("Quick Pane")
-            .inner_size(340.0, 480.0)
-            .resizable(false)
-            .decorations(false)
-            .always_on_top(true)
-            .visible(false)
-            .skip_taskbar(true)
-            .build()?;
+                // ── UX-01: Full macOS Menu Bar ──
+                let app_menu = SubmenuBuilder::new(app, "Anicat")
+                    .item(&PredefinedMenuItem::about(app, Some("About Anicat"), None)?)
+                    .separator()
+                    .item(&MenuItemBuilder::with_id("preferences", "Preferences...")
+                        .accelerator("CmdOrCtrl+,")
+                        .build(app)?)
+                    .separator()
+                    .item(&PredefinedMenuItem::services(app, None)?)
+                    .separator()
+                    .item(&PredefinedMenuItem::hide(app, Some("Hide Anicat"))?)
+                    .item(&PredefinedMenuItem::hide_others(app, Some("Hide Others"))?)
+                    .item(&PredefinedMenuItem::show_all(app, Some("Show All"))?)
+                    .separator()
+                    .item(&PredefinedMenuItem::quit(app, Some("Quit Anicat"))?)
+                    .build()?;
 
-            // ── Tray Menu ──
-            let quit_i = MenuItemBuilder::with_id("quit", "Quit Anicat")
-                .build(app)?;
-            let show_i = MenuItemBuilder::with_id("show", "Show Dashboard")
-                .build(app)?;
-            let tray_menu = MenuBuilder::new(app)
-                .item(&show_i)
-                .item(&quit_i)
-                .build()?;
+                let file_menu = SubmenuBuilder::new(app, "File")
+                    .item(&MenuItemBuilder::with_id("close_window", "Close Window")
+                        .accelerator("CmdOrCtrl+W")
+                        .build(app)?)
+                    .build()?;
 
-            let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray-icon.png"))?;
-            let _tray = TrayIconBuilder::new()
-                .icon(tray_icon)
-                .icon_as_template(true)
-                .menu(&tray_menu)
-                .on_menu_event(|app, event| match event.id().as_ref() {
-                    "quit" => app.exit(0),
-                    "show" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
-                    }
-                    _ => {}
-                })
-                .build(app)?;
+                let edit_menu = SubmenuBuilder::new(app, "Edit")
+                    .item(&PredefinedMenuItem::undo(app, Some("Undo"))?)
+                    .item(&PredefinedMenuItem::redo(app, Some("Redo"))?)
+                    .separator()
+                    .item(&PredefinedMenuItem::cut(app, Some("Cut"))?)
+                    .item(&PredefinedMenuItem::copy(app, Some("Copy"))?)
+                    .item(&PredefinedMenuItem::paste(app, Some("Paste"))?)
+                    .item(&PredefinedMenuItem::select_all(app, Some("Select All"))?)
+                    .build()?;
 
-            // --- Spawn backend ---
-            if let Some(child) = spawn_backend() {
-                *child_arc.lock().unwrap() = Some(child);
-                log::info!("[sidecar] Backend started");
-            } else {
-                log::error!("[sidecar] Failed to start backend");
-            }
+                let view_menu = SubmenuBuilder::new(app, "View")
+                    .item(&MenuItemBuilder::with_id("toggle_fullscreen", "Toggle Full Screen")
+                        .accelerator("Ctrl+Cmd+F")
+                        .build(app)?)
+                    .item(&MenuItemBuilder::with_id("toggle_sidebar", "Toggle Sidebar")
+                        .accelerator("CmdOrCtrl+B")
+                        .build(app)?)
+                    .separator()
+                    .item(&MenuItemBuilder::with_id("nav_home", "Home")
+                        .accelerator("CmdOrCtrl+1")
+                        .build(app)?)
+                    .item(&MenuItemBuilder::with_id("nav_search", "Search")
+                        .accelerator("CmdOrCtrl+K")
+                        .build(app)?)
+                    .item(&MenuItemBuilder::with_id("nav_library", "Library")
+                        .accelerator("CmdOrCtrl+2")
+                        .build(app)?)
+                    .item(&MenuItemBuilder::with_id("nav_schedule", "Schedule")
+                        .accelerator("CmdOrCtrl+3")
+                        .build(app)?)
+                    .build()?;
 
-            // --- Watchdog: monitors and restarts backend on crash ---
-            let child_wd = child_arc.clone();
-            let restart_wd = restart_count_arc.clone();
-            let _app_handle = app.handle().clone();
+                let help_menu = SubmenuBuilder::new(app, "Help")
+                    .item(&MenuItemBuilder::with_id("keyboard_shortcuts", "Keyboard Shortcuts")
+                        .accelerator("CmdOrCtrl+?")
+                        .build(app)?)
+                    .build()?;
 
-            thread::spawn(move || loop {
-                thread::sleep(std::time::Duration::from_secs(2));
+                let menu = MenuBuilder::new(app)
+                    .item(&app_menu)
+                    .item(&file_menu)
+                    .item(&edit_menu)
+                    .item(&view_menu)
+                    .item(&help_menu)
+                    .build()?;
 
-                let should_restart = {
-                    let mut guard = child_wd.lock().unwrap();
-                    match guard.as_mut() {
-                        Some(child) => match child.try_wait() {
-                            Ok(Some(status)) => {
-                                log::warn!("[sidecar] Backend exited: {:?}", status);
-                                *guard = None;
-                                true
+                app.set_menu(menu)?;
+
+                // Handle menu events
+                let app_handle = app.handle().clone();
+                app.on_menu_event(move |_app, event| {
+                    match event.id().as_ref() {
+                        "preferences" => {
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('settings')");
                             }
-                            Ok(None) => false,
-                            Err(e) => {
-                                log::error!("[sidecar] Error checking backend: {}", e);
-                                *guard = None;
-                                true
+                        }
+                        "nav_home" => {
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('home')");
                             }
-                        },
-                        None => true,
-                    }
-                };
-
-                if should_restart {
-                    let mut rc = restart_wd.lock().unwrap();
-                    if *rc >= 5 {
-                        log::error!("[sidecar] {} crashes — giving up", *rc);
-                        break;
-                    }
-                    *rc += 1;
-                    drop(rc);
-
-                    // Kill any lingering processes on port 13370 before restarting.
-                    // The PyInstaller sidecar spawns a child that may outlive the
-                    // parent, keeping the port occupied.
-                    #[cfg(target_os = "macos")]
-                    {
-                        let _ = std::process::Command::new("sh")
-                            .arg("-c")
-                            .arg("lsof -ti :13370 | xargs kill -9 2>/dev/null; true")
-                            .output();
-                        std::thread::sleep(std::time::Duration::from_millis(800));
-                    }
-
-                    log::info!("[sidecar] Restarting (attempt {})...", restart_wd.lock().unwrap());
-                    if let Some(new_child) = spawn_backend() {
-                        *child_wd.lock().unwrap() = Some(new_child);
-                        log::info!("[sidecar] Backend restarted");
-                    } else {
-                        log::error!("[sidecar] Failed to restart");
-                    }
-                }
-            });
-
-            // --- Startup safety net: reload main window if the page failed to load ---
-            // On macOS 26, WKWebView may show its built-in error page ("This page
-            // couldn't load") if the initial web content process crashes before the
-            // auto-recovery handler can act. This delayed reload ensures the app
-            // recovers even when the built-in handler misses the event.
-            let app_handle_reload = app.handle().clone();
-            thread::spawn(move || {
-                thread::sleep(std::time::Duration::from_secs(4));
-                if let Some(main_window) = app_handle_reload.get_webview_window("main") {
-                    // Try a benign eval to see if our page actually loaded.
-                    // If the webview is showing the WKWebView error page, eval
-                    // will still succeed but the title won't match.
-                    let eval_result = main_window.eval(
-                        "document.title === 'anicat' ? 'ok' : 'error-page'"
-                    );
-                    match eval_result {
-                        Ok(_) => {
-                            // eval succeeded — the webview is alive. The JS will
-                            // have run and we'll get the result back asynchronously.
-                            // We rely on the auto-recovery handler for actual recovery;
-                            // this is just a safety check.
                         }
-                        Err(_) => {
-                            log::warn!("[recovery] Main window eval failed — attempting reload");
-                            let _ = main_window.eval("location.reload()");
+                        "nav_search" => {
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('search')");
+                            }
+                        }
+                        "nav_library" => {
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('library')");
+                            }
+                        }
+                        "nav_schedule" => {
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('schedule')");
+                            }
+                        }
+                        "keyboard_shortcuts" => {
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                let _ = window.eval("window.__anicat_toggle_help__ && window.__anicat_toggle_help__()");
+                            }
+                        }
+                        "toggle_fullscreen" => {
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                let is_fullscreen = window.is_fullscreen().unwrap_or(false);
+                                let _ = window.set_fullscreen(!is_fullscreen);
+                            }
+                        }
+                        "close_window" => {
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                let _ = window.close();
+                            }
+                        }
+                        _ => {}
+                    }
+                });
+
+                // ── UX-03: Global Shortcut disabled on macOS 26 ──
+                // The accessibility API path changed in macOS 26, causing
+                // a hard crash when initializing the global-shortcut plugin.
+                // Quick Pane can still be toggled via the tray menu.
+                log::info!("[plugins] Global shortcut disabled on macOS 26. Quick Pane requires manual activation.");
+
+                // ── UX-03: Quick Pane floating window ──
+                let qp_config = tauri::WebviewUrl::App("quick-pane.html".into());
+                let _quick_pane = tauri::WebviewWindowBuilder::new(
+                    app,
+                    "quick-pane",
+                    qp_config,
+                )
+                .title("Quick Pane")
+                .inner_size(340.0, 480.0)
+                .resizable(false)
+                .decorations(false)
+                .always_on_top(true)
+                .visible(false)
+                .skip_taskbar(true)
+                .build()?;
+
+                // ── Tray Menu ──
+                let quit_i = MenuItemBuilder::with_id("quit", "Quit Anicat")
+                    .build(app)?;
+                let show_i = MenuItemBuilder::with_id("show", "Show Dashboard")
+                    .build(app)?;
+                let tray_menu = MenuBuilder::new(app)
+                    .item(&show_i)
+                    .item(&quit_i)
+                    .build()?;
+
+                let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray-icon.png"))?;
+                let _tray = TrayIconBuilder::new()
+                    .icon(tray_icon)
+                    .icon_as_template(true)
+                    .menu(&tray_menu)
+                    .on_menu_event(|app, event| match event.id().as_ref() {
+                        "quit" => app.exit(0),
+                        "show" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                        _ => {}
+                    })
+                    .build(app)?;
+
+                // --- Spawn backend ---
+                if let Some(child) = spawn_backend() {
+                    *child_arc.lock().unwrap() = Some(child);
+                    log::info!("[sidecar] Backend started");
+                } else {
+                    log::error!("[sidecar] Failed to start backend");
+                }
+
+                // --- Watchdog: monitors and restarts backend on crash ---
+                let child_wd = child_arc.clone();
+                let restart_wd = restart_count_arc.clone();
+                let _app_handle = app.handle().clone();
+
+                thread::spawn(move || loop {
+                    thread::sleep(std::time::Duration::from_secs(2));
+
+                    let should_restart = {
+                        let mut guard = child_wd.lock().unwrap();
+                        match guard.as_mut() {
+                            Some(child) => match child.try_wait() {
+                                Ok(Some(status)) => {
+                                    log::warn!("[sidecar] Backend exited: {:?}", status);
+                                    *guard = None;
+                                    true
+                                }
+                                Ok(None) => false,
+                                Err(e) => {
+                                    log::error!("[sidecar] Error checking backend: {}", e);
+                                    *guard = None;
+                                    true
+                                }
+                            },
+                            None => true,
+                        }
+                    };
+
+                    if should_restart {
+                        let mut rc = restart_wd.lock().unwrap();
+                        if *rc >= 5 {
+                            log::error!("[sidecar] {} crashes — giving up", *rc);
+                            break;
+                        }
+                        *rc += 1;
+                        drop(rc);
+
+                        // Kill any lingering processes on port 13370 before restarting.
+                        // The PyInstaller sidecar spawns a child that may outlive the
+                        // parent, keeping the port occupied.
+                        #[cfg(target_os = "macos")]
+                        {
+                            let _ = std::process::Command::new("sh")
+                                .arg("-c")
+                                .arg("lsof -ti :13370 | xargs kill -9 2>/dev/null; true")
+                                .output();
+                            std::thread::sleep(std::time::Duration::from_millis(800));
+                        }
+
+                        log::info!("[sidecar] Restarting (attempt {})...", restart_wd.lock().unwrap());
+                        if let Some(new_child) = spawn_backend() {
+                            *child_wd.lock().unwrap() = Some(new_child);
+                            log::info!("[sidecar] Backend restarted");
+                        } else {
+                            log::error!("[sidecar] Failed to restart");
                         }
                     }
-                }
-            });
+                });
 
-            log::info!("Anicat started successfully — frontend + backend are live");
-            Ok(())
+                // --- Startup safety net: reload main window if the page failed to load ---
+                // On macOS 26, WKWebView may show its built-in error page ("This page
+                // couldn't load") if the initial web content process crashes before the
+                // auto-recovery handler can act. This delayed reload ensures the app
+                // recovers even when the built-in handler misses the event.
+                let app_handle_reload = app.handle().clone();
+                thread::spawn(move || {
+                    thread::sleep(std::time::Duration::from_secs(4));
+                    if let Some(main_window) = app_handle_reload.get_webview_window("main") {
+                        // Try a benign eval to see if our page actually loaded.
+                        // If the webview is showing the WKWebView error page, eval
+                        // will still succeed but the title won't match.
+                        let eval_result = main_window.eval(
+                            "document.title === 'anicat' ? 'ok' : 'error-page'"
+                        );
+                        match eval_result {
+                            Ok(_) => {
+                                // eval succeeded — the webview is alive. The JS will
+                                // have run and we'll get the result back asynchronously.
+                                // We rely on the auto-recovery handler for actual recovery;
+                                // this is just a safety check.
+                            }
+                            Err(_) => {
+                                log::warn!("[recovery] Main window eval failed — attempting reload");
+                                let _ = main_window.eval("location.reload()");
+                            }
+                        }
+                    }
+                });
+
+                log::info!("Anicat started successfully — frontend + backend are live");
+                Ok(())
+            })();
+
+            if let Err(ref e) = setup_result {
+                eprintln!("[setup] CRITICAL ERROR IN TAURI SETUP: {:?}", e);
+                log::error!("[setup] CRITICAL ERROR IN TAURI SETUP: {:?}", e);
+            }
+            setup_result
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

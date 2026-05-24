@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useRef, useState, useCallback } from "react";
-import { Loader2, Settings2, Clock } from "lucide-react";
+import { Loader2, Settings2, Clock, Heart, Zap, Ghost, Coffee, Smile, Sparkles, Flame, Eye } from "lucide-react";
 import Hero from "@/components/media/Hero";
 import MediaRow from "@/components/media/MediaRow";
 import { mediaApi, type MediaItem } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
+import { useAmbientColor } from "@/lib/useAmbientColor";
 
 interface HomeViewProps {
   onSelect: (item: MediaItem) => void;
@@ -71,14 +72,14 @@ function MediaRowSkeleton({ title }: { title: string }) {
 
 // UX-15: Genre mood chips
 const GENRE_MOODS = [
-  { label: "Action", genre: "Action" },
-  { label: "Romance", genre: "Romance" },
-  { label: "Thriller", genre: "Thriller" },
-  { label: "Comedy", genre: "Comedy" },
-  { label: "Slice of Life", genre: "Slice of Life" },
-  { label: "Sci-Fi", genre: "Sci-Fi" },
-  { label: "Fantasy", genre: "Fantasy" },
-  { label: "Horror", genre: "Horror" },
+  { label: "Action", genre: "Action", icon: Zap },
+  { label: "Romance", genre: "Romance", icon: Heart },
+  { label: "Thriller", genre: "Thriller", icon: Eye },
+  { label: "Comedy", genre: "Comedy", icon: Smile },
+  { label: "Slice of Life", genre: "Slice of Life", icon: Coffee },
+  { label: "Sci-Fi", genre: "Sci-Fi", icon: Sparkles },
+  { label: "Fantasy", genre: "Fantasy", icon: Flame },
+  { label: "Horror", genre: "Horror", icon: Ghost },
 ];
 
 export default function HomeView({ onSelect }: HomeViewProps) {
@@ -255,6 +256,8 @@ export default function HomeView({ onSelect }: HomeViewProps) {
     return next;
   }, [candidateHeroItem]);
 
+  const ambientColor = useAmbientColor(heroItem?.banner_image || heroItem?.cover_image?.large);
+
   // Global loading only until critical data is loaded
   if (recentlyWatchedQuery.isLoading && watchingQuery.isLoading) {
     return (
@@ -265,24 +268,36 @@ export default function HomeView({ onSelect }: HomeViewProps) {
   }
 
   return (
-    <div className="space-y-12 pb-12">
+    <div className="relative space-y-12 pb-12">
+      {/* Ambient background glow */}
+      <div 
+        className="absolute top-[-100px] right-[-60px] w-[500px] h-[500px] rounded-full blur-[140px] opacity-[0.14] pointer-events-none transition-all duration-1000 -z-10"
+        style={{ 
+          background: `radial-gradient(circle, ${ambientColor} 0%, transparent 70%)`
+        }}
+      />
       {heroItem && <Hero item={heroItem} onSelect={onSelect} />}
 
       {/* UX-15: Genre mood chips */}
       <div className="flex items-center space-x-2 overflow-x-auto scrollbar-hide px-1 pt-6 lg:pt-8">
-        {GENRE_MOODS.map(mood => (
-          <button
-            key={mood.genre}
-            onClick={() => setActiveGenre(activeGenre === mood.genre ? null : mood.genre)}
-            className={`shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all ${
-              activeGenre === mood.genre
-                ? "glass-button"
-                : "bg-white/5 text-gray-300 hover:text-white hover:bg-white/10"
-            }`}
-          >
-            {mood.label}
-          </button>
-        ))}
+        {GENRE_MOODS.map(mood => {
+          const Icon = mood.icon;
+          const isActive = activeGenre === mood.genre;
+          return (
+            <button
+              key={mood.genre}
+              onClick={() => setActiveGenre(isActive ? null : mood.genre)}
+              className={`shrink-0 flex items-center space-x-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                isActive
+                  ? "bg-gradient-to-r from-accent to-accent-light text-white border-t border-white/10 shadow-lg shadow-accent/25"
+                  : "bg-white/[0.03] border border-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.07] hover:border-white/[0.08]"
+              }`}
+            >
+              <Icon size={12} className={isActive ? "text-white animate-pulse" : "text-gray-400"} />
+              <span>{mood.label}</span>
+            </button>
+          );
+        })}
         {/* UX-22: Customize button */}
         <button
           onClick={() => setShowCustomizer(!showCustomizer)}

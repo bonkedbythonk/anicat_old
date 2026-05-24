@@ -5,7 +5,7 @@ import { mediaApi, type HealthStatus } from "@/lib/api";
 import { getQueryClient } from "@/components/Providers";
 
 // Frontend version from package.json — used to detect stale backend
-const FRONTEND_VERSION = "4.4.1";
+const FRONTEND_VERSION = "4.32.0";
 let _versionMismatchWarned = false;
 
 async function showNativeNotification(title: string, body: string) {
