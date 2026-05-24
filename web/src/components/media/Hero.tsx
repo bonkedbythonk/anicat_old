@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import { Play, Maximize, BookOpen, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { mediaApi, type MediaItem } from "@/lib/api";
@@ -14,6 +14,8 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
   const [clicked, setClicked] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [isVideoVisible, setIsVideoVisible] = useState(false);
+
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const { data: config = null } = useQuery({
     queryKey: ["media-config", item.id],
@@ -47,6 +49,7 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
     }, 6000);
 
     const handleMessage = (event: MessageEvent) => {
+      if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return;
       try {
         const data = JSON.parse(event.data);
         if (data.event === "infoDelivery" && data.info && data.info.playerState === 1) {
@@ -105,6 +108,15 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
           <>
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
               <iframe
+                ref={iframeRef}
+                onLoad={() => {
+                  if (iframeRef.current && iframeRef.current.contentWindow) {
+                    iframeRef.current.contentWindow.postMessage(
+                      JSON.stringify({ event: "listening" }),
+                      "*"
+                    );
+                  }
+                }}
                 src={`https://www.youtube-nocookie.com/embed/${item.trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${item.trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&enablejsapi=1`}
                 className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] transition-opacity duration-1000 ${isVideoVisible ? "opacity-100" : "opacity-0"}`}
                 allow="autoplay; encrypted-media"

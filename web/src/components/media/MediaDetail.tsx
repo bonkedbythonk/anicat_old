@@ -30,9 +30,12 @@ type DetailConfig = {
 export default function MediaDetail({ item, onClose, initialAction, onRead, onPlayEpisode }: MediaDetailProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPlayingNext, setIsPlayingNext] = useState(false);
-  const [showTrailer, setShowTrailer] = useState(false);
   const [isTrailerVisible, setIsTrailerVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<"episodes" | "characters" | "reviews" | "recommendations">("episodes");
+
+  const [isHovered, setIsHovered] = useState(false);
+  const isHoveredRef = useRef(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const { data: config = null } = useQuery<DetailConfig | null>({
     queryKey: ["media-config", item.id],
@@ -43,27 +46,46 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
     staleTime: 60_000,
   });
 
+  const playTrailer = () => {
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: "command", func: "playVideo", args: "" }),
+        "*"
+      );
+    }
+  };
+
+  const pauseTrailer = () => {
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: "command", func: "pauseVideo", args: "" }),
+        "*"
+      );
+    }
+  };
+
+  // Sync isHovered state with ref to avoid stale closure in message listener
   useEffect(() => {
-    setShowTrailer(false);
+    isHoveredRef.current = isHovered;
+  }, [isHovered]);
+
+  useEffect(() => {
     setIsTrailerVisible(false);
+    setIsHovered(false);
   }, [item.id]);
 
   useEffect(() => {
-    if (!showTrailer) {
-      setIsTrailerVisible(false);
-      return;
-    }
-
-    const fallbackTimer = setTimeout(() => {
-      setIsTrailerVisible(true);
-    }, 6000);
-
     const handleMessage = (event: MessageEvent) => {
+      if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return;
       try {
         const data = JSON.parse(event.data);
         if (data.event === "infoDelivery" && data.info && data.info.playerState === 1) {
-          setIsTrailerVisible(true);
-          clearTimeout(fallbackTimer);
+          if (isHoveredRef.current) {
+            setIsTrailerVisible(true);
+          } else {
+            // Pre-buffered and ready to play; pause until hovered
+            pauseTrailer();
+          }
         }
       } catch (e) {
         // Ignore parsing errors
@@ -73,9 +95,8 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
     window.addEventListener("message", handleMessage);
     return () => {
       window.removeEventListener("message", handleMessage);
-      clearTimeout(fallbackTimer);
     };
-  }, [showTrailer]);
+  }, [item.id]);
 
   // Initial detail load via React Query
   const {
@@ -93,6 +114,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   // Derived values (computed from state/props, must precede hooks that consume them)
   const isManga = item.type === "MANGA" || !!(item.format && ["MANGA", "ONE_SHOT", "NOVEL"].includes(item.format));
   const banner = fullItem.banner_image || fullItem.cover_image?.large || item.banner_image || item.cover_image?.large;
+  const trailer = item.trailer || fullItem?.trailer;
 
   // Extracted hooks
   const ambientColor = useAmbientColor(banner);
@@ -258,13 +280,19 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
           <div 
             className="relative h-72 w-full flex-shrink-0 cursor-pointer"
             onMouseEnter={() => {
-              if (item.trailer?.id && item.trailer.site === "youtube") {
-                setShowTrailer(true);
+              const hasTrailer = !!(trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers);
+              if (hasTrailer) {
+                setIsHovered(true);
+                playTrailer();
               }
             }}
             onMouseLeave={() => {
-              setShowTrailer(false);
-              setIsTrailerVisible(false);
+              const hasTrailer = !!(trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers);
+              if (hasTrailer) {
+                setIsHovered(false);
+                pauseTrailer();
+                setIsTrailerVisible(false);
+              }
             }}
           >
              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent z-[1]" />
@@ -272,14 +300,23 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
              <img
                src={banner}
                alt={title}
-               className={`w-full h-full object-cover transition-opacity duration-1000 ${isTrailerVisible && fullItem.trailer?.id ? "opacity-0" : "opacity-100"}`}
+               className={`w-full h-full object-cover transition-opacity duration-1000 ${isTrailerVisible && (trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers) ? "opacity-0" : "opacity-100"}`}
              />
-             {/* Muted trailer iframe — wrapped in overflow-hidden to clip scaled iframe */}
-             {showTrailer && fullItem.trailer?.id && fullItem.trailer.site === "youtube" && (
+             {/* Muted trailer iframe — pre-mounted to play instantly on hover */}
+             {trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers && (
                <>
                  <div className="absolute inset-0 overflow-hidden pointer-events-none z-[0]">
                    <iframe
-                     src={`https://www.youtube-nocookie.com/embed/${fullItem.trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${fullItem.trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&cc_load_policy=0&enablejsapi=1`}
+                     ref={iframeRef}
+                     onLoad={() => {
+                       if (iframeRef.current && iframeRef.current.contentWindow) {
+                         iframeRef.current.contentWindow.postMessage(
+                           JSON.stringify({ event: "listening" }),
+                           "*"
+                         );
+                       }
+                     }}
+                     src={`https://www.youtube-nocookie.com/embed/${trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&cc_load_policy=0&enablejsapi=1`}
                      className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] transition-opacity duration-1000 ${isTrailerVisible ? "opacity-100" : "opacity-0"}`}
                      allow="autoplay; encrypted-media"
                      referrerPolicy="strict-origin-when-cross-origin"
