@@ -70,8 +70,6 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   // Derived values (computed from state/props, must precede hooks that consume them)
   const isManga = item.type === "MANGA" || !!(item.format && ["MANGA", "ONE_SHOT", "NOVEL"].includes(item.format));
   const banner = fullItem.banner_image || fullItem.cover_image?.large || item.banner_image || item.cover_image?.large;
-  const normalizedUserStatus = fullItem.user_status?.status?.toLowerCase() || item.user_status?.status?.toLowerCase();
-  const isPlanning = normalizedUserStatus === "planning";
 
   // Extracted hooks
   const ambientColor = useAmbientColor(banner);
@@ -180,25 +178,6 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   const queryClient = useQueryClient();
   const appState = useAppState();
 
-  const handleToggleWatchlist = async () => {
-    if (isUpdatingStatus) return;
-    setIsUpdatingStatus(true);
-
-    try {
-      if (isPlanning) {
-        await mediaApi.deleteFromList(item.id);
-      } else {
-        await mediaApi.updateStatus(item.id, "planning");
-      }
-      // Invalidate the detail query so it re-fetches with updated status
-      queryClient.invalidateQueries({ queryKey: ["media-detail", item.id] });
-      dispatchRefresh();
-    } catch (error) {
-      console.error("Failed to toggle watchlist:", error);
-    } finally {
-      setIsUpdatingStatus(false);
-    }
-  };
 
   const title = fullItem.title.english || fullItem.title.romaji;
 
@@ -327,18 +306,40 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                   );
                 })()}
                 
-                <button 
-                  onClick={handleToggleWatchlist}
-                  disabled={isUpdatingStatus}
-                  title={isPlanning ? "Remove from Watchlist" : "Add to Watchlist"}
-                  className={`p-3.5 rounded-2xl transition-all border active:scale-95 ${
-                    isPlanning 
-                    ? "bg-accent/20 border-accent/30 text-accent" 
-                    : "bg-foreground/5 border-border text-foreground/70 hover:text-foreground hover:bg-foreground/10"
-                  }`}
-                >
-                  {isUpdatingStatus ? <Loader2 size={22} className="animate-spin" /> : <Bookmark size={22} fill={isPlanning ? "currentColor" : "none"} />}
-                </button>
+                <div className="relative flex-1">
+                  <select
+                    value={fullItem.user_status?.status?.toLowerCase() || "none"}
+                    onChange={async (e) => {
+                      const newStatus = e.target.value;
+                      if (newStatus === "none") {
+                        await handleRemoveFromList();
+                      } else {
+                        setIsUpdatingStatus(true);
+                        try {
+                          await mediaApi.updateStatus(item.id, newStatus);
+                          queryClient.invalidateQueries({ queryKey: ["media-detail", item.id] });
+                          dispatchRefresh();
+                        } catch (err) {
+                          console.error("Failed to update status:", err);
+                        } finally {
+                          setIsUpdatingStatus(false);
+                        }
+                      }
+                    }}
+                    disabled={isUpdatingStatus}
+                    className="w-full bg-foreground/5 border border-border text-foreground hover:bg-foreground/10 rounded-2xl pl-4 pr-10 py-3.5 text-sm font-bold focus:outline-none focus:border-accent active:scale-95 transition-all cursor-pointer appearance-none"
+                  >
+                    <option value="none" className="bg-[#050505] text-muted-foreground">-- Add to List --</option>
+                    <option value="planning" className="bg-[#050505] text-white">Planning</option>
+                    <option value="watching" className="bg-[#050505] text-white">{isManga ? "Reading" : "Watching"}</option>
+                    <option value="completed" className="bg-[#050505] text-white">Completed</option>
+                    <option value="paused" className="bg-[#050505] text-white">Paused</option>
+                    <option value="dropped" className="bg-[#050505] text-white">Dropped</option>
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                    <ChevronDown size={16} />
+                  </div>
+                </div>
 
                 <button 
                   onClick={handleRemoveFromList}
