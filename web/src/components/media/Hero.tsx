@@ -102,17 +102,19 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
 
         {/* Muted auto-play trailer — overflow-hidden wrapper clips the scaled iframe */}
         {showVideo && item.trailer?.id && item.trailer.site === "youtube" && (
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <iframe
-              src={`https://www.youtube-nocookie.com/embed/${item.trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${item.trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&enablejsapi=1`}
-              className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] transition-opacity duration-1000 ${isVideoVisible ? "opacity-100" : "opacity-0"}`}
-              allow="autoplay; encrypted-media"
-              referrerPolicy="strict-origin-when-cross-origin"
-              title="Airing Trailer"
-            />
+          <>
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${item.trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${item.trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&enablejsapi=1`}
+                className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] transition-opacity duration-1000 ${isVideoVisible ? "opacity-100" : "opacity-0"}`}
+                allow="autoplay; encrypted-media"
+                referrerPolicy="strict-origin-when-cross-origin"
+                title="Airing Trailer"
+              />
+            </div>
             {/* Transparent overlay — blocks YouTube hover controls */}
             <div className="absolute inset-0 z-10 pointer-events-auto bg-transparent" />
-          </div>
+          </>
         )}
 
         {/* Cinematic gradients: heavy at bottom-left for readability, fades on right */}

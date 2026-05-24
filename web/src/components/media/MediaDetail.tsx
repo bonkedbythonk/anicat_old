@@ -43,21 +43,10 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
     staleTime: 60_000,
   });
 
-  // Auto-play muted trailer in the banner after 2.5s
   useEffect(() => {
     setShowTrailer(false);
     setIsTrailerVisible(false);
-    if (!item.trailer?.id || item.trailer.site !== "youtube") return;
-
-    const enabled = !!config?.stream?.autoplay_trailers;
-    if (!enabled) return;
-
-    const timer = setTimeout(() => {
-      setShowTrailer(true);
-    }, 2500);
-
-    return () => clearTimeout(timer);
-  }, [item.id, item.trailer?.id, item.trailer?.site, config?.stream?.autoplay_trailers]);
+  }, [item.id]);
 
   useEffect(() => {
     if (!showTrailer) {
@@ -266,7 +255,18 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto scrollbar-hide z-10 relative bg-transparent transform-gpu translate-z-0 will-change-scroll">
           {/* Header Banner with optional muted trailer */}
-          <div className="relative h-72 w-full flex-shrink-0">
+          <div 
+            className="relative h-72 w-full flex-shrink-0 cursor-pointer"
+            onMouseEnter={() => {
+              if (item.trailer?.id && item.trailer.site === "youtube") {
+                setShowTrailer(true);
+              }
+            }}
+            onMouseLeave={() => {
+              setShowTrailer(false);
+              setIsTrailerVisible(false);
+            }}
+          >
              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent z-[1]" />
              {/* Banner image — fades out when trailer starts */}
              <img
@@ -276,17 +276,19 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
              />
              {/* Muted trailer iframe — wrapped in overflow-hidden to clip scaled iframe */}
              {showTrailer && fullItem.trailer?.id && fullItem.trailer.site === "youtube" && (
-               <div className="absolute inset-0 overflow-hidden pointer-events-none z-[0]">
-                 <iframe
-                   src={`https://www.youtube-nocookie.com/embed/${fullItem.trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${fullItem.trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&cc_load_policy=0&enablejsapi=1`}
-                   className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] transition-opacity duration-1000 ${isTrailerVisible ? "opacity-100" : "opacity-0"}`}
-                   allow="autoplay; encrypted-media"
-                   referrerPolicy="strict-origin-when-cross-origin"
-                   title="Anime Trailer"
-                 />
+               <>
+                 <div className="absolute inset-0 overflow-hidden pointer-events-none z-[0]">
+                   <iframe
+                     src={`https://www.youtube-nocookie.com/embed/${fullItem.trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${fullItem.trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&cc_load_policy=0&enablejsapi=1`}
+                     className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] transition-opacity duration-1000 ${isTrailerVisible ? "opacity-100" : "opacity-0"}`}
+                     allow="autoplay; encrypted-media"
+                     referrerPolicy="strict-origin-when-cross-origin"
+                     title="Anime Trailer"
+                   />
+                 </div>
                  {/* Transparent click-blocker prevents mouse hover from triggering YouTube controls */}
-                 <div className="absolute inset-0 z-10 pointer-events-auto bg-transparent" />
-               </div>
+                 <div className="absolute inset-0 z-[1] pointer-events-auto bg-transparent" />
+               </>
              )}
              
              <div className="absolute bottom-6 left-8 right-8 z-[2] space-y-3">
