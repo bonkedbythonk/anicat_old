@@ -263,7 +263,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                    title="Anime Trailer"
                  />
                  {/* Transparent click-blocker prevents mouse hover from triggering YouTube controls */}
-                 <div className="absolute inset-0 z-10" />
+                 <div className="absolute inset-0 z-10 pointer-events-auto bg-transparent" />
                </div>
              )}
              

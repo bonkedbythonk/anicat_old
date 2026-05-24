@@ -89,7 +89,7 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
               title="Airing Trailer"
             />
             {/* Transparent overlay — blocks YouTube hover controls */}
-            <div className="absolute inset-0 z-10" />
+            <div className="absolute inset-0 z-10 pointer-events-auto bg-transparent" />
           </div>
         )}
 
