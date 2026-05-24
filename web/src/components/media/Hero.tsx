@@ -13,6 +13,7 @@ interface HeroProps {
 const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
   const [clicked, setClicked] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
+  const [isVideoVisible, setIsVideoVisible] = useState(false);
 
   const { data: config = null } = useQuery({
     queryKey: ["media-config", item.id],
@@ -22,13 +23,24 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
 
   useEffect(() => {
     setShowVideo(false);
+    setIsVideoVisible(false);
     if (!item.trailer?.id || item.trailer.site !== "youtube") return;
 
     const enabled = !!config?.stream?.autoplay_trailers;
     if (!enabled) return;
 
-    const timer = setTimeout(() => setShowVideo(true), 2500);
-    return () => clearTimeout(timer);
+    let t2: NodeJS.Timeout;
+    const t1 = setTimeout(() => {
+      setShowVideo(true);
+      t2 = setTimeout(() => {
+        setIsVideoVisible(true);
+      }, 2000);
+    }, 2500);
+
+    return () => {
+      clearTimeout(t1);
+      if (t2) clearTimeout(t2);
+    };
   }, [item.id, item.trailer?.id, item.trailer?.site, config?.stream?.autoplay_trailers]);
 
   const title = item.title.english || item.title.romaji || "Unknown";
@@ -63,7 +75,7 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
             hasBanner
               ? "brightness-[0.45] group-hover:brightness-[0.55] scale-[1.03] group-hover:scale-100"
               : "brightness-[0.28] blur-xl scale-110"
-          } ${showVideo && item.trailer?.id ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+          } ${isVideoVisible && item.trailer?.id ? "opacity-0 pointer-events-none" : "opacity-100"}`}
         />
 
         {/* Muted auto-play trailer — overflow-hidden wrapper clips the scaled iframe */}
@@ -71,7 +83,7 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <iframe
               src={`https://www.youtube-nocookie.com/embed/${item.trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${item.trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0`}
-              className="absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] transition-opacity duration-1000 animate-fade-in"
+              className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] transition-opacity duration-1000 ${isVideoVisible ? "opacity-100" : "opacity-0"}`}
               allow="autoplay; encrypted-media"
               referrerPolicy="strict-origin-when-cross-origin"
               title="Airing Trailer"

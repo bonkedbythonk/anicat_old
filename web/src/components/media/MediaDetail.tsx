@@ -31,6 +31,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPlayingNext, setIsPlayingNext] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
+  const [isTrailerVisible, setIsTrailerVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<"episodes" | "characters" | "reviews" | "recommendations">("episodes");
 
   const { data: config = null } = useQuery<DetailConfig | null>({
@@ -45,13 +46,24 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   // Auto-play muted trailer in the banner after 2.5s
   useEffect(() => {
     setShowTrailer(false);
+    setIsTrailerVisible(false);
     if (!item.trailer?.id || item.trailer.site !== "youtube") return;
 
     const enabled = !!config?.stream?.autoplay_trailers;
     if (!enabled) return;
 
-    const t = setTimeout(() => setShowTrailer(true), 2500);
-    return () => clearTimeout(t);
+    let t2: NodeJS.Timeout;
+    const t1 = setTimeout(() => {
+      setShowTrailer(true);
+      t2 = setTimeout(() => {
+        setIsTrailerVisible(true);
+      }, 2000);
+    }, 2500);
+
+    return () => {
+      clearTimeout(t1);
+      if (t2) clearTimeout(t2);
+    };
   }, [item.id, item.trailer?.id, item.trailer?.site, config?.stream?.autoplay_trailers]);
 
   // Initial detail load via React Query
@@ -238,14 +250,14 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
              <img
                src={banner}
                alt={title}
-               className={`w-full h-full object-cover transition-opacity duration-1000 ${showTrailer && fullItem.trailer?.id ? "opacity-0" : "opacity-100"}`}
+               className={`w-full h-full object-cover transition-opacity duration-1000 ${isTrailerVisible && fullItem.trailer?.id ? "opacity-0" : "opacity-100"}`}
              />
              {/* Muted trailer iframe — wrapped in overflow-hidden to clip scaled iframe */}
              {showTrailer && fullItem.trailer?.id && fullItem.trailer.site === "youtube" && (
                <div className="absolute inset-0 overflow-hidden pointer-events-none z-[0]">
                  <iframe
                    src={`https://www.youtube-nocookie.com/embed/${fullItem.trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${fullItem.trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&cc_load_policy=0`}
-                   className="absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] transition-opacity duration-1000 animate-fade-in"
+                   className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] transition-opacity duration-1000 ${isTrailerVisible ? "opacity-100" : "opacity-0"}`}
                    allow="autoplay; encrypted-media"
                    referrerPolicy="strict-origin-when-cross-origin"
                    title="Anime Trailer"
@@ -306,7 +318,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                   );
                 })()}
                 
-                <div className="relative flex-1">
+                <div className="relative w-44">
                   <select
                     value={fullItem.user_status?.status?.toLowerCase() || "none"}
                     onChange={async (e) => {
