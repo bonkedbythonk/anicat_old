@@ -56,7 +56,23 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
         }
 
         if (state !== undefined) {
-          setIsVideoVisible(state === 1);
+          if (state === 1) {
+            setIsVideoVisible(true);
+          } else if (state === 0) {
+            // Programmatic loop: when video ends, seek to 0 and play again
+            if (iframeRef.current && iframeRef.current.contentWindow) {
+              iframeRef.current.contentWindow.postMessage(
+                JSON.stringify({ event: "command", func: "seekTo", args: [0, true] }),
+                "*"
+              );
+              iframeRef.current.contentWindow.postMessage(
+                JSON.stringify({ event: "command", func: "playVideo", args: "" }),
+                "*"
+              );
+            }
+          } else {
+            setIsVideoVisible(false);
+          }
         }
       } catch (e) {
         // Ignore parsing errors
@@ -118,8 +134,8 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
                     );
                   }
                 }}
-                src={`https://www.youtube-nocookie.com/embed/${item.trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${item.trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&enablejsapi=1`}
-                className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] transition-opacity duration-1000 ${isVideoVisible ? "opacity-100" : "opacity-0"}`}
+                src={`https://www.youtube-nocookie.com/embed/${item.trailer.id}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&enablejsapi=1`}
+                className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] pointer-events-none transition-opacity duration-1000 ${isVideoVisible ? "opacity-100" : "opacity-0"}`}
                 allow="autoplay; encrypted-media"
                 referrerPolicy="strict-origin-when-cross-origin"
                 title="Airing Trailer"

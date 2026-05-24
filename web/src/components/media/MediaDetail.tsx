@@ -94,6 +94,18 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
               // Pre-buffered and ready to play; pause until hovered
               pauseTrailer();
             }
+          } else if (state === 0) {
+            // Programmatic loop: when video ends, seek to 0 and play again
+            if (iframeRef.current && iframeRef.current.contentWindow) {
+              iframeRef.current.contentWindow.postMessage(
+                JSON.stringify({ event: "command", func: "seekTo", args: [0, true] }),
+                "*"
+              );
+              iframeRef.current.contentWindow.postMessage(
+                JSON.stringify({ event: "command", func: "playVideo", args: "" }),
+                "*"
+              );
+            }
           } else {
             setIsTrailerVisible(false);
           }
@@ -316,7 +328,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
              {/* Muted trailer iframe — pre-mounted to play instantly on hover */}
              {trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers && (
                <>
-                 <div className="absolute inset-0 overflow-hidden pointer-events-none z-[0]">
+                 <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                    <iframe
                      ref={iframeRef}
                      onLoad={() => {
@@ -327,8 +339,8 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                          );
                        }
                      }}
-                     src={`https://www.youtube-nocookie.com/embed/${trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&cc_load_policy=0&enablejsapi=1`}
-                     className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] transition-opacity duration-1000 ${isTrailerVisible ? "opacity-100" : "opacity-0"}`}
+                     src={`https://www.youtube-nocookie.com/embed/${trailer.id}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&cc_load_policy=0&enablejsapi=1`}
+                     className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] pointer-events-none transition-opacity duration-1000 ${isTrailerVisible ? "opacity-100" : "opacity-0"}`}
                      allow="autoplay; encrypted-media"
                      referrerPolicy="strict-origin-when-cross-origin"
                      title="Anime Trailer"
