@@ -142,6 +142,7 @@ jobs:
           fi
 
       - name: Pre-clean release tag (re-run safety)
+        if: matrix.platform == 'macos-14'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -167,16 +168,14 @@ jobs:
           TAURI_BUNDLER_DMG_IGNORE_CI: "true"
         with:
           projectPath: web
-          # Only create/manage the release from the first platform (macOS)
-          # to avoid race conditions when multiple matrix builds try
-          # to create and prune the same release simultaneously.
-          # Windows just builds and uploads workflow artifacts.
-          tagName: ${{ matrix.platform == 'macos-14' && steps.release_params.outputs.tag || '' }}
-          releaseName: ${{ matrix.platform == 'macos-14' && steps.release_params.outputs.name || '' }}
-          releaseBody: ${{ matrix.platform == 'macos-14' && steps.release_params.outputs.body || '' }}
-          releaseDraft: ${{ matrix.platform == 'macos-14' && steps.release_params.outputs.draft || 'false' }}
-          prerelease: ${{ matrix.platform == 'macos-14' && steps.release_params.outputs.prerelease || 'false' }}
-          uploadWorkflowArtifacts: ${{ matrix.platform != 'macos-14' }}
+          # Both macOS and Windows will upload their built assets to the release.
+          # Pre-cleaning is restricted to macOS to prevent race conditions.
+          tagName: ${{ steps.release_params.outputs.tag }}
+          releaseName: ${{ steps.release_params.outputs.name }}
+          releaseBody: ${{ steps.release_params.outputs.body }}
+          releaseDraft: ${{ steps.release_params.outputs.draft }}
+          prerelease: ${{ steps.release_params.outputs.prerelease }}
+          uploadWorkflowArtifacts: true
           args: ${{ matrix.args }}
 
       - name: Clean up older rolling releases
