@@ -9,7 +9,7 @@ from ....core.config import AnilistConfig
 from ....core.utils.converter import time_to_seconds
 from ....core.utils.graphql import (
     execute_graphql,
-    invalidate_graphql_cache,
+    clear_graphql_cache,
 )
 from ..base import BaseApiClient
 from ..params import (
@@ -92,7 +92,7 @@ class AniListApi(BaseApiClient):
         original_token = self.token
         self.token = token
         self.http_client.headers["Authorization"] = f"Bearer {token}"
-        
+
         try:
             profile = self.get_viewer_profile()
             if profile:
@@ -102,13 +102,17 @@ class AniListApi(BaseApiClient):
                 # If profile is None, the token is likely invalid
                 self.token = original_token
                 if original_token:
-                    self.http_client.headers["Authorization"] = f"Bearer {original_token}"
+                    self.http_client.headers["Authorization"] = (
+                        f"Bearer {original_token}"
+                    )
                 else:
                     if "Authorization" in self.http_client.headers:
                         del self.http_client.headers["Authorization"]
                 return None
         except httpx.RequestError as e:
-            logger.warning(f"Failed to fetch viewer profile during auth due to network error: {e}")
+            logger.warning(
+                f"Failed to fetch viewer profile during auth due to network error: {e}"
+            )
             # Keep the token on connection errors.
             raise
         except httpx.HTTPStatusError as e:
@@ -120,13 +124,17 @@ class AniListApi(BaseApiClient):
                 )
                 self.token = original_token
                 if original_token:
-                    self.http_client.headers["Authorization"] = f"Bearer {original_token}"
+                    self.http_client.headers["Authorization"] = (
+                        f"Bearer {original_token}"
+                    )
                 else:
                     if "Authorization" in self.http_client.headers:
                         del self.http_client.headers["Authorization"]
                 return None
 
-            logger.warning(f"Failed to fetch viewer profile during auth due to HTTP error: {e}")
+            logger.warning(
+                f"Failed to fetch viewer profile during auth due to HTTP error: {e}"
+            )
             raise
         except Exception as e:
             logger.warning(f"Failed to fetch viewer profile during auth: {e}")
@@ -153,16 +161,20 @@ class AniListApi(BaseApiClient):
             response = execute_graphql(
                 ANILIST_ENDPOINT, self.http_client, gql.GET_LOGGED_IN_USER, {}
             )
-            
+
             if response.status_code != 200:
-                logger.warning(f"AniList profile fetch failed with status {response.status_code}: {response.text}")
+                logger.warning(
+                    f"AniList profile fetch failed with status {response.status_code}: {response.text}"
+                )
                 return None
-                
+
             data = response.json()
             if "errors" in data:
-                logger.warning(f"AniList profile fetch returned errors: {data['errors']}")
+                logger.warning(
+                    f"AniList profile fetch returned errors: {data['errors']}"
+                )
                 return None
-                
+
             return mapper.to_generic_user_profile(data)
         except Exception as e:
             logger.warning(f"get_viewer_profile failed: {e}")
@@ -272,7 +284,11 @@ class AniListApi(BaseApiClient):
                 use_cache=True,
                 ttl=300,  # 5 minutes for user lists
             )
-            return mapper.to_generic_user_list_result(response.json()) if response else None
+            return (
+                mapper.to_generic_user_list_result(response.json())
+                if response
+                else None
+            )
         except Exception as e:
             logger.warning(f"search_media_list failed: {e}")
             return None
@@ -284,7 +300,9 @@ class AniListApi(BaseApiClient):
         variables = {
             "mediaId": params.media_id,
             "status": user_list_status_map[params.status] if params.status else None,
-            "progress": int(float(params.progress)) if params.progress is not None else None,
+            "progress": int(float(params.progress))
+            if params.progress is not None
+            else None,
             "scoreRaw": score_raw,
         }
         variables = {k: v for k, v in variables.items() if v is not None}
@@ -294,14 +312,8 @@ class AniListApi(BaseApiClient):
             )
             success = response.json() is not None and "errors" not in response.json()
             if success:
-                # Invalidate the user list cache because it's now stale
-                # We don't know the exact variables used for list fetching,
-                # but we can at least ensure future fetches for this media are fresh
-                # or just rely on the 5-minute TTL.
-                # For now, let's invalidate the specific list item if possible.
-                invalidate_graphql_cache(ANILIST_ENDPOINT, gql.GET_MEDIA_LIST_ITEM, {"mediaId": params.media_id})
-                invalidate_graphql_cache(ANILIST_ENDPOINT, gql.SEARCH_MEDIA, {"id_in": [params.media_id], "per_page": 1})
-                
+                clear_graphql_cache()
+
             return success
         except Exception as e:
             logger.warning(f"update_list_entry failed: {e}")
@@ -341,7 +353,7 @@ class AniListApi(BaseApiClient):
                 else False
             )
             if deleted:
-                invalidate_graphql_cache(ANILIST_ENDPOINT, gql.SEARCH_MEDIA, {"id_in": [media_id], "per_page": 1})
+                clear_graphql_cache()
             return deleted
         except Exception as e:
             logger.warning(f"delete_list_entry failed: {e}")
@@ -357,8 +369,12 @@ class AniListApi(BaseApiClient):
         }
         try:
             response = execute_graphql(
-                ANILIST_ENDPOINT, self.http_client, gql.GET_MEDIA_RECOMMENDATIONS, variables,
-                use_cache=True, ttl=1800,  # 30 min — recommendations change slowly
+                ANILIST_ENDPOINT,
+                self.http_client,
+                gql.GET_MEDIA_RECOMMENDATIONS,
+                variables,
+                use_cache=True,
+                ttl=1800,  # 30 min — recommendations change slowly
             )
             return mapper.to_generic_recommendations(response.json())
         except Exception as e:
@@ -368,16 +384,25 @@ class AniListApi(BaseApiClient):
     def get_characters_of(
         self, params: MediaCharactersParams
     ) -> Optional[CharacterSearchResult]:
-        variables = {"id": params.id, "type": params.type.value if params.type else "ANIME"}
-        logger.info(f"Fetching characters for media {params.id} (type: {variables['type']})")
+        variables = {
+            "id": params.id,
+            "type": params.type.value if params.type else "ANIME",
+        }
+        logger.info(
+            f"Fetching characters for media {params.id} (type: {variables['type']})"
+        )
         try:
             response = execute_graphql(
-                ANILIST_ENDPOINT, self.http_client, gql.GET_MEDIA_CHARACTERS, variables,
-                use_cache=True, ttl=1800,  # 30 min — character data rarely changes
+                ANILIST_ENDPOINT,
+                self.http_client,
+                gql.GET_MEDIA_CHARACTERS,
+                variables,
+                use_cache=True,
+                ttl=1800,  # 30 min — character data rarely changes
             )
             if response and "errors" not in response.json():
                 return mapper.to_generic_characters_result(response.json())
-            
+
             if response and "errors" in response.json():
                 logger.error(f"AniList GQL Errors: {response.json()['errors']}")
         except Exception as e:
@@ -390,8 +415,12 @@ class AniListApi(BaseApiClient):
         variables = {"id": params.id, "format_in": None}
         try:
             response = execute_graphql(
-                ANILIST_ENDPOINT, self.http_client, gql.GET_MEDIA_RELATIONS, variables,
-                use_cache=True, ttl=1800,  # 30 min — relations are static
+                ANILIST_ENDPOINT,
+                self.http_client,
+                gql.GET_MEDIA_RELATIONS,
+                variables,
+                use_cache=True,
+                ttl=1800,  # 30 min — relations are static
             )
             return mapper.to_generic_relations(response.json())
         except Exception as e:
@@ -404,8 +433,12 @@ class AniListApi(BaseApiClient):
         variables = {"id": params.id, "type": "ANIME"}
         try:
             response = execute_graphql(
-                ANILIST_ENDPOINT, self.http_client, gql.GET_AIRING_SCHEDULE, variables,
-                use_cache=True, ttl=300,  # 5 min — schedule updates periodically
+                ANILIST_ENDPOINT,
+                self.http_client,
+                gql.GET_AIRING_SCHEDULE,
+                variables,
+                use_cache=True,
+                ttl=300,  # 5 min — schedule updates periodically
             )
             if response and "errors" not in response.json():
                 return mapper.to_generic_airing_schedule_result(response.json())
@@ -414,25 +447,35 @@ class AniListApi(BaseApiClient):
         return None
 
     def get_global_airing_schedule(
-        self, airingAt_greater: int, airingAt_lesser: int, page: int = 1, per_page: int = 50,
-        media_ids: Optional[List[int]] = None
+        self,
+        airingAt_greater: int,
+        airingAt_lesser: int,
+        page: int = 1,
+        per_page: int = 50,
+        media_ids: Optional[List[int]] = None,
     ) -> Optional[Any]:
         variables: dict[str, Any] = {
             "airingAt_greater": airingAt_greater,
             "airingAt_lesser": airingAt_lesser,
             "page": page,
-            "perPage": per_page
+            "perPage": per_page,
         }
         if media_ids:
             variables["mediaId_in"] = media_ids
         try:
             response = execute_graphql(
-                ANILIST_ENDPOINT, self.http_client, gql.AIRING_SCHEDULE, variables,
-                use_cache=True, ttl=300,  # 5 min — schedule updates periodically
+                ANILIST_ENDPOINT,
+                self.http_client,
+                gql.AIRING_SCHEDULE,
+                variables,
+                use_cache=True,
+                ttl=300,  # 5 min — schedule updates periodically
             )
             if response is not None:
                 if not response.is_success:
-                    logger.error(f"AniList API error (Status {response.status_code}): {response.text}")
+                    logger.error(
+                        f"AniList API error (Status {response.status_code}): {response.text}"
+                    )
                     return None
                 res_json = response.json()
                 if "errors" in res_json:
@@ -453,8 +496,12 @@ class AniListApi(BaseApiClient):
         }
         try:
             response = execute_graphql(
-                ANILIST_ENDPOINT, self.http_client, gql.GET_REVIEWS, variables,
-                use_cache=True, ttl=600,  # 10 min — reviews are semi-static
+                ANILIST_ENDPOINT,
+                self.http_client,
+                gql.GET_REVIEWS,
+                variables,
+                use_cache=True,
+                ttl=600,  # 10 min — reviews are semi-static
             )
             if response and "errors" not in response.json():
                 return mapper.to_generic_reviews_list(response.json())
@@ -483,14 +530,10 @@ class AniListApi(BaseApiClient):
         """Mark all notifications as read on AniList by performing a reset fetch."""
         if not self.token:
             return False
-        
+
         # We fetch a tiny page just to trigger the reset flag on AniList's end
-        variables = {
-            "resetNotificationCount": True,
-            "type": "AIRING",
-            "perPage": 1
-        }
-        
+        variables = {"resetNotificationCount": True, "type": "AIRING", "perPage": 1}
+
         try:
             response = execute_graphql(
                 ANILIST_ENDPOINT, self.http_client, gql.GET_NOTIFICATIONS, variables
@@ -499,6 +542,7 @@ class AniListApi(BaseApiClient):
         except Exception as e:
             logger.warning(f"mark_notifications_as_read failed: {e}")
             return False
+
     def transform_raw_search_data(self, raw_data: dict) -> Optional[MediaSearchResult]:
         """
         Transform raw AniList API response data into a MediaSearchResult.
