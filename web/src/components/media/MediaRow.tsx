@@ -20,22 +20,38 @@ const MediaRow = memo(function MediaRow({ title, items, onSelect }: MediaRowProp
   const rowRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [visibleEnd, setVisibleEnd] = useState(Math.min(items.length, 10));
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
-  // Recalculate visible range from scroll position
+  // Recalculate visible range and scroll indicators from scroll position
   const updateRange = useCallback(() => {
     const el = rowRef.current;
     if (!el) return;
     const visible = Math.ceil((el.scrollLeft + el.clientWidth) / CARD_STEP) + BUFFER;
     const clamped = Math.min(items.length, Math.max(10, visible));
     setVisibleEnd(prev => (prev !== clamped ? clamped : prev));
+
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
   }, [items.length]);
 
   useEffect(() => {
     const el = rowRef.current;
     if (!el) return;
+
+    // Use ResizeObserver to update range and indicators when container dimensions change
+    const resizeObserver = new ResizeObserver(() => {
+      updateRange();
+    });
+    resizeObserver.observe(el);
+
     el.addEventListener("scroll", updateRange, { passive: true });
     updateRange();
-    return () => el.removeEventListener("scroll", updateRange);
+
+    return () => {
+      resizeObserver.disconnect();
+      el.removeEventListener("scroll", updateRange);
+    };
   }, [updateRange]);
 
   const scroll = (direction: "left" | "right") => {
@@ -60,10 +76,10 @@ const MediaRow = memo(function MediaRow({ title, items, onSelect }: MediaRowProp
 
       <div className="relative">
         {/* Left arrow */}
-        <div className={`absolute left-0 top-0 bottom-6 w-12 z-40 flex items-center justify-start transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'} pointer-events-none`}>
+        <div className={`absolute left-0 top-0 bottom-6 w-12 z-40 flex items-center justify-start transition-opacity duration-300 ${isHovered && canScrollLeft ? 'opacity-100' : 'opacity-0'} pointer-events-none`}>
           <button
             onClick={() => scroll("left")}
-            className="p-2 ml-1 rounded-full bg-black/80 hover:bg-accent hover:text-white transition-colors pointer-events-auto border border-white/10 shadow-lg"
+            className={`p-2 ml-1 rounded-full bg-black/80 hover:bg-accent hover:text-white transition-colors border border-white/10 shadow-lg ${isHovered && canScrollLeft ? 'pointer-events-auto' : 'pointer-events-none'}`}
           >
             <ChevronLeft size={20} />
           </button>
@@ -89,10 +105,10 @@ const MediaRow = memo(function MediaRow({ title, items, onSelect }: MediaRowProp
         </div>
 
         {/* Right arrow */}
-        <div className={`absolute right-0 top-0 bottom-6 w-12 z-40 flex items-center justify-end transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'} pointer-events-none`}>
+        <div className={`absolute right-0 top-0 bottom-6 w-12 z-40 flex items-center justify-end transition-opacity duration-300 ${isHovered && canScrollRight ? 'opacity-100' : 'opacity-0'} pointer-events-none`}>
           <button
             onClick={() => scroll("right")}
-            className="p-2 mr-1 rounded-full bg-black/80 hover:bg-accent hover:text-white transition-colors pointer-events-auto border border-white/10 shadow-lg"
+            className={`p-2 mr-1 rounded-full bg-black/80 hover:bg-accent hover:text-white transition-colors border border-white/10 shadow-lg ${isHovered && canScrollRight ? 'pointer-events-auto' : 'pointer-events-none'}`}
           >
             <ChevronRight size={20} />
           </button>

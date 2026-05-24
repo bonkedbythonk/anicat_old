@@ -269,7 +269,7 @@ export default function HomeView({ onSelect }: HomeViewProps) {
       {heroItem && <Hero item={heroItem} onSelect={onSelect} />}
 
       {/* UX-15: Genre mood chips */}
-      <div className="flex items-center space-x-2 overflow-x-auto scrollbar-hide px-1">
+      <div className="flex items-center space-x-2 overflow-x-auto scrollbar-hide px-1 pt-6 lg:pt-8">
         {GENRE_MOODS.map(mood => (
           <button
             key={mood.genre}
