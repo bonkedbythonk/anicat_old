@@ -171,12 +171,19 @@ export default function HomeView({ onSelect }: HomeViewProps) {
 
   // 6. Continue Watching = local watch history filtered to only shows
   //    currently on the user's AniList watching/repeating list, EXCLUDING
-  //    items the user has caught up on.
+  //    items the user has caught up on. Also includes any other items in
+  //    the user's watching list that haven't been started yet (are not in local history).
   const continueWatchingList = useMemo(() => {
     const recent = recentlyWatchedQuery.data?.media || [];
     const watching = watchingQuery.data?.media || [];
     const watchingIdSet = new Set(watching.map((m) => m.id));
-    return recent.filter((m) => watchingIdSet.has(m.id) && !isCaughtUp(m));
+
+    const recentlyActive = recent.filter((m) => watchingIdSet.has(m.id) && !isCaughtUp(m));
+    const activeIds = new Set(recentlyActive.map((m) => m.id));
+
+    const notYetStarted = watching.filter((m) => !activeIds.has(m.id) && !isCaughtUp(m));
+
+    return [...recentlyActive, ...notYetStarted];
   }, [recentlyWatchedQuery.data, watchingQuery.data]);
 
 
