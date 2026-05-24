@@ -56,6 +56,11 @@ export type MediaItem = {
     large: string;
   };
   banner_image?: string;
+  trailer?: {
+    id: string;
+    site: string;
+    thumbnail_url?: string;
+  };
   description?: string;
   episodes?: number;
   chapters?: number;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, memo } from "react";
+import { useState, useEffect, memo } from "react";
 import { Play, Maximize, BookOpen, Loader2 } from "lucide-react";
 import { type MediaItem } from "@/lib/api";
 
@@ -11,6 +11,19 @@ interface HeroProps {
 
 const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
   const [clicked, setClicked] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
+  
+  useEffect(() => {
+    setShowVideo(false);
+    if (!item.trailer?.id || item.trailer.site !== "youtube") return;
+
+    const timer = setTimeout(() => {
+      setShowVideo(true);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [item.id, item.trailer?.id, item.trailer?.site]);
+
   const title = item.title.english || item.title.romaji || "Unknown";
   const currentProgress = item.user_status?.progress || 0;
   const total = item.episodes || item.chapters || 0;
@@ -34,17 +47,28 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
   return (
     <div className="relative h-[50vh] lg:h-[60vh] w-full overflow-hidden rounded-2xl lg:rounded-3xl border border-white/[0.04] group">
       {/* Background */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 bg-background overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img 
           src={item.banner_image || item.cover_image.large} 
           alt={title} 
-          className={`absolute inset-0 w-full h-full object-cover transition-[transform,filter] duration-[2s] group-hover:scale-100 ${
+          className={`absolute inset-0 w-full h-full object-cover transition-[transform,filter,opacity] duration-[2s] group-hover:scale-100 ${
             hasBanner 
               ? "brightness-[0.25] group-hover:brightness-[0.35] scale-105" 
               : "brightness-[0.18] blur-2xl scale-110"
-          }`}
+          } ${showVideo && item.trailer?.id ? "opacity-0 pointer-events-none" : "opacity-100"}`}
         />
+        
+        {/* Muted Autoplay Video Trailer */}
+        {showVideo && item.trailer?.id && item.trailer.site === "youtube" && (
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${item.trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${item.trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&enablejsapi=1`}
+            className="absolute inset-0 w-full h-full pointer-events-none scale-[1.35] brightness-[0.25] transition-opacity duration-1000 animate-fade-in"
+            allow="autoplay; encrypted-media"
+            title="Airing Trailer"
+          />
+        )}
+
         {/* Vignette: darker at edges, lighter toward center */}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-transparent to-background/50" />
