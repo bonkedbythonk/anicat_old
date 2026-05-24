@@ -36,3 +36,5 @@ class PlayerParams:
     shader_profile: str | None = None
     skip_times: list[dict] | None = None
     fullscreen: bool = False
+    auto_next: bool = False
+

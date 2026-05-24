@@ -420,6 +420,10 @@ class MpvPlayer(BasePlayer):
             except Exception:
                 logger.debug("Failed to append AniCat skip_times to MPV args")
 
+        auto_next = getattr(params, "auto_next", False)
+        val = "yes" if auto_next else "no"
+        mpv_args.append(f"--script-opts-append=anicat_ui-auto_next={val}")
+
         if params.headers:
             # mpv prefers no spaces after commas and colons in http-header-fields
             headers_list = []

@@ -41,10 +41,16 @@ class PlayerService:
     ) -> PlayerResult:
         self.local = local
 
-        # Inject the active shader profile configuration from stream config dynamically
+        # Inject active configurations from stream config dynamically
+        replace_kwargs = {}
         if hasattr(params, "shader_profile") and params.shader_profile is None:
+            replace_kwargs["shader_profile"] = self.app_config.stream.shader_profile
+        if hasattr(params, "auto_next"):
+            replace_kwargs["auto_next"] = self.app_config.stream.auto_next
+
+        if replace_kwargs:
             from dataclasses import replace
-            params = replace(params, shader_profile=self.app_config.stream.shader_profile)
+            params = replace(params, **replace_kwargs)
 
         if self.app_config.stream.use_ipc:
             if anime or self.registry:

@@ -738,6 +738,13 @@ class MpvIPCPlayer(BaseIPCPlayer):
         )
         self._add_episode_subtitles()
 
+        # Send initial auto-next status to Lua overlay
+        val = "yes" if self.stream_config.auto_next else "no"
+        try:
+            self.ipc_client.send_command(["script-message", "anicat-set-auto-next", val])
+        except Exception as e:
+            logger.debug(f"Failed to send initial auto-next status to MPV: {e}")
+
     def _add_episode_subtitles(self):
         if not self.ipc_client or not self.player_state.stream_subtitles:
             return
@@ -749,6 +756,12 @@ class MpvIPCPlayer(BaseIPCPlayer):
 
     def _toggle_auto_next(self):
         self.stream_config.auto_next = not self.stream_config.auto_next
+        val = "yes" if self.stream_config.auto_next else "no"
+        if self.ipc_client:
+            try:
+                self.ipc_client.send_command(["script-message", "anicat-set-auto-next", val])
+            except Exception as e:
+                logger.debug(f"Failed to send auto-next update to MPV: {e}")
         self._show_text(
             f"Auto-next {'enabled' if self.stream_config.auto_next else 'disabled'}"
         )

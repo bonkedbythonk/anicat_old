@@ -7,6 +7,7 @@ local opts = {
   accent = '0A84FF',
   font = 'sans-serif',
   skip_times = '',
+  auto_next = 'no',
 }
 
 options.read_options(opts, 'anicat_ui')
@@ -39,9 +40,12 @@ local state = {
   active_skip = nil,
   skip_button = nil,
   hq_button = nil,
+  auto_button = nil,
+  next_button = nil,
+  prev_button = nil,
   shaders_on = false,
   file_loaded = false,
-  is_hovered = false,
+  hovered_btn = nil,
 }
 
 local function escape_ass(text)
@@ -132,9 +136,9 @@ local function check_active_skip()
 end
 
 local function check_hover()
-  if not state.file_loaded or not state.skip_button then
-    if state.is_hovered then
-      state.is_hovered = false
+  if not state.file_loaded then
+    if state.hovered_btn ~= nil then
+      state.hovered_btn = nil
       return true
     end
     return false
@@ -142,8 +146,8 @@ local function check_hover()
 
   local mouse = mp.get_property_native('mouse-pos')
   if not mouse then
-    if state.is_hovered then
-      state.is_hovered = false
+    if state.hovered_btn ~= nil then
+      state.hovered_btn = nil
       return true
     end
     return false
@@ -151,9 +155,22 @@ local function check_hover()
 
   local x = mouse.x or 0
   local y = mouse.y or 0
-  local hovered = in_rect(x, y, state.skip_button.x1, state.skip_button.y1, state.skip_button.x2, state.skip_button.y2)
-  if hovered ~= state.is_hovered then
-    state.is_hovered = hovered
+
+  local active_hover = nil
+  if state.skip_button and in_rect(x, y, state.skip_button.x1, state.skip_button.y1, state.skip_button.x2, state.skip_button.y2) then
+    active_hover = 'skip'
+  elseif state.hq_button and in_rect(x, y, state.hq_button.x1, state.hq_button.y1, state.hq_button.x2, state.hq_button.y2) then
+    active_hover = 'hq'
+  elseif state.auto_button and in_rect(x, y, state.auto_button.x1, state.auto_button.y1, state.auto_button.x2, state.auto_button.y2) then
+    active_hover = 'auto'
+  elseif state.next_button and in_rect(x, y, state.next_button.x1, state.next_button.y1, state.next_button.x2, state.next_button.y2) then
+    active_hover = 'next'
+  elseif state.prev_button and in_rect(x, y, state.prev_button.x1, state.prev_button.y1, state.prev_button.x2, state.prev_button.y2) then
+    active_hover = 'prev'
+  end
+
+  if active_hover ~= state.hovered_btn then
+    state.hovered_btn = active_hover
     return true
   end
   return false
@@ -196,7 +213,7 @@ local function disable_shaders()
   mp.osd_message("Upscaling Disabled", 1.5)
 end
 
-local function draw_button(ass, x1, y1, x2, y2, bg_color, border_color, label, font_size, text_color, fill_alpha, border_alpha)
+local function draw_button(ass, x1, y1, x2, y2, bg_color, border_color, label, font_size, text_color, fill_alpha, border_alpha, r)
   -- Button background
   ass:new_event()
   ass:append(string.format([[{\an7\1c%s\3c%s\1a&H%s&\3a&H%s&\bord1.5\shad0}]], 
@@ -205,7 +222,7 @@ local function draw_button(ass, x1, y1, x2, y2, bg_color, border_color, label, f
     fill_alpha,
     border_alpha
   ))
-  draw_rounded_rect(ass, x1, y1, x2, y2, 18)
+  draw_rounded_rect(ass, x1, y1, x2, y2, r or 18)
 
   -- Button text
   ass:new_event()
@@ -214,6 +231,80 @@ local function draw_button(ass, x1, y1, x2, y2, bg_color, border_color, label, f
   ass:append(string.format([[{\an5\fn%s\fs%d\b1\1c%s\1a&H00&\bord0\shad0\pos(%d,%d)}]], 
     opts.font, font_size, hex_to_ass_color(text_color), text_x, text_y))
   ass:append(escape_ass(label))
+end
+
+local function draw_controls(ass, w, h)
+  local pad = 20
+  local btn_h = 32
+  local y1 = h - btn_h - pad - 60
+  local y2 = y1 + btn_h
+  local gap = 10
+
+  -- Button 4: Prev (Leftmost)
+  local prev_width = 65
+  local prev_x1 = pad
+  local prev_x2 = prev_x1 + prev_width
+  state.prev_button = { x1 = prev_x1, y1 = y1, x2 = prev_x2, y2 = y2 }
+
+  -- Button 3: Next
+  local next_width = 65
+  local next_x1 = prev_x2 + gap
+  local next_x2 = next_x1 + next_width
+  state.next_button = { x1 = next_x1, y1 = y1, x2 = next_x2, y2 = y2 }
+
+  -- Button 2: Auto
+  local auto_width = 100
+  local auto_x1 = next_x2 + gap
+  local auto_x2 = auto_x1 + auto_width
+  state.auto_button = { x1 = auto_x1, y1 = y1, x2 = auto_x2, y2 = y2 }
+
+  -- Button 1: HQ (Rightmost)
+  local hq_width = 85
+  local hq_x1 = auto_x2 + gap
+  local hq_x2 = hq_x1 + hq_width
+  state.hq_button = { x1 = hq_x1, y1 = y1, x2 = hq_x2, y2 = y2 }
+
+  -- Re-evaluate hover with the final control button dimensions
+  check_hover()
+
+  -- Draw Prev Button
+  local prev_hovered = state.hovered_btn == 'prev'
+  local prev_bg = prev_hovered and opts.accent or '0F172A'
+  local prev_border = prev_hovered and opts.accent or '334155'
+  local prev_text = prev_hovered and 'ffffff' or 'E2E8F0'
+  local prev_fill_alpha = prev_hovered and '00' or '33'
+  local prev_border_alpha = prev_hovered and '00' or '40'
+  draw_button(ass, prev_x1, y1, prev_x2, y2, prev_bg, prev_border, 'Prev', 12, prev_text, prev_fill_alpha, prev_border_alpha, 16)
+
+  -- Draw Next Button
+  local next_hovered = state.hovered_btn == 'next'
+  local next_bg = next_hovered and opts.accent or '0F172A'
+  local next_border = next_hovered and opts.accent or '334155'
+  local next_text = next_hovered and 'ffffff' or 'E2E8F0'
+  local next_fill_alpha = next_hovered and '00' or '33'
+  local next_border_alpha = next_hovered and '00' or '40'
+  draw_button(ass, next_x1, y1, next_x2, y2, next_bg, next_border, 'Next', 12, next_text, next_fill_alpha, next_border_alpha, 16)
+
+  -- Draw Auto Button
+  local auto_enabled = (opts.auto_next == 'yes')
+  local auto_label = auto_enabled and 'Auto: On' or 'Auto: Off'
+  local auto_hovered = state.hovered_btn == 'auto'
+  local auto_bg = auto_hovered and opts.accent or '0F172A'
+  local auto_border = auto_hovered and opts.accent or '334155'
+  local auto_text = auto_hovered and 'ffffff' or 'E2E8F0'
+  local auto_fill_alpha = auto_hovered and '00' or '33'
+  local auto_border_alpha = auto_hovered and '00' or '40'
+  draw_button(ass, auto_x1, y1, auto_x2, y2, auto_bg, auto_border, auto_label, 12, auto_text, auto_fill_alpha, auto_border_alpha, 16)
+
+  -- Draw HQ Button
+  local hq_label = state.shaders_on and 'HQ: On' or 'HQ: Off'
+  local hq_hovered = state.hovered_btn == 'hq'
+  local hq_bg = hq_hovered and opts.accent or '0F172A'
+  local hq_border = hq_hovered and opts.accent or '334155'
+  local hq_text = hq_hovered and 'ffffff' or 'E2E8F0'
+  local hq_fill_alpha = hq_hovered and '00' or '33'
+  local hq_border_alpha = hq_hovered and '00' or '40'
+  draw_button(ass, hq_x1, y1, hq_x2, y2, hq_bg, hq_border, hq_label, 12, hq_text, hq_fill_alpha, hq_border_alpha, 16)
 end
 
 local function render(force)
@@ -241,16 +332,22 @@ local function render(force)
 
   state.skip_button = nil
   state.hq_button = nil
+  state.auto_button = nil
+  state.next_button = nil
+  state.prev_button = nil
 
   if w <= 0 or h <= 0 then
     return
   end
 
   local ass = assdraw.ass_new()
-  local pad = 20
-  local btn_h = 36
+
+  -- Draw controls (top-right)
+  draw_controls(ass, w, h)
 
   -- ======== SKIP BUTTON (bottom-right, only when active skip) ========
+  local pad = 20
+  local btn_h = 36
   if state.active_skip then
     local skip_label = 'Skip Intro'
     if state.active_skip.type == 'ed' then
@@ -274,7 +371,8 @@ local function render(force)
 
     local bg_color, border_color, text_color
     local fill_alpha, border_alpha
-    if state.is_hovered then
+    local skip_hovered = state.hovered_btn == 'skip'
+    if skip_hovered then
       bg_color = opts.accent
       border_color = opts.accent
       text_color = 'ffffff'
@@ -288,7 +386,7 @@ local function render(force)
       border_alpha = '40' -- 75% opacity
     end
 
-    draw_button(ass, s_x1, s_y1, s_x2, s_y2, bg_color, border_color, skip_label, 14, text_color, fill_alpha, border_alpha)
+    draw_button(ass, s_x1, s_y1, s_x2, s_y2, bg_color, border_color, skip_label, 14, text_color, fill_alpha, border_alpha, 18)
   end
 
   state.overlay.data = ass.text
@@ -317,7 +415,24 @@ local function on_left_click()
   -- Check skip button
   if state.skip_button and in_rect(x, y, state.skip_button.x1, state.skip_button.y1, state.skip_button.x2, state.skip_button.y2) then
     skip_current_segment()
+  elseif state.hq_button and in_rect(x, y, state.hq_button.x1, state.hq_button.y1, state.hq_button.x2, state.hq_button.y2) then
+    if state.shaders_on then
+      disable_shaders()
+    else
+      enable_shaders()
+    end
+  elseif state.auto_button and in_rect(x, y, state.auto_button.x1, state.auto_button.y1, state.auto_button.x2, state.auto_button.y2) then
+    mp.commandv("script-message", "anicat-toggle-auto-next")
+  elseif state.next_button and in_rect(x, y, state.next_button.x1, state.next_button.y1, state.next_button.x2, state.next_button.y2) then
+    mp.commandv("script-message", "anicat-next-episode")
+  elseif state.prev_button and in_rect(x, y, state.prev_button.x1, state.prev_button.y1, state.prev_button.x2, state.prev_button.y2) then
+    mp.commandv("script-message", "anicat-previous-episode")
   end
+end
+
+local function set_auto_next(val)
+  opts.auto_next = val
+  render(true)
 end
 
 local function register_script_messages()
@@ -327,6 +442,7 @@ local function register_script_messages()
   mp.register_script_message('anicat-skip-intro', skip_current_segment)
   mp.register_script_message('anicat-toggle-upscale', enable_shaders)
   mp.register_script_message('anicat-disable-upscale', disable_shaders)
+  mp.register_script_message('anicat-set-auto-next', set_auto_next)
 end
 
 mp.observe_property('time-pos', 'number', render_unforced)
