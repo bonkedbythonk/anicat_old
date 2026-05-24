@@ -439,7 +439,7 @@ export default function App() {
 
       {/* Main content */}
       <main
-        className="flex-1 ml-[72px] lg:ml-56 overflow-y-auto scrollbar-hide scroll-container relative z-10 transform-gpu translate-z-0 will-change-scroll"
+        className="flex-1 ml-[72px] lg:ml-[248px] overflow-y-auto scrollbar-hide scroll-container relative z-10 transform-gpu translate-z-0 will-change-scroll"
         // UX-25: Pull-to-refresh — refresh all queries when scrolling to top
         onScroll={handleScroll}
       >
@@ -544,7 +544,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className={`p-6 lg:py-10 lg:pl-6 lg:pr-10 max-w-[1600px] ${isOffline && !dismissedOffline ? 'pt-24 lg:pt-28' : ''}`}
+            className={`p-6 lg:py-10 lg:pl-0 lg:pr-10 max-w-[1600px] ${isOffline && !dismissedOffline ? 'pt-24 lg:pt-28' : ''}`}
           >
             {renderView()}
           </motion.div>
