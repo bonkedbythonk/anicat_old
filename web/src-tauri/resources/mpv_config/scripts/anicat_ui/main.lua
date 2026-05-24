@@ -5,7 +5,7 @@ local options = require 'mp.options'
 
 local opts = {
   accent = '0A84FF',
-  font = 'Outfit',
+  font = 'sans-serif',
   skip_times = '',
 }
 
@@ -41,6 +41,7 @@ local state = {
   hq_button = nil,
   shaders_on = false,
   file_loaded = false,
+  is_hovered = false,
 }
 
 local function escape_ass(text)
@@ -100,14 +101,62 @@ local function refresh_state()
   state.active_skip = get_active_skip(state.position)
 end
 
-local function round_rect(ass, x1, y1, x2, y2)
+local function draw_rounded_rect(ass, x1, y1, x2, y2, r)
+  local c = 0.5522847 * r
   ass:draw_start()
-  ass:rect_cw(x1, y1, x2, y2)
+  ass:move_to(x1 + r, y1)
+  ass:line_to(x2 - r, y1)
+  ass:bezier_to(x2 - r + c, y1, x2, y1 + r - c, x2, y1 + r)
+  ass:line_to(x2, y2 - r)
+  ass:bezier_to(x2, y2 - r + c, x2 - r + c, y2, x2 - r, y2)
+  ass:line_to(x1 + r, y2)
+  ass:bezier_to(x1 + r - c, y2, x1, y2 - r + c, x1, y2 - r)
+  ass:line_to(x1, y1 + r)
+  ass:bezier_to(x1, y1 + r - c, x1 + r - c, y1, x1 + r, y1)
   ass:draw_stop()
 end
 
 local function in_rect(x, y, x1, y1, x2, y2)
   return x >= x1 and x <= x2 and y >= y1 and y <= y2
+end
+
+local function check_active_skip()
+  local pos = mp.get_property_number('time-pos') or 0
+  state.position = pos
+  local active = get_active_skip(pos)
+  if active ~= state.active_skip then
+    state.active_skip = active
+    return true
+  end
+  return false
+end
+
+local function check_hover()
+  if not state.file_loaded or not state.skip_button then
+    if state.is_hovered then
+      state.is_hovered = false
+      return true
+    end
+    return false
+  end
+
+  local mouse = mp.get_property_native('mouse-pos')
+  if not mouse then
+    if state.is_hovered then
+      state.is_hovered = false
+      return true
+    end
+    return false
+  end
+
+  local x = mouse.x or 0
+  local y = mouse.y or 0
+  local hovered = in_rect(x, y, state.skip_button.x1, state.skip_button.y1, state.skip_button.x2, state.skip_button.y2)
+  if hovered ~= state.is_hovered then
+    state.is_hovered = hovered
+    return true
+  end
+  return false
 end
 
 local function jump_to(time_pos)
@@ -147,34 +196,52 @@ local function disable_shaders()
   mp.osd_message("Upscaling Disabled", 1.5)
 end
 
--- Draw a rounded pill button and return the label width
-local function draw_button(ass, x1, y1, x2, y2, bg_color, border_color, label, font_size, text_color)
+local function draw_button(ass, x1, y1, x2, y2, bg_color, border_color, label, font_size, text_color, fill_alpha, border_alpha)
   -- Button background
   ass:new_event()
-  ass:append(string.format([[{\an7\1c%s\3c%s\bord1.5\shad0\alpha&H20&}]], hex_to_ass_color(bg_color), hex_to_ass_color(border_color)))
-  round_rect(ass, x1, y1, x2, y2)
+  ass:append(string.format([[{\an7\1c%s\3c%s\1a&H%s&\3a&H%s&\bord1.5\shad0}]], 
+    hex_to_ass_color(bg_color), 
+    hex_to_ass_color(border_color),
+    fill_alpha,
+    border_alpha
+  ))
+  draw_rounded_rect(ass, x1, y1, x2, y2, 18)
 
   -- Button text
   ass:new_event()
   local text_x = math.floor((x1 + x2) / 2)
   local text_y = math.floor((y1 + y2) / 2) - 1
-  ass:append(string.format([[{\an5\fn%s\fs%d\b1\1c%s\bord0\shad0\pos(%d,%d)}]], opts.font, font_size, hex_to_ass_color(text_color), text_x, text_y))
+  ass:append(string.format([[{\an5\fn%s\fs%d\b1\1c%s\1a&H00&\bord0\shad0\pos(%d,%d)}]], 
+    opts.font, font_size, hex_to_ass_color(text_color), text_x, text_y))
   ass:append(escape_ass(label))
 end
 
-local function render()
+local function render(force)
   if not state.file_loaded then
     state.overlay:remove()
     return
   end
 
-  refresh_state()
-  refresh_shaders_state()
+  local w, h = mp.get_osd_size()
+  w = w or 1280
+  h = h or 720
+
+  if w ~= state.width or h ~= state.height then
+    state.width = w
+    state.height = h
+    force = true
+  end
+
+  local active_changed = check_active_skip()
+  local hover_changed = check_hover()
+
+  if not force and not active_changed and not hover_changed then
+    return
+  end
+
   state.skip_button = nil
   state.hq_button = nil
 
-  local w = state.width
-  local h = state.height
   if w <= 0 or h <= 0 then
     return
   end
@@ -202,7 +269,26 @@ local function render()
     local s_y2 = s_y1 + btn_h
     state.skip_button = { x1 = s_x1, y1 = s_y1, x2 = s_x2, y2 = s_y2 }
 
-    draw_button(ass, s_x1, s_y1, s_x2, s_y2, '050505', opts.accent, skip_label, 14, 'ffffff')
+    -- Re-evaluate hover with the final skip button dimensions
+    check_hover()
+
+    local bg_color, border_color, text_color
+    local fill_alpha, border_alpha
+    if state.is_hovered then
+      bg_color = opts.accent
+      border_color = opts.accent
+      text_color = 'ffffff'
+      fill_alpha = '00'
+      border_alpha = '00'
+    else
+      bg_color = '0F172A'
+      border_color = '334155'
+      text_color = 'E2E8F0'
+      fill_alpha = '33'   -- 80% opacity
+      border_alpha = '40' -- 75% opacity
+    end
+
+    draw_button(ass, s_x1, s_y1, s_x2, s_y2, bg_color, border_color, skip_label, 14, text_color, fill_alpha, border_alpha)
   end
 
   state.overlay.data = ass.text
@@ -212,8 +298,15 @@ local function render()
   state.overlay:update()
 end
 
+local function render_forced()
+  render(true)
+end
+
+local function render_unforced()
+  render(false)
+end
+
 local function on_left_click()
-  refresh_state()
   local mouse = mp.get_property_native('mouse-pos')
   if not mouse then
     return
@@ -236,19 +329,19 @@ local function register_script_messages()
   mp.register_script_message('anicat-disable-upscale', disable_shaders)
 end
 
-mp.observe_property('time-pos', 'number', render)
-mp.observe_property('duration', 'number', render)
-mp.observe_property('mouse-pos', 'native', render)
+mp.observe_property('time-pos', 'number', render_unforced)
+mp.observe_property('duration', 'number', render_unforced)
+mp.observe_property('mouse-pos', 'native', render_unforced)
 mp.observe_property('glsl-shaders', 'string', function()
   refresh_shaders_state()
-  render()
+  render(true)
 end)
 
 mp.register_event('file-loaded', function()
   state.file_loaded = true
   state.skips = parse_skip_times(opts.skip_times)
   refresh_shaders_state()
-  render()
+  render(true)
 end)
 
 mp.register_event('end-file', function()
