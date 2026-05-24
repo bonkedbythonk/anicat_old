@@ -179,6 +179,8 @@ export default function HomeView({ onSelect }: HomeViewProps) {
     return recent.filter((m) => watchingIdSet.has(m.id) && !isCaughtUp(m));
   }, [recentlyWatchedQuery.data, watchingQuery.data]);
 
+
+
   const recentReleasesQuery = useQuery({
     queryKey: ["home-recent-releases", watchingIds],
     enabled: watchingQuery.isSuccess,
@@ -344,7 +346,13 @@ export default function HomeView({ onSelect }: HomeViewProps) {
       )}
 
       {isRowVisible("continue") && continueWatchingList.length > 0 && (
-        <MediaRow title="Continue Watching" items={continueWatchingList} onSelect={onSelect} />
+        <MediaRow
+          title="Continue Watching"
+          items={continueWatchingList}
+          secondaryItems={smartPlaylistQuery.data?.media ? filterByGenre(smartPlaylistQuery.data.media) : undefined}
+          secondaryLabel="Smart Picks"
+          onSelect={onSelect}
+        />
       )}
 
       {isRowVisible("newForYou") && (

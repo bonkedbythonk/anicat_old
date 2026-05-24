@@ -29,7 +29,16 @@ type DetailConfig = {
 export default function MediaDetail({ item, onClose, initialAction, onRead, onPlayEpisode }: MediaDetailProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPlayingNext, setIsPlayingNext] = useState(false);
+  const [showTrailer, setShowTrailer] = useState(false);
   const [activeTab, setActiveTab] = useState<"episodes" | "characters" | "reviews" | "recommendations">("episodes");
+
+  // Auto-play muted trailer in the banner after 2.5s
+  useEffect(() => {
+    setShowTrailer(false);
+    if (!item.trailer?.id || item.trailer.site !== "youtube") return;
+    const t = setTimeout(() => setShowTrailer(true), 2500);
+    return () => clearTimeout(t);
+  }, [item.id, item.trailer?.id, item.trailer?.site]);
 
   // Initial detail load via React Query
   const {
@@ -238,10 +247,28 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto scrollbar-hide z-10 relative bg-transparent transform-gpu translate-z-0 will-change-scroll">
-          {/* Header Banner */}
+          {/* Header Banner with optional muted trailer */}
           <div className="relative h-72 w-full flex-shrink-0">
              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent z-[1]" />
-             <img src={banner} alt={title} className="w-full h-full object-cover" />
+             {/* Banner image — fades out when trailer starts */}
+             <img
+               src={banner}
+               alt={title}
+               className={`w-full h-full object-cover transition-opacity duration-1000 ${showTrailer && fullItem.trailer?.id ? "opacity-0" : "opacity-100"}`}
+             />
+             {/* Muted trailer iframe — wrapped in overflow-hidden to clip scaled iframe */}
+             {showTrailer && fullItem.trailer?.id && fullItem.trailer.site === "youtube" && (
+               <div className="absolute inset-0 overflow-hidden pointer-events-none z-[0]">
+                 <iframe
+                   src={`https://www.youtube-nocookie.com/embed/${fullItem.trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${fullItem.trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&cc_load_policy=0`}
+                   className="absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] transition-opacity duration-1000 animate-fade-in"
+                   allow="autoplay; encrypted-media"
+                   title="Anime Trailer"
+                 />
+                 {/* Transparent click-blocker prevents mouse hover from triggering YouTube controls */}
+                 <div className="absolute inset-0 z-10" />
+               </div>
+             )}
              
              <div className="absolute bottom-6 left-8 right-8 z-[2] space-y-3">
                 <div className="flex items-center space-x-2">

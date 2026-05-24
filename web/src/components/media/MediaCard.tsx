@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, memo } from "react";
-import { Play, BookOpen, Star, Tag } from "lucide-react";
+import { Play, BookOpen, Star } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { type MediaItem, mediaApi } from "@/lib/api";
 
@@ -73,9 +73,9 @@ const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
       onClick={() => onSelect?.(item)} 
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="group cursor-pointer flex flex-col space-y-2.5 w-full text-left relative"
+      className="group cursor-pointer flex flex-col space-y-2.5 w-full text-left relative transition-all duration-300 group-hover/card:translate-y-[-2px]"
     >
-      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-surface card-glow">
+      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-surface card-glow border border-white/[0.04] group-hover:border-accent/25 group-hover:shadow-[0_12px_36px_rgba(0,0,0,0.7)] transition-all duration-300">
         <img 
           src={item.cover_image.large} 
           alt={title} 
@@ -100,7 +100,7 @@ const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
 
         {/* UX-12: Recommendation reason pill */}
         {item.playlist_reason && (
-          <div className="absolute top-2 left-2 z-20 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-sm border border-white/10 text-[9px] font-bold text-accent uppercase tracking-wider max-w-[90%] truncate">
+          <div className="absolute top-3 left-2.5 z-20 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-sm border border-white/10 text-[9px] font-bold text-accent uppercase tracking-wider max-w-[90%] truncate">
             {item.playlist_reason}
           </div>
         )}
@@ -123,28 +123,42 @@ const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
         )}
       </div>
 
-      <div className="space-y-1 px-0.5">
-        <h3 className="text-sm font-bold text-white leading-tight line-clamp-2 group-hover:text-accent transition-colors">
+      {/* Card info */}
+      <div className="space-y-2 px-0.5">
+        <h3 className="text-sm font-bold text-white leading-tight line-clamp-2 group-hover:text-accent transition-colors duration-200">
           {title}
         </h3>
-        <div className="flex items-center space-x-2 text-[10px] text-gray-500 font-medium">
+
+        {/* Score + status row */}
+        <div className="flex items-center gap-1.5 flex-wrap">
           {item.average_score && (
-            <span className="flex items-center space-x-1">
-              <Star size={10} className="text-amber-400" fill="currentColor" />
-              <span>{item.average_score}%</span>
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[9px] font-bold">
+              <Star size={8} fill="currentColor" />
+              {item.average_score}%
             </span>
           )}
-          {item.genres && item.genres.length > 0 && (
-            <span className="flex items-center space-x-1">
-              <Tag size={10} />
-              <span className="truncate max-w-[100px]">{item.genres.slice(0, 2).join(", ")}</span>
+          {item.user_status && (
+            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-bold ${
+              isFinished
+                ? "bg-blue-500/10 border border-blue-500/20 text-blue-400"
+                : hasNewEpisodes
+                ? "bg-accent/10 border border-accent/20 text-accent"
+                : "bg-white/[0.05] border border-white/[0.06] text-gray-400"
+            }`}>
+              {isFinished ? "All eps out" : hasNewEpisodes ? `Ep ${progress + 1}` : `${progress}/${totalCount || "?"}`}
             </span>
           )}
         </div>
-        {item.user_status && (
-          <span className="text-[10px] font-semibold text-gray-500">
-            {isFinished ? '✓ Finished' : `${progress}/${totalCount || '?'}`}
-          </span>
+
+        {/* Genre pills */}
+        {item.genres && item.genres.length > 0 && (
+          <div className="flex gap-1 flex-wrap">
+            {item.genres.slice(0, 2).map((g) => (
+              <span key={g} className="px-1.5 py-0.5 rounded text-[8px] font-semibold bg-white/[0.04] border border-white/[0.05] text-gray-500 group-hover:text-gray-400 transition-colors">
+                {g}
+              </span>
+            ))}
+          </div>
         )}
       </div>
     </div>

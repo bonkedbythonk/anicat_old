@@ -169,10 +169,7 @@ html.light .glass-button {
 }
 
 .card-glow:hover {
-  transform: translateY(-6px);
-  box-shadow: 
-    0 15px 35px -5px rgba(0, 0, 0, 0.9),
-    0 0 20px -5px rgba(99, 102, 241, 0.4);
+  /* Shadow handled via Tailwind group-hover on each card */
 }
 
 /* Gradients */

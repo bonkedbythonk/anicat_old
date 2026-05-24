@@ -12,15 +12,11 @@ interface HeroProps {
 const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
   const [clicked, setClicked] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
-  
+
   useEffect(() => {
     setShowVideo(false);
     if (!item.trailer?.id || item.trailer.site !== "youtube") return;
-
-    const timer = setTimeout(() => {
-      setShowVideo(true);
-    }, 2500);
-
+    const timer = setTimeout(() => setShowVideo(true), 2500);
     return () => clearTimeout(timer);
   }, [item.id, item.trailer?.id, item.trailer?.site]);
 
@@ -29,8 +25,7 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
   const total = item.episodes || item.chapters || 0;
   const isManga = item.type === "MANGA";
   const hasBanner = !!item.banner_image;
-  
-  // If airing, we might be caught up even if progress < total
+
   const latestAvailable = item.next_airing ? (item.next_airing.episode - 1) : total;
   const isFinished = total > 0 && currentProgress >= total;
   const isCaughtUp = !isFinished && latestAvailable > 0 && currentProgress >= latestAvailable;
@@ -39,101 +34,108 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
     if (onSelect) {
       setClicked(true);
       onSelect(item, "play");
-      // Reset after a timeout in case the drawer takes time to open
       setTimeout(() => setClicked(false), 3000);
     }
   };
 
   return (
-    <div className="relative h-[50vh] lg:h-[60vh] w-full overflow-hidden rounded-2xl lg:rounded-3xl border border-white/[0.04] group">
+    // Rounded corners on lg+, edge-to-edge on mobile via -mx-6
+    <div className="relative h-[52vh] lg:h-[58vh] w-full overflow-hidden group -mx-6 lg:mx-0 lg:rounded-2xl">
+
       {/* Background */}
-      <div className="absolute inset-0 bg-background overflow-hidden">
+      <div className="absolute inset-0 bg-background">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img 
-          src={item.banner_image || item.cover_image.large} 
-          alt={title} 
-          className={`absolute inset-0 w-full h-full object-cover transition-[transform,filter,opacity] duration-[2s] group-hover:scale-100 ${
-            hasBanner 
-              ? "brightness-[0.25] group-hover:brightness-[0.35] scale-105" 
-              : "brightness-[0.18] blur-2xl scale-110"
+        <img
+          src={item.banner_image || item.cover_image.large}
+          alt={title}
+          className={`absolute inset-0 w-full h-full object-cover transition-[transform,filter,opacity] duration-[2s] ${
+            hasBanner
+              ? "brightness-[0.45] group-hover:brightness-[0.55] scale-[1.03] group-hover:scale-100"
+              : "brightness-[0.28] blur-xl scale-110"
           } ${showVideo && item.trailer?.id ? "opacity-0 pointer-events-none" : "opacity-100"}`}
         />
-        
-        {/* Muted Autoplay Video Trailer */}
+
+        {/* Muted auto-play trailer — overflow-hidden wrapper clips the scaled iframe */}
         {showVideo && item.trailer?.id && item.trailer.site === "youtube" && (
-          <iframe
-            src={`https://www.youtube-nocookie.com/embed/${item.trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${item.trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&enablejsapi=1`}
-            className="absolute inset-0 w-full h-full pointer-events-none scale-[1.35] brightness-[0.25] transition-opacity duration-1000 animate-fade-in"
-            allow="autoplay; encrypted-media"
-            title="Airing Trailer"
-          />
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${item.trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${item.trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0`}
+              className="absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] transition-opacity duration-1000 animate-fade-in"
+              allow="autoplay; encrypted-media"
+              title="Airing Trailer"
+            />
+            {/* Transparent overlay — blocks YouTube hover controls */}
+            <div className="absolute inset-0 z-10" />
+          </div>
         )}
 
-        {/* Vignette: darker at edges, lighter toward center */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-transparent to-background/50" />
+        {/* Cinematic gradients: heavy at bottom-left for readability, fades on right */}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/55 to-background/5" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background/75 via-background/15 to-transparent" />
       </div>
 
-      <div className="relative h-full flex flex-row items-end justify-between pb-10 lg:pb-14 px-6 lg:px-12 z-10">
-        {/* Left Side: Info & Actions */}
-        <div className="space-y-4 max-w-2xl">
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3">
-              <span className="px-3 py-1 bg-accent/90 text-white rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-accent/20">
+      {/* Content */}
+      <div className="relative h-full flex flex-row items-end justify-between pb-8 lg:pb-12 px-6 lg:px-10 z-10">
+        {/* Left: Info & Actions */}
+        <div className="space-y-3 max-w-2xl">
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2.5">
+              <span className="px-2.5 py-1 bg-accent text-white rounded-md text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-accent/30">
                 {item.user_status ? (isManga ? "Reading" : "Watching") : "Featured"}
               </span>
               {item.user_status && !isFinished && !isCaughtUp && (
-                <span className="text-gray-400 font-semibold text-xs uppercase tracking-wider">
+                <span className="text-white/55 font-semibold text-xs uppercase tracking-wider">
                   {isManga ? "Chapter" : "Episode"} {currentProgress + 1}
                 </span>
               )}
             </div>
-            <h1 className="text-3xl lg:text-5xl xl:text-6xl font-black tracking-tight leading-[1.05] bg-gradient-to-r from-white via-white to-white/80 bg-clip-text text-transparent animate-fade-in">
+            <h1
+              className="text-3xl lg:text-5xl xl:text-6xl font-black tracking-tight leading-[1.05] text-white animate-fade-in"
+              style={{ textShadow: "0 2px 24px rgba(0,0,0,0.9)" }}
+            >
               {title}
             </h1>
           </div>
-          
-          {/* Metadata Row */}
-          <div className="flex items-center flex-wrap gap-x-3 gap-y-1.5 text-xs text-gray-300 font-semibold">
+
+          {/* Metadata row */}
+          <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1 text-xs font-semibold">
             {item.format && (
-              <span className="px-2 py-0.5 bg-white/10 rounded text-[9px] uppercase tracking-wider">
+              <span className="px-1.5 py-0.5 bg-white/10 rounded text-[9px] uppercase tracking-wider text-white/50">
                 {item.format}
               </span>
             )}
-            {item.seasonYear && (
-              <span>{item.seasonYear}</span>
-            )}
+            {item.seasonYear && <span className="text-white/50">{item.seasonYear}</span>}
             {item.average_score && (
-              <span className="flex items-center text-amber-400">
+              <span className="flex items-center gap-1 text-amber-400 font-bold">
                 ★ {item.average_score}%
               </span>
             )}
             {item.genres && item.genres.length > 0 && (
-              <span className="text-gray-400">
-                {item.genres.slice(0, 3).join(" • ")}
+              <span className="text-white/40">
+                {item.genres.slice(0, 3).join(" · ")}
               </span>
             )}
           </div>
-          
+
           {item.description && (
-            <p 
-              className="text-sm text-gray-400 line-clamp-2 leading-relaxed max-w-xl"
+            <p
+              className="text-sm text-white/45 line-clamp-2 leading-relaxed max-w-lg"
               dangerouslySetInnerHTML={{ __html: item.description }}
             />
           )}
-          
-          <div className="flex items-center space-x-3 pt-2">
-            <button 
+
+          <div className="flex items-center space-x-2.5 pt-1">
+            <button
               onClick={handlePlay}
               disabled={isCaughtUp || clicked}
-              className="flex items-center space-x-3 glass-button px-8 py-3.5 rounded-full font-bold text-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="flex items-center space-x-2 bg-white text-black hover:bg-white/90 px-6 py-2.5 rounded-lg font-bold text-sm active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all shadow-lg"
             >
               {clicked ? (
-                <Loader2 size={18} className="animate-spin" />
+                <Loader2 size={16} className="animate-spin" />
               ) : isManga ? (
-                <BookOpen size={18} />
+                <BookOpen size={16} />
               ) : (
-                <Play fill="currentColor" size={18} />
+                <Play fill="currentColor" size={16} />
               )}
               <span>
                 {clicked
@@ -143,26 +145,26 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
                     : isCaughtUp
                       ? "Caught Up"
                       : (item.user_status?.progress ? "Resume" : (isManga ? "Read Now" : "Play Now"))
-              }
+                }
               </span>
             </button>
-            
-            <button 
+
+            <button
               onClick={() => onSelect?.(item)}
-              className="flex items-center space-x-3 bg-white/10 hover:bg-white/20 transition-all text-white px-8 py-3.5 rounded-full font-bold text-sm active:scale-95 cursor-pointer"
+              className="flex items-center space-x-2 bg-white/[0.08] hover:bg-white/[0.15] backdrop-blur-sm border border-white/10 text-white px-6 py-2.5 rounded-lg font-bold text-sm active:scale-95 cursor-pointer transition-all"
             >
-              <Maximize size={18} />
+              <Maximize size={16} />
               <span>Details</span>
             </button>
           </div>
         </div>
 
-        {/* Right Side: Portrait Cover (only shown if there is no landscape banner, on larger screens) */}
+        {/* Right: Portrait cover (only when no landscape banner) */}
         {!hasBanner && (
-          <div className="hidden md:block w-[180px] lg:w-[220px] aspect-[2/3] shrink-0 ml-8 rounded-2xl overflow-hidden border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)] transition-transform duration-500 hover:scale-105">
-            <img 
-              src={item.cover_image.large} 
-              alt={title} 
+          <div className="hidden md:block w-[160px] lg:w-[200px] aspect-[2/3] shrink-0 ml-8 rounded-xl overflow-hidden border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.9)] transition-transform duration-500 hover:scale-105">
+            <img
+              src={item.cover_image.large}
+              alt={title}
               className="w-full h-full object-cover"
             />
           </div>
