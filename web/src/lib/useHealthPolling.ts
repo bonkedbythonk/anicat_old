@@ -8,6 +8,48 @@ import { getQueryClient } from "@/components/Providers";
 const FRONTEND_VERSION = "4.4.1";
 let _versionMismatchWarned = false;
 
+async function showNativeNotification(title: string, body: string) {
+  try {
+    const { isPermissionGranted, requestPermission, sendNotification } = await import("@tauri-apps/plugin-notification");
+    let permissionGranted = await isPermissionGranted();
+    if (!permissionGranted) {
+      const permission = await requestPermission();
+      permissionGranted = permission === "granted";
+    }
+    if (permissionGranted) {
+      sendNotification({ title, body });
+    }
+  } catch (err) {
+    console.warn("Tauri native notification failed, falling back to Web Notification API:", err);
+    if ("Notification" in window) {
+      if (Notification.permission === "granted") {
+        new Notification(title, { body });
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            new Notification(title, { body });
+          }
+        });
+      }
+    }
+  }
+}
+
+async function requestNotificationPermission() {
+  try {
+    const { isPermissionGranted, requestPermission } = await import("@tauri-apps/plugin-notification");
+    const permissionGranted = await isPermissionGranted();
+    if (!permissionGranted) {
+      await requestPermission();
+    }
+  } catch (err) {
+    console.warn("Tauri notification permission check failed, trying Web Notification permission:", err);
+    if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+      await Notification.requestPermission();
+    }
+  }
+}
+
 export interface HealthPollingState {
   /** Current backend connection status. */
   connectionStatus: "checking" | "connected" | "failed";
@@ -51,6 +93,8 @@ export function useHealthPolling(): HealthPollingState {
   const [notificationCount, setNotificationCount] = useState(0);
 
   const lastDataVersion = useRef<number | null>(null);
+  const lastNotificationCount = useRef<number>(0);
+  const lastSeenNotificationId = useRef<number | null>(null);
 
   const dismissOffline = useCallback(() => {
     setDismissedOffline(true);
@@ -58,6 +102,9 @@ export function useHealthPolling(): HealthPollingState {
   }, []);
 
   useEffect(() => {
+    // Request desktop notification permission on mount
+    requestNotificationPermission();
+
     let failedAttempts = 0;
     let isInitial = true;
     let checkInterval: ReturnType<typeof setInterval>;
@@ -105,7 +152,41 @@ export function useHealthPolling(): HealthPollingState {
         setIsOffline(shouldBeOffline);
 
         if (!shouldBeOffline) setDismissedOffline(false);
-        setNotificationCount(status.unread_notifications || 0);
+        const newUnreadCount = status.unread_notifications || 0;
+        setNotificationCount(newUnreadCount);
+
+        // Fetch notifications and trigger desktop alerts if new ones arrived
+        if (status.api_authenticated && !shouldBeOffline) {
+          try {
+            if (lastSeenNotificationId.current === null) {
+              const notifs = await mediaApi.getNotifications();
+              const notificationsList = notifs || [];
+              const maxId = notificationsList.reduce((max, n) => Math.max(max, n.id), 0);
+              lastSeenNotificationId.current = maxId;
+              lastNotificationCount.current = newUnreadCount;
+            } else if (newUnreadCount > lastNotificationCount.current) {
+              const notifs = await mediaApi.getNotifications();
+              const notificationsList = notifs || [];
+              const newNotifications = notificationsList.filter(n => n.id > lastSeenNotificationId.current!);
+              
+              for (const notif of newNotifications) {
+                const title = "AniCat Release Alert";
+                const body = `${notif.contexts?.[0] ?? ""}${notif.episode || ""}${notif.contexts?.[1] ?? ""}${notif.media?.title?.english || notif.media?.title?.romaji || ""}${notif.contexts?.[2] ?? ""}`;
+                await showNativeNotification(title, body);
+              }
+              
+              if (notificationsList.length > 0) {
+                const maxId = notificationsList.reduce((max, n) => Math.max(max, n.id), 0);
+                lastSeenNotificationId.current = Math.max(lastSeenNotificationId.current, maxId);
+              }
+              lastNotificationCount.current = newUnreadCount;
+            } else {
+              lastNotificationCount.current = newUnreadCount;
+            }
+          } catch (err) {
+            console.error("Failed to check notifications for desktop alerts:", err);
+          }
+        }
 
         // Transition to normal 10s polling
         if (isInitial) {

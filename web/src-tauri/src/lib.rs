@@ -182,6 +182,7 @@ pub fn run() {
     let restart_count_arc = sidecar_state.restart_count.clone();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_log::Builder::default().build())
         // UX-03: Global shortcut disabled on macOS 26 — the accessibility API

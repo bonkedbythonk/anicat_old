@@ -25,6 +25,7 @@ tauri = { version = "2.11.1", features = ["tray-icon", "image-png", "image-ico",
 tauri-plugin-log = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-global-shortcut = "2"
+tauri-plugin-notification = "2"
 
 # Use tao from git dev branch with local patch that replaces
 # activateIgnoringOtherApps: (removed in macOS 26) with activateWithOptions:
