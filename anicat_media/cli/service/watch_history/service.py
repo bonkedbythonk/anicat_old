@@ -167,21 +167,17 @@ class WatchHistoryService:
         # would unconditionally skip to the next episode.
         if episode_completed:
             best_progress += 1
-        elif best_progress > 0:
-            # Check if the user has never started (best_progress matches the last
-            # completed episode). If there's an in-progress episode with a watch
-            # position, serve that one instead of incrementing.
-            if start_time is not None:
-                # User is mid-episode — stay on the current episode
-                pass
-            else:
-                # No evidence of completion or in-progress — stay on current
-                pass
 
-        if best_progress == 0:
-            best_progress = 1
+        # Determine the next episode to watch
+        total_eps = media_item.episodes or 0
+        if total_eps > 0 and best_progress >= total_eps:
+            # Series is completed; start over at episode 1
+            next_episode = 1
+            start_time = None
+        else:
+            next_episode = best_progress + 1
 
-        return str(best_progress), start_time
+        return str(next_episode), start_time
 
     def update(
         self,
