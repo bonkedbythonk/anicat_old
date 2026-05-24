@@ -79,12 +79,23 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
       if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return;
       try {
         const data = JSON.parse(event.data);
-        if (data.event === "infoDelivery" && data.info && data.info.playerState === 1) {
-          if (isHoveredRef.current) {
-            setIsTrailerVisible(true);
+        let state: number | undefined = undefined;
+        if (data.event === "infoDelivery" && data.info && data.info.playerState !== undefined) {
+          state = data.info.playerState;
+        } else if (data.event === "onStateChange" && data.info !== undefined) {
+          state = typeof data.info === "number" ? data.info : parseInt(data.info);
+        }
+
+        if (state !== undefined) {
+          if (state === 1) {
+            if (isHoveredRef.current) {
+              setIsTrailerVisible(true);
+            } else {
+              // Pre-buffered and ready to play; pause until hovered
+              pauseTrailer();
+            }
           } else {
-            // Pre-buffered and ready to play; pause until hovered
-            pauseTrailer();
+            setIsTrailerVisible(false);
           }
         }
       } catch (e) {

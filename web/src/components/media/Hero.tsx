@@ -44,17 +44,19 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
       return;
     }
 
-    const fallbackTimer = setTimeout(() => {
-      setIsVideoVisible(true);
-    }, 6000);
-
     const handleMessage = (event: MessageEvent) => {
       if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return;
       try {
         const data = JSON.parse(event.data);
-        if (data.event === "infoDelivery" && data.info && data.info.playerState === 1) {
-          setIsVideoVisible(true);
-          clearTimeout(fallbackTimer);
+        let state: number | undefined = undefined;
+        if (data.event === "infoDelivery" && data.info && data.info.playerState !== undefined) {
+          state = data.info.playerState;
+        } else if (data.event === "onStateChange" && data.info !== undefined) {
+          state = typeof data.info === "number" ? data.info : parseInt(data.info);
+        }
+
+        if (state !== undefined) {
+          setIsVideoVisible(state === 1);
         }
       } catch (e) {
         // Ignore parsing errors
@@ -64,7 +66,6 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
     window.addEventListener("message", handleMessage);
     return () => {
       window.removeEventListener("message", handleMessage);
-      clearTimeout(fallbackTimer);
     };
   }, [showVideo]);
 
