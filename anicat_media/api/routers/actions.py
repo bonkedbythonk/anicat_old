@@ -301,8 +301,21 @@ async def _prepare_playback(
     if not media_item:
         raise HTTPException(status_code=404, detail="Media not found")
 
-    # Auto-add to user's watching list if not already tracked
+    # Auto-add to user's watching list if not already tracked, or transition to watching if planning/paused/dropped
+    should_update_status = False
     if not media_item.user_status:
+        should_update_status = True
+    else:
+        from ...libs.media_api.types import UserMediaListStatus
+
+        if media_item.user_status.status in (
+            UserMediaListStatus.PLANNING,
+            UserMediaListStatus.PAUSED,
+            UserMediaListStatus.DROPPED,
+        ):
+            should_update_status = True
+
+    if should_update_status:
         try:
             from ...libs.media_api.params import UpdateUserMediaListEntryParams
             from ...libs.media_api.types import UserMediaListStatus
