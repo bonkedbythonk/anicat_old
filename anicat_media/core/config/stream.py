@@ -79,3 +79,7 @@ class StreamConfig(BaseConfig):
         default_factory=defaults.STREAM_USE_IPC,
         description=desc.STREAM_USE_IPC,
     )
+    autoplay_trailers: bool = Field(
+        default=defaults.STREAM_AUTOPLAY_TRAILERS,
+        description=desc.STREAM_AUTOPLAY_TRAILERS,
+    )

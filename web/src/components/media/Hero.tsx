@@ -2,7 +2,8 @@
 
 import { useState, useEffect, memo } from "react";
 import { Play, Maximize, BookOpen, Loader2 } from "lucide-react";
-import { type MediaItem } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { mediaApi, type MediaItem } from "@/lib/api";
 
 interface HeroProps {
   item: MediaItem;
@@ -13,12 +14,22 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
   const [clicked, setClicked] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
 
+  const { data: config = null } = useQuery({
+    queryKey: ["media-config", item.id],
+    queryFn: () => mediaApi.getConfig(),
+    staleTime: 60_000,
+  });
+
   useEffect(() => {
     setShowVideo(false);
     if (!item.trailer?.id || item.trailer.site !== "youtube") return;
+
+    const enabled = !!config?.stream?.autoplay_trailers;
+    if (!enabled) return;
+
     const timer = setTimeout(() => setShowVideo(true), 2500);
     return () => clearTimeout(timer);
-  }, [item.id, item.trailer?.id, item.trailer?.site]);
+  }, [item.id, item.trailer?.id, item.trailer?.site, config?.stream?.autoplay_trailers]);
 
   const title = item.title.english || item.title.romaji || "Unknown";
   const currentProgress = item.user_status?.progress || 0;
@@ -62,6 +73,7 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
               src={`https://www.youtube-nocookie.com/embed/${item.trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${item.trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0`}
               className="absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] transition-opacity duration-1000 animate-fade-in"
               allow="autoplay; encrypted-media"
+              referrerPolicy="strict-origin-when-cross-origin"
               title="Airing Trailer"
             />
             {/* Transparent overlay — blocks YouTube hover controls */}

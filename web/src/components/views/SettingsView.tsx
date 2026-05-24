@@ -529,6 +529,17 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                     <option value="off">Off</option>
                   </select>
                 </SettingField>
+
+                <SettingField label="Auto-Play Trailers" description="Play muted background trailer videos on featured and detail pages (may cause configuration errors in Tauri).">
+                  <select
+                    value={config.stream?.autoplay_trailers ? "true" : "false"}
+                    onChange={(e) => updateField("stream", "autoplay_trailers", e.target.value === "true")}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                  >
+                    <option value="false">Disabled</option>
+                    <option value="true">Enabled</option>
+                  </select>
+                </SettingField>
               </CardSection>
             </div>
           )}

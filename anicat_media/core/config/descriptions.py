@@ -65,6 +65,7 @@ STREAM_DEFAULT_MEDIA_LIST_TRACKING = (
     "Default behavior for tracking progress on AniList."
 )
 STREAM_SUB_LANG = "Preferred language code for subtitles (e.g., 'en', 'es')."
+STREAM_AUTOPLAY_TRAILERS = "Whether to automatically play background trailer videos (disabled by default to prevent cross-origin errors in Tauri)."
 STREAM_USE_IPC = "Use IPC communication with the player for advanced features like episode navigation."
 
 # WorkerConfig

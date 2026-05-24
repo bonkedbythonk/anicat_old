@@ -23,6 +23,7 @@ interface MediaDetailProps {
 type DetailConfig = {
   stream?: {
     player_type?: "embedded" | "external";
+    autoplay_trailers?: boolean;
   };
 };
 
@@ -32,13 +33,26 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   const [showTrailer, setShowTrailer] = useState(false);
   const [activeTab, setActiveTab] = useState<"episodes" | "characters" | "reviews" | "recommendations">("episodes");
 
+  const { data: config = null } = useQuery<DetailConfig | null>({
+    queryKey: ["media-config", item.id],
+    queryFn: async () => {
+      const userConfig = await mediaApi.getConfig();
+      return userConfig;
+    },
+    staleTime: 60_000,
+  });
+
   // Auto-play muted trailer in the banner after 2.5s
   useEffect(() => {
     setShowTrailer(false);
     if (!item.trailer?.id || item.trailer.site !== "youtube") return;
+
+    const enabled = !!config?.stream?.autoplay_trailers;
+    if (!enabled) return;
+
     const t = setTimeout(() => setShowTrailer(true), 2500);
     return () => clearTimeout(t);
-  }, [item.id, item.trailer?.id, item.trailer?.site]);
+  }, [item.id, item.trailer?.id, item.trailer?.site, config?.stream?.autoplay_trailers]);
 
   // Initial detail load via React Query
   const {
@@ -49,15 +63,6 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
     queryFn: async () => {
       const details = await mediaApi.getDetails(item.id);
       return details;
-    },
-    staleTime: 60_000,
-  });
-
-  const { data: config = null } = useQuery<DetailConfig | null>({
-    queryKey: ["media-config", item.id],
-    queryFn: async () => {
-      const userConfig = await mediaApi.getConfig();
-      return userConfig;
     },
     staleTime: 60_000,
   });
@@ -263,6 +268,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                    src={`https://www.youtube-nocookie.com/embed/${fullItem.trailer.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${fullItem.trailer.id}&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&cc_load_policy=0`}
                    className="absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] transition-opacity duration-1000 animate-fade-in"
                    allow="autoplay; encrypted-media"
+                   referrerPolicy="strict-origin-when-cross-origin"
                    title="Anime Trailer"
                  />
                  {/* Transparent click-blocker prevents mouse hover from triggering YouTube controls */}
