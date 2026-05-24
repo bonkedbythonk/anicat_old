@@ -115,18 +115,49 @@ export default function App() {
     if (typeof window === "undefined") return false;
     return !localStorage.getItem("anicat_onboarding_seen");
   });
+  // Load initial update state from localStorage to persist across reloads
   const [activeUpdateOverlay, setActiveUpdateOverlay] = useState<{
     active: boolean;
     message: string;
     isNative: boolean;
-  } | null>(null);
+  } | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const stored = localStorage.getItem("anicat_active_update");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Stale check (5 minutes)
+        if (parsed.timestamp && (Date.now() - parsed.timestamp) < 300000) {
+          return {
+            active: parsed.active,
+            message: parsed.message,
+            isNative: parsed.isNative,
+          };
+        } else {
+          localStorage.removeItem("anicat_active_update");
+        }
+      }
+    } catch {}
+    return null;
+  });
+
+  const setPersistedUpdateOverlay = (state: typeof activeUpdateOverlay) => {
+    setActiveUpdateOverlay(state);
+    if (typeof window === "undefined") return;
+    if (state) {
+      localStorage.setItem("anicat_active_update", JSON.stringify({
+        ...state,
+        timestamp: Date.now()
+      }));
+    } else {
+      localStorage.removeItem("anicat_active_update");
+    }
+  };
 
   // Media item state lives in AppStateContext
   const appState = useAppState();
 
   const updateOverlayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const updateStartedAtRef = useRef<number | null>(null);
-  const updateDismissedRef = useRef(false);
 
   const clearUpdateOverlayTimeout = () => {
     if (updateOverlayTimeoutRef.current) {
@@ -135,15 +166,22 @@ export default function App() {
     }
   };
 
-  // Reset the stale-update tracker when updating flag goes away
+  // Sync update state from health status and handle cache busting / auto resets
   useEffect(() => {
-    if (healthStatus?.updating && !updateStartedAtRef.current && !updateDismissedRef.current) {
-      updateStartedAtRef.current = Date.now();
-    } else if (!healthStatus?.updating) {
-      updateStartedAtRef.current = null;
-      updateDismissedRef.current = false;
+    if (healthStatus?.updating) {
+      if (!activeUpdateOverlay || !activeUpdateOverlay.active) {
+        setPersistedUpdateOverlay({
+          active: true,
+          message: "Updating Anicat to the latest version. This may take a few minutes...",
+          isNative: false,
+        });
+      }
+    } else if (healthStatus && !healthStatus.updating) {
+      // Clear overlay once connection is back and updating has completed
+      setPersistedUpdateOverlay(null);
+      clearUpdateOverlayTimeout();
     }
-  }, [healthStatus?.updating]);
+  }, [healthStatus?.updating, healthStatus]);
 
   // Cleanup update overlay timeout on unmount
   useEffect(() => {
@@ -202,7 +240,7 @@ export default function App() {
               const message = msg || "Update in progress...";
               const isNative = message.toLowerCase().includes("restart") || message.toLowerCase().includes("native");
               clearUpdateOverlayTimeout();
-              setActiveUpdateOverlay({ active: true, message, isNative });
+              setPersistedUpdateOverlay({ active: true, message, isNative });
               
               if (!isNative) {
                 // For git development builds, reload automatically after 7 seconds so the user does NOT have to do anything themselves!
@@ -211,7 +249,7 @@ export default function App() {
                 }, 7000);
               } else {
                 updateOverlayTimeoutRef.current = setTimeout(() => {
-                  setActiveUpdateOverlay(null);
+                  setPersistedUpdateOverlay(null);
                   updateOverlayTimeoutRef.current = null;
                 }, 300000); // 5 min — matches backend stale-file cleanup
               }
@@ -272,7 +310,49 @@ export default function App() {
     }
   }, [connectionStatus, healthStatus?.updating]);
 
-  if (connectionStatus === "checking" && !healthStatus?.updating) {
+  // Show a polished unified "Updating..." screen (persisted across connection drops)
+  if (activeUpdateOverlay && activeUpdateOverlay.active) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#050505] text-white p-6 font-sans">
+        <style>{`
+          @keyframes progress-fill {
+            0% { width: 0%; }
+            100% { width: 100%; }
+          }
+          .animate-spin-slow {
+            animation: spin 3s linear infinite;
+          }
+        `}</style>
+        <div className="max-w-md w-full text-center space-y-6 animate-fade-in">
+          <div className="relative flex justify-center">
+            <div className="absolute -inset-4 bg-accent/20 rounded-full blur-xl animate-pulse" />
+            <div className="relative p-6 bg-white/[0.02] border border-white/[0.08] rounded-full shadow-2xl">
+              <RotateCw size={48} className="text-accent animate-spin-slow" />
+            </div>
+          </div>
+          <div className="space-y-3">
+            <h2 className="text-2xl font-black tracking-tight text-white animate-pulse">
+              {activeUpdateOverlay.isNative ? "Installing Application Update" : "Updating Anicat..."}
+            </h2>
+            <p className="text-sm text-gray-400 leading-relaxed px-4">
+              {activeUpdateOverlay.message}
+            </p>
+          </div>
+          <div className="w-48 mx-auto h-1.5 bg-white/[0.04] border border-white/[0.08] rounded-full overflow-hidden">
+            <div className="h-full bg-accent rounded-full animate-pulse" style={{ width: '60%' }} />
+          </div>
+          <p className="text-[11px] text-gray-500 font-medium">
+            {activeUpdateOverlay.isNative 
+              ? "The application will close and restart automatically. Please do not close the app."
+              : "The app will restart automatically when ready."}
+          </p>
+          <UpdateLogViewer />
+        </div>
+      </div>
+    );
+  }
+
+  if (connectionStatus === "checking") {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#050505] text-white p-6 font-sans">
         <style>{`
@@ -322,44 +402,6 @@ export default function App() {
               animation: 'progress-fill-startup 8s linear forwards'
             }} />
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show a friendly "Updating..." screen when the background process restarts
-  // during an update, instead of the scary "Connection Failed" error.
-  // Auto-dismiss if the flag has been stuck for >5 minutes (backend cleans up
-  // stale flags after 5 min).
-  const UPDATING_STALE_TIMEOUT = 300000; // 5 minutes
-  const isUpdatingStale = updateStartedAtRef.current && (Date.now() - updateStartedAtRef.current) > UPDATING_STALE_TIMEOUT;
-  if (isUpdatingStale) {
-    updateDismissedRef.current = true;
-  }
-  if (healthStatus?.updating && !isUpdatingStale && !updateDismissedRef.current) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#050505] text-white p-6 font-sans">
-        <div className="max-w-md w-full text-center space-y-6 animate-fade-in">
-          <div className="relative flex justify-center">
-            <div className="absolute -inset-4 bg-accent/20 rounded-full blur-xl animate-pulse" />
-            <div className="relative p-6 bg-white/[0.02] border border-white/[0.08] rounded-full shadow-2xl">
-              <RotateCw size={48} className="text-accent animate-spin-slow" />
-            </div>
-          </div>
-          <div className="space-y-3">
-            <h2 className="text-2xl font-black tracking-tight text-white">
-              Updating Anicat...
-            </h2>
-            <p className="text-sm text-gray-400 leading-relaxed px-4">
-              Downloading the latest version. This may take a few minutes depending on your connection speed.
-            </p>
-          </div>
-          <div className="w-48 mx-auto h-1.5 bg-white/[0.04] border border-white/[0.08] rounded-full overflow-hidden">
-            <div className="h-full bg-accent rounded-full animate-pulse" style={{ width: '60%' }} />
-          </div>
-          <p className="text-[11px] text-gray-500 font-medium">
-            The app will restart automatically when ready.
-          </p>
         </div>
       </div>
     );
@@ -486,56 +528,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Full-Screen Update Overlay */}
-        {activeUpdateOverlay && activeUpdateOverlay.active && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[9999] flex flex-col items-center justify-center p-6">
-            <style>{`
-              @keyframes progress-fill {
-                0% { width: 0%; }
-                100% { width: 100%; }
-              }
-              .animate-spin-slow {
-                animation: spin 3s linear infinite;
-              }
-            `}</style>
-            <div className="max-w-md w-full text-center space-y-6">
-              {/* Spinning Logo / Icon */}
-              <div className="relative flex justify-center">
-                <div className="absolute -inset-4 bg-accent/20 rounded-full blur-xl animate-pulse" />
-                <div className="relative p-6 bg-white/[0.02] border border-white/[0.08] rounded-full shadow-2xl">
-                  <RotateCw size={48} className="text-accent animate-spin-slow" />
-                </div>
-              </div>
-
-              {/* Title & Description */}
-              <div className="space-y-3">
-                <h2 className="text-2xl font-black tracking-tight text-white animate-pulse">
-                  {activeUpdateOverlay.isNative ? "Installing Application Update" : "Updating Local Environment"}
-                </h2>
-                <p className="text-sm text-gray-400 leading-relaxed px-4">
-                  {activeUpdateOverlay.message}
-                </p>
-              </div>
-
-              {/* Loader Bar */}
-              <div className="w-48 mx-auto h-1.5 bg-white/[0.04] border border-white/[0.08] rounded-full overflow-hidden">
-                <div className="h-full bg-accent rounded-full" style={{
-                  animation: 'progress-fill 10s linear forwards'
-                }} />
-              </div>
-
-              {/* Auto Action Text */}
-              <p className="text-xs text-gray-500 font-medium">
-                {activeUpdateOverlay.isNative 
-                  ? "The application will close and restart automatically. Please do not close the app."
-                  : "Refreshing view automatically in a few seconds..."}
-              </p>
-
-              {/* Update Logs: Show/Hide button + live feed */}
-              <UpdateLogViewer />
-            </div>
-          </div>
-        )}
+        {/* Full-Screen Update Overlay is rendered at the top level to prevent layout shifts */}
 
         <AnimatePresence mode="wait">
           <motion.div
