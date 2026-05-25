@@ -250,10 +250,10 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
              <img
                src={banner}
                alt={title}
-               className={`w-full h-full object-cover transition-opacity duration-1000 ${isTrailerVisible && (trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers) ? "opacity-0" : "opacity-100"}`}
+               className={`w-full h-full object-cover transition-opacity duration-1000 ${isTrailerVisible && (trailer?.id && trailer.site?.toLowerCase() === "youtube") ? "opacity-0" : "opacity-100"}`}
              />
              {/* Muted trailer iframe — mounted only on hover to prevent mixed content / API errors */}
-             {isHovered && trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers && (
+             {isHovered && trailer?.id && trailer.site?.toLowerCase() === "youtube" && (
                <>
                  <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                    <iframe
