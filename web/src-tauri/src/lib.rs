@@ -45,39 +45,7 @@ impl SidecarState {
 // Spawn backend — tries bundled binary first, falls back to dev mode
 // ---------------------------------------------------------------------------
 
-fn spawn_backend() -> Option<std::process::Child> {
-    let exe_dir = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|d| d.to_path_buf()));
-
-    // --- Try bundled sidecar (production .app) ---
-    if let Some(ref bin_dir) = exe_dir {
-        let sidecar_filename = if cfg!(windows) {
-            "anicat-server.exe"
-        } else {
-            "anicat-server"
-        };
-        let sidecar_path = bin_dir.join(sidecar_filename);
-        if sidecar_path.exists() {
-            match create_command(&sidecar_path)
-                .env("PYTHONIOENCODING", "utf-8")
-                .env("PYTHONUTF8", "1")
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .spawn()
-            {
-                Ok(child) => {
-                    log::info!("[sidecar] Bundled binary: {}", sidecar_path.display());
-                    return Some(child);
-                }
-                Err(e) => {
-                    log::error!("[sidecar] Bundled binary failed: {} — {}", sidecar_path.display(), e);
-                }
-            }
-        }
-    }
-
-    // --- Dev fallback: find project root and use uv run uvicorn ---
+fn spawn_dev_backend() -> Option<std::process::Child> {
     let project_dir = find_project_root();
     if let Some(ref root) = project_dir {
         let python_bin = if cfg!(windows) {
@@ -119,7 +87,62 @@ fn spawn_backend() -> Option<std::process::Child> {
             }
         }
     } else {
-        log::error!("[sidecar] Could not find project root for dev fallback");
+        log::error!("[sidecar] Could not find project root for dev backend");
+    }
+    None
+}
+
+fn spawn_bundled_backend() -> Option<std::process::Child> {
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()));
+
+    if let Some(ref bin_dir) = exe_dir {
+        let sidecar_filename = if cfg!(windows) {
+            "anicat-server.exe"
+        } else {
+            "anicat-server"
+        };
+        let sidecar_path = bin_dir.join(sidecar_filename);
+        if sidecar_path.exists() {
+            match create_command(&sidecar_path)
+                .env("PYTHONIOENCODING", "utf-8")
+                .env("PYTHONUTF8", "1")
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .spawn()
+            {
+                Ok(child) => {
+                    log::info!("[sidecar] Bundled binary: {}", sidecar_path.display());
+                    return Some(child);
+                }
+                Err(e) => {
+                    log::error!("[sidecar] Bundled binary failed: {} — {}", sidecar_path.display(), e);
+                }
+            }
+        }
+    }
+    None
+}
+
+fn spawn_backend() -> Option<std::process::Child> {
+    // In debug mode, prioritize live Python dev server so backend changes are live-reloaded
+    if cfg!(debug_assertions) {
+        if let Some(child) = spawn_dev_backend() {
+            return Some(child);
+        }
+    }
+
+    // Try bundled sidecar
+    if let Some(child) = spawn_bundled_backend() {
+        return Some(child);
+    }
+
+    // Fallback if not debug or if bundled failed
+    if !cfg!(debug_assertions) {
+        if let Some(child) = spawn_dev_backend() {
+            return Some(child);
+        }
     }
 
     None
