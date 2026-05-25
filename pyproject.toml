@@ -1,6 +1,6 @@
 [project]
 name = "anicat"
-version = "4.35.28"
+version = "4.36.0"
 description = "Minimalist Media CLI for macOS."
 authors = [
     { name = "Thomas (bonkedbythonk)" },

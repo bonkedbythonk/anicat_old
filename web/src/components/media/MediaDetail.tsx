@@ -232,14 +232,12 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
           <div 
             className="relative h-72 w-full flex-shrink-0 cursor-pointer"
             onMouseEnter={() => {
-              const hasTrailer = !!(trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers);
-              if (hasTrailer) {
+              if (trailer?.id && trailer.site?.toLowerCase() === "youtube") {
                 setIsHovered(true);
               }
             }}
             onMouseLeave={() => {
-              const hasTrailer = !!(trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers);
-              if (hasTrailer) {
+              if (trailer?.id && trailer.site?.toLowerCase() === "youtube") {
                 setIsHovered(false);
                 setIsTrailerVisible(false);
               }
@@ -250,10 +248,10 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
              <img
                src={banner}
                alt={title}
-               className={`w-full h-full object-cover transition-opacity duration-1000 ${isTrailerVisible && (trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers) ? "opacity-0" : "opacity-100"}`}
+               className={`w-full h-full object-cover transition-opacity duration-1000 ${isTrailerVisible && (trailer?.id && trailer.site?.toLowerCase() === "youtube" && config?.stream?.autoplay_trailers) ? "opacity-0" : "opacity-100"}`}
              />
              {/* Muted trailer iframe — mounted only on hover to prevent mixed content / API errors */}
-             {isHovered && trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers && (
+             {isHovered && trailer?.id && trailer.site?.toLowerCase() === "youtube" && config?.stream?.autoplay_trailers && (
                <>
                  <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                    <iframe

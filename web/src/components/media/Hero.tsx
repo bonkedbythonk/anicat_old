@@ -26,7 +26,7 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
   useEffect(() => {
     setShowVideo(false);
     setIsVideoVisible(false);
-    if (!item.trailer?.id || item.trailer.site !== "youtube") return;
+    if (!item.trailer?.id || item.trailer.site?.toLowerCase() !== "youtube") return;
 
     const enabled = !!config?.stream?.autoplay_trailers;
     if (!enabled) return;
@@ -76,7 +76,7 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
         />
 
         {/* Muted auto-play trailer — overflow-hidden wrapper clips the scaled iframe */}
-        {showVideo && item.trailer?.id && item.trailer.site === "youtube" && (
+        {showVideo && item.trailer?.id && item.trailer.site?.toLowerCase() === "youtube" && (
           <>
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
               <iframe
