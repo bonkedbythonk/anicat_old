@@ -96,7 +96,7 @@ async def delete_list_entry(media_id: int):
     try:
         ctx = get_ctx()
         # 1. Update local registry
-        ctx.media_registry.delete_media_record(media_id)
+        ctx.media_registry.remove_media_record(media_id)
         
         # 2. Sync with AniList
         success = ctx.media_api.delete_list_entry(media_id)

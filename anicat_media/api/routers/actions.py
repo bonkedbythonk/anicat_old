@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
 from fastapi.responses import Response, FileResponse
 from pydantic import BaseModel
 import asyncio
@@ -869,12 +869,17 @@ async def test_actions():
 
 
 @router.get("/youtube-trailer")
-async def youtube_trailer(id: str):
+async def youtube_trailer(id: str, request: Request):
     """
     Serves a local proxy page for embedding YouTube trailers to avoid
     origin and security errors in Tauri (Error 153).
     """
     from fastapi.responses import HTMLResponse
+    import urllib.parse
+
+    # Dynamically resolve the request's origin to prevent mismatches on localhost/127.0.0.1
+    request_origin = f"{request.url.scheme}://{request.url.netloc}"
+    encoded_origin = urllib.parse.quote(request_origin)
 
     html_content = f"""<!DOCTYPE html>
 <html>
@@ -900,7 +905,7 @@ async def youtube_trailer(id: str):
 <body>
   <iframe
     id="yt-player"
-    src="https://www.youtube-nocookie.com/embed/{id}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&enablejsapi=1&origin={LOCAL_API_ORIGIN}"
+    src="https://www.youtube-nocookie.com/embed/{id}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&enablejsapi=1&origin={encoded_origin}"
     allow="autoplay; encrypted-media"
     referrerpolicy="strict-origin-when-cross-origin"
   ></iframe>

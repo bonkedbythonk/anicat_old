@@ -42,7 +42,7 @@ class FakeMediaRegistry:
     def update_media_index_entry(self, **kwargs):
         self.updated_entries.append(kwargs)
 
-    def delete_media_record(self, media_id: int):
+    def remove_media_record(self, media_id: int):
         self.deleted_media_ids.append(media_id)
 
 
