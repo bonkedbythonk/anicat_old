@@ -868,6 +868,56 @@ async def test_actions():
     return {"status": "ok", "message": "Actions router is active"}
 
 
+@router.get("/youtube-trailer")
+async def youtube_trailer(id: str):
+    """
+    Serves a local proxy page for embedding YouTube trailers to avoid
+    origin and security errors in Tauri (Error 153).
+    """
+    from fastapi.responses import HTMLResponse
+
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    html, body {{
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+    }}
+    iframe {{
+      width: 130%;
+      height: 130%;
+      border: 0;
+      margin-left: -15%;
+      margin-top: -15%;
+    }}
+  </style>
+</head>
+<body>
+  <iframe
+    id="yt-player"
+    src="https://www.youtube-nocookie.com/embed/{id}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&enablejsapi=1&origin={LOCAL_API_ORIGIN}"
+    allow="autoplay; encrypted-media"
+    referrerpolicy="strict-origin-when-cross-origin"
+  ></iframe>
+  <script>
+    // Relay all messages from the inner YouTube iframe to the outer Tauri app
+    window.addEventListener("message", (event) => {{
+      if (event.source === document.getElementById("yt-player").contentWindow) {{
+        window.parent.postMessage(event.data, "*");
+      }}
+    }});
+  </script>
+</body>
+</html>
+"""
+    return HTMLResponse(content=html_content)
+
+
 class FrontendLogRequest(BaseModel):
     level: str
     message: str

@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Play, Loader2, Star, Users, Calendar, Clock, Building2, Monitor, CheckCircle2, Bookmark, Pause, XCircle, Download, BookOpen, RotateCcw, ChevronDown, ChevronUp, MoreHorizontal, Trash2, Edit2, Check } from "lucide-react";
-import { mediaApi, type MediaItem, type Episode, type Character, type Review } from "@/lib/api";
+import { mediaApi, type MediaItem, type Episode, type Character, type Review, API_BASE_ORIGIN } from "@/lib/api";
 import { dispatchRefresh } from "@/lib/events";
 import { formatTime, formatRelativeTime } from "@/lib/date";
 import { useAmbientColor } from "@/lib/useAmbientColor";
@@ -339,7 +339,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                          );
                        }
                      }}
-                     src={`https://www.youtube-nocookie.com/embed/${trailer.id}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&cc_load_policy=0&enablejsapi=1`}
+                     src={`${API_BASE_ORIGIN}/api/actions/youtube-trailer?id=${trailer.id}`}
                      className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] pointer-events-none transition-opacity duration-1000 ${isTrailerVisible ? "opacity-100" : "opacity-0"}`}
                      allow="autoplay; encrypted-media"
                      referrerPolicy="strict-origin-when-cross-origin"

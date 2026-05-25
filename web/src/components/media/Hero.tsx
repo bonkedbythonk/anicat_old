@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, memo } from "react";
 import { Play, Maximize, BookOpen, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { mediaApi, type MediaItem } from "@/lib/api";
+import { mediaApi, type MediaItem, API_BASE_ORIGIN } from "@/lib/api";
 
 interface HeroProps {
   item: MediaItem;
@@ -134,7 +134,7 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
                     );
                   }
                 }}
-                src={`https://www.youtube-nocookie.com/embed/${item.trailer.id}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0&enablejsapi=1`}
+                src={`${API_BASE_ORIGIN}/api/actions/youtube-trailer?id=${item.trailer.id}`}
                 className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] pointer-events-none transition-opacity duration-1000 ${isVideoVisible ? "opacity-100" : "opacity-0"}`}
                 allow="autoplay; encrypted-media"
                 referrerPolicy="strict-origin-when-cross-origin"
