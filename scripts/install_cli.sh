@@ -9,7 +9,7 @@ set -e
 # After installation you can run: anicat --help
 
 REPO="bonkedbythonk/anicat"
-CLONE_URL="https://github.com/$REPO.git"
+CLONE_URL="git+https://github.com/$REPO.git@nightly"
 
 echo "=== Anicat CLI Installer ==="
 echo ""
@@ -33,10 +33,10 @@ if command -v uv &>/dev/null; then
 elif command -v pip3 &>/dev/null; then
     PKG_MANAGER="pip3"
     echo "[1/3] Installing Anicat CLI via pip3..."
-    pip3 install --upgrade --break-system-packages "git+$CLONE_URL"
+    pip3 install --upgrade --break-system-packages "$CLONE_URL"
 else
     echo "[1/3] Installing Anicat CLI via pip..."
-    pip install --upgrade --break-system-packages "git+$CLONE_URL"
+    pip install --upgrade --break-system-packages "$CLONE_URL"
 fi
 
 echo ""
