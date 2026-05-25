@@ -143,3 +143,50 @@ def test_authenticate_invalid_token_returns_none_without_raising():
     assert profile is None
     assert api.token is None
     assert "Authorization" not in api.http_client.headers
+
+
+def test_delete_list_entry_success():
+    from anicat_media.libs.media_api.anilist import gql
+
+    config = AnilistConfig(token="test_token")
+    mock_client = MagicMock(spec=httpx.Client)
+    api = AniListApi(config=config, client=mock_client)
+    api.token = "test_token"
+
+    mock_response_get = MagicMock(spec=httpx.Response)
+    mock_response_get.json.return_value = {
+        "data": {
+            "Media": {
+                "mediaListEntry": {
+                    "id": 12345,
+                    "status": "CURRENT",
+                    "progress": 3,
+                    "score": 8
+                }
+            }
+        }
+    }
+
+    mock_response_del = MagicMock(spec=httpx.Response)
+    mock_response_del.json.return_value = {
+        "data": {
+            "DeleteMediaListEntry": {
+                "deleted": True
+            }
+        }
+    }
+
+    with patch("anicat_media.libs.media_api.anilist.api.execute_graphql") as mock_execute:
+        mock_execute.side_effect = [mock_response_get, mock_response_del]
+
+        success = api.delete_list_entry(9999)
+        assert success is True
+
+        # Verify first call
+        mock_execute.assert_any_call(
+            "https://graphql.anilist.co",
+            mock_client,
+            gql.GET_MEDIA_LIST_ITEM,
+            {"mediaId": 9999}
+        )
+

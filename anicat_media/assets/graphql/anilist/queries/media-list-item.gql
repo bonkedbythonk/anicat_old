@@ -1,8 +1,10 @@
 query ($mediaId: Int) {
-  MediaList(mediaId: $mediaId) {
-    id
-    status
-    progress
-    score
+  Media(id: $mediaId) {
+    mediaListEntry {
+      id
+      status
+      progress
+      score
+    }
   }
 }
