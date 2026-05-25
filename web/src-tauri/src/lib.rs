@@ -39,7 +39,12 @@ fn spawn_backend() -> Option<std::process::Child> {
 
     // --- Try bundled sidecar (production .app) ---
     if let Some(ref bin_dir) = exe_dir {
-        let sidecar_path = bin_dir.join("anicat-server");
+        let sidecar_filename = if cfg!(windows) {
+            "anicat-server.exe"
+        } else {
+            "anicat-server"
+        };
+        let sidecar_path = bin_dir.join(sidecar_filename);
         if sidecar_path.exists() {
             match std::process::Command::new(&sidecar_path)
                 .stdout(std::process::Stdio::piped())
@@ -60,7 +65,11 @@ fn spawn_backend() -> Option<std::process::Child> {
     // --- Dev fallback: find project root and use uv run uvicorn ---
     let project_dir = find_project_root();
     if let Some(ref root) = project_dir {
-        let python_bin = root.join(".venv/bin/python3");
+        let python_bin = if cfg!(windows) {
+            root.join(".venv").join("Scripts").join("python.exe")
+        } else {
+            root.join(".venv").join("bin").join("python3")
+        };
         if python_bin.exists() {
             match std::process::Command::new(&python_bin)
                 .args(["-m", "uvicorn", "anicat_media.api.main:create_app", "--host", "127.0.0.1", "--port", "13370", "--factory"])
@@ -216,6 +225,15 @@ pub fn run() {
                         .arg("lsof -ti :13370 | xargs kill -9 2>/dev/null; pkill -9 -f anicat-server 2>/dev/null; true")
                         .output();
                     // Brief pause to let the OS release the port
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+                }
+
+                #[cfg(target_os = "windows")]
+                {
+                    // Kill any stale sidecar from previous run using taskkill
+                    let _ = std::process::Command::new("cmd")
+                        .args(["/C", "taskkill /F /IM anicat-server.exe /T 2>nul"])
+                        .output();
                     std::thread::sleep(std::time::Duration::from_millis(500));
                 }
 
@@ -446,6 +464,14 @@ pub fn run() {
                             let _ = std::process::Command::new("sh")
                                 .arg("-c")
                                 .arg("lsof -ti :13370 | xargs kill -9 2>/dev/null; true")
+                                .output();
+                            std::thread::sleep(std::time::Duration::from_millis(800));
+                        }
+
+                        #[cfg(target_os = "windows")]
+                        {
+                            let _ = std::process::Command::new("cmd")
+                                .args(["/C", "taskkill /F /IM anicat-server.exe /T 2>nul"])
                                 .output();
                             std::thread::sleep(std::time::Duration::from_millis(800));
                         }
