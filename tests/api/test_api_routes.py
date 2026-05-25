@@ -222,7 +222,7 @@ def test_user_update_marks_planning_and_increments_version(client_and_ctx, monke
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "success"
-    assert payload["synced"] is True
+    assert payload["synced"] == "pending"
     assert fake_ctx.data_version == 8
     assert fake_ctx.media_registry.updated_entries[-1]["media_id"] == 42
     assert fake_ctx.media_registry.updated_entries[-1]["status"].value == "planning"
@@ -243,7 +243,7 @@ def test_user_delete_removes_local_entry_and_increments_version(client_and_ctx, 
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "success"
-    assert payload["deleted"] is True
+    assert payload["deleted"] == "pending"
     assert fake_ctx.data_version == 8
     assert fake_ctx.media_registry.deleted_media_ids == [42]
     assert fake_ctx.media_api.last_deleted_media_id == 42
