@@ -95,6 +95,15 @@ export function useHealthPolling(): HealthPollingState {
   const lastDataVersion = useRef<number | null>(null);
   const lastNotificationCount = useRef<number>(0);
   const lastSeenNotificationId = useRef<number | null>(null);
+  // Debounce invalidateQueries so rapid version bumps only trigger one refetch wave
+  const invalidateDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function debouncedInvalidate() {
+    if (invalidateDebounceTimer.current) clearTimeout(invalidateDebounceTimer.current);
+    invalidateDebounceTimer.current = setTimeout(() => {
+      getQueryClient()?.invalidateQueries();
+    }, 500);
+  }
 
   const dismissOffline = useCallback(() => {
     setDismissedOffline(true);
@@ -140,7 +149,7 @@ export function useHealthPolling(): HealthPollingState {
             console.log(
               `Live Sync: Data changed (version ${lastDataVersion.current} -> ${status.data_version}). Refreshing views...`
             );
-            getQueryClient()?.invalidateQueries();
+            debouncedInvalidate();
           }
           lastDataVersion.current = status.data_version;
         }
@@ -225,12 +234,13 @@ export function useHealthPolling(): HealthPollingState {
       }
     }
 
-    // Start initial fast polling (every 1s)
+    // Start initial polling (every 3s — backend boot takes ~2s, no need to hammer at 1s)
     checkSystem();
-    checkInterval = setInterval(checkSystem, 1000);
+    checkInterval = setInterval(checkSystem, 3000);
 
     return () => {
       clearInterval(checkInterval);
+      if (invalidateDebounceTimer.current) clearTimeout(invalidateDebounceTimer.current);
     };
     // Run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps

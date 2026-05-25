@@ -111,16 +111,22 @@ export default function HomeView({ onSelect }: HomeViewProps) {
   const trendingQuery = useQuery({
     queryKey: ["home-trending"],
     queryFn: () => mediaApi.getTrending("ANIME"),
+    staleTime: 300_000,   // 5 min — trending doesn't change fast
+    refetchInterval: 600_000,
   });
 
   const seasonalQuery = useQuery({
     queryKey: ["home-seasonal"],
     queryFn: () => mediaApi.getSeasonal("ANIME"),
+    staleTime: 300_000,
+    refetchInterval: 600_000,
   });
 
   const newlyReleasingQuery = useQuery({
     queryKey: ["home-newly-releasing"],
     queryFn: () => mediaApi.search('', 'ANIME', 1, { status: 'RELEASING' }),
+    staleTime: 300_000,
+    refetchInterval: 600_000,
   });
 
   // 5. Smart Playlist — personalized recommendations (cached, non-blocking)
