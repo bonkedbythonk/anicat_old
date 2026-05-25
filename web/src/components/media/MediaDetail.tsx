@@ -161,8 +161,9 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
     progressEditor.commitProgress(item.id, newProgress);
   };
 
-  const handleRemoveFromList = async () => {
-    if (!deleteConfirmPending) {
+  const handleRemoveFromList = async (bypassConfirm: boolean | React.MouseEvent = false) => {
+    const shouldBypass = bypassConfirm === true;
+    if (!shouldBypass && !deleteConfirmPending) {
       // First click: ask for confirmation inline
       setDeleteConfirmPending(true);
       // Auto-reset after 3s if user does nothing
@@ -337,7 +338,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                     onChange={(e) => {
                       const newStatus = e.target.value;
                       if (newStatus === "none") {
-                        handleRemoveFromList();
+                        handleRemoveFromList(true);
                       } else {
                         setIsUpdatingStatus(true);
                         // Fire-and-forget: don't block the UI on the network call
