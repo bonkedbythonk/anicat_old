@@ -230,9 +230,7 @@ class Context:
                             f"Authentication request failed (HTTP {status_code}): {e}"
                         )
             else:
-                self.feedback.warning(
-                    "You are not logged in.", "Please run 'anicat login' to continue."
-                )
+                logger.warning("You are not logged in. Please run 'anicat login' to continue.")
             self._media_api = media_api
 
         return self._media_api

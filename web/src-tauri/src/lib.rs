@@ -10,6 +10,19 @@ use tauri::{
 use std::sync::{Arc, Mutex};
 use std::thread;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+#[allow(unused_mut)]
+fn create_command<S: AsRef<std::ffi::OsStr>>(program: S) -> std::process::Command {
+    let mut cmd = std::process::Command::new(program);
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    cmd
+}
+
 // ---------------------------------------------------------------------------
 // Shared sidecar state
 // ---------------------------------------------------------------------------
@@ -46,7 +59,9 @@ fn spawn_backend() -> Option<std::process::Child> {
         };
         let sidecar_path = bin_dir.join(sidecar_filename);
         if sidecar_path.exists() {
-            match std::process::Command::new(&sidecar_path)
+            match create_command(&sidecar_path)
+                .env("PYTHONIOENCODING", "utf-8")
+                .env("PYTHONUTF8", "1")
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
                 .spawn()
@@ -71,9 +86,11 @@ fn spawn_backend() -> Option<std::process::Child> {
             root.join(".venv").join("bin").join("python3")
         };
         if python_bin.exists() {
-            match std::process::Command::new(&python_bin)
+            match create_command(&python_bin)
                 .args(["-m", "uvicorn", "anicat_media.api.main:create_app", "--host", "127.0.0.1", "--port", "13370", "--factory"])
                 .current_dir(root)
+                .env("PYTHONIOENCODING", "utf-8")
+                .env("PYTHONUTF8", "1")
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
                 .spawn()
@@ -85,9 +102,11 @@ fn spawn_backend() -> Option<std::process::Child> {
                 Err(e) => log::error!("[sidecar] Dev server failed: {}", e),
             }
         } else {
-            match std::process::Command::new("uv")
+            match create_command("uv")
                 .args(["run", "uvicorn", "anicat_media.api.main:create_app", "--host", "127.0.0.1", "--port", "13370", "--factory"])
                 .current_dir(root)
+                .env("PYTHONIOENCODING", "utf-8")
+                .env("PYTHONUTF8", "1")
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
                 .spawn()
@@ -143,19 +162,19 @@ async fn open_logs_folder(app: tauri::AppHandle) -> Result<(), String> {
     }
     
     #[cfg(target_os = "macos")]
-    std::process::Command::new("open")
+    create_command("open")
         .arg(&log_path)
         .spawn()
         .map_err(|e| e.to_string())?;
         
     #[cfg(target_os = "windows")]
-    std::process::Command::new("explorer")
+    create_command("explorer")
         .arg(&log_path)
         .spawn()
         .map_err(|e| e.to_string())?;
 
     #[cfg(target_os = "linux")]
-    std::process::Command::new("xdg-open")
+    create_command("xdg-open")
         .arg(&log_path)
         .spawn()
         .map_err(|e| e.to_string())?;
@@ -220,7 +239,7 @@ pub fn run() {
                 #[cfg(target_os = "macos")]
                 {
                     // Kill any process holding port 13370 (stale sidecar from previous run)
-                    let _ = std::process::Command::new("sh")
+                    let _ = create_command("sh")
                         .arg("-c")
                         .arg("lsof -ti :13370 | xargs kill -9 2>/dev/null; pkill -9 -f anicat-server 2>/dev/null; true")
                         .output();
@@ -231,7 +250,7 @@ pub fn run() {
                 #[cfg(target_os = "windows")]
                 {
                     // Kill any stale sidecar from previous run using taskkill
-                    let _ = std::process::Command::new("cmd")
+                    let _ = create_command("cmd")
                         .args(["/C", "taskkill /F /IM anicat-server.exe /T 2>nul"])
                         .output();
                     std::thread::sleep(std::time::Duration::from_millis(500));
@@ -461,7 +480,7 @@ pub fn run() {
                         // parent, keeping the port occupied.
                         #[cfg(target_os = "macos")]
                         {
-                            let _ = std::process::Command::new("sh")
+                            let _ = create_command("sh")
                                 .arg("-c")
                                 .arg("lsof -ti :13370 | xargs kill -9 2>/dev/null; true")
                                 .output();
@@ -470,7 +489,7 @@ pub fn run() {
 
                         #[cfg(target_os = "windows")]
                         {
-                            let _ = std::process::Command::new("cmd")
+                            let _ = create_command("cmd")
                                 .args(["/C", "taskkill /F /IM anicat-server.exe /T 2>nul"])
                                 .output();
                             std::thread::sleep(std::time::Duration::from_millis(800));
