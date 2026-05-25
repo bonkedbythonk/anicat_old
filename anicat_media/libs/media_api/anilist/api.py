@@ -47,6 +47,12 @@ user_list_status_map = {
     UserMediaListStatus.REPEATING: "REPEATING",
 }
 
+# Map of local UserMediaListSort values to AniList MediaListSort string representations
+anilist_media_list_sort_map = {
+    "MEDIA_SCORE": "SCORE",
+    "MEDIA_SCORE_DESC": "SCORE_DESC",
+}
+
 # TODO: Just remove and have consistent variable naming between the two
 search_params_map = {
     # Custom Name: AniList Variable Name
@@ -265,10 +271,15 @@ class AniListApi(BaseApiClient):
 
         # TODO: use consistent variable naming btw graphql and params
         # so variables can be dynamically filled
-        variables = {
-            "sort": params.sort.value
+        raw_sort = (
+            params.sort.value
             if params.sort
-            else self.config.media_list_sort_by.value,
+            else self.config.media_list_sort_by.value
+        )
+        sort_val = anilist_media_list_sort_map.get(raw_sort, raw_sort)
+
+        variables = {
+            "sort": sort_val,
             "userId": self.user_profile.id,
             "status": user_list_status_map[params.status] if params.status else None,
             "page": params.page,

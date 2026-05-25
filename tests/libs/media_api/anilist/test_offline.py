@@ -190,3 +190,60 @@ def test_delete_list_entry_success():
             {"mediaId": 9999}
         )
 
+
+def test_search_media_list_sort_mapping():
+    from anicat_media.libs.media_api.anilist import gql
+    from anicat_media.libs.media_api.params import UserMediaListSearchParams
+    from anicat_media.libs.media_api.types import UserMediaListSort, UserMediaListStatus
+
+    config = AnilistConfig(token="test_token")
+    mock_client = MagicMock(spec=httpx.Client)
+    api = AniListApi(config=config, client=mock_client)
+    api.token = "test_token"
+    api.user_profile = MagicMock()
+    api.user_profile.id = 123
+
+    params = UserMediaListSearchParams(
+        status=UserMediaListStatus.WATCHING,
+        sort=UserMediaListSort.MEDIA_SCORE_DESC,
+        page=1
+    )
+
+    mock_response = MagicMock(spec=httpx.Response)
+    mock_response.json.return_value = {
+        "data": {
+            "Page": {
+                "pageInfo": {
+                    "total": 0,
+                    "currentPage": 1,
+                    "hasNextPage": False,
+                    "perPage": 15
+                },
+                "mediaList": []
+            }
+        }
+    }
+
+    with patch("anicat_media.libs.media_api.anilist.api.execute_graphql") as mock_execute:
+        mock_execute.return_value = mock_response
+
+        api.search_media_list(params)
+
+        # Verify that sort was mapped to SCORE_DESC instead of MEDIA_SCORE_DESC
+        mock_execute.assert_called_once_with(
+            "https://graphql.anilist.co",
+            mock_client,
+            gql.SEARCH_USER_MEDIA_LIST,
+            {
+                "sort": "SCORE_DESC",
+                "userId": 123,
+                "status": "CURRENT",
+                "page": 1,
+                "perPage": 15,
+                "type": "ANIME"
+            },
+            use_cache=True,
+            ttl=300
+        )
+
+
