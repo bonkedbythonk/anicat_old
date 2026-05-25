@@ -170,6 +170,7 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
             "http://localhost:3000",
             "tauri://localhost",
             "https://tauri.localhost",
+            "http://tauri.localhost",
         ],
         allow_credentials=True,
         allow_methods=["*"],
