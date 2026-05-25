@@ -472,8 +472,10 @@ pub fn run() {
                     if should_restart {
                         let mut rc = restart_wd.lock().unwrap();
                         if *rc >= 5 {
-                            log::error!("[sidecar] {} crashes — giving up", *rc);
-                            break;
+                            log::warn!("[sidecar] {} crashes — auto-restart suspended. Call restart_backend to reset.", *rc);
+                            drop(rc);
+                            thread::sleep(std::time::Duration::from_secs(10));
+                            continue;
                         }
                         *rc += 1;
                         drop(rc);

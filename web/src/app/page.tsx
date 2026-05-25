@@ -16,7 +16,7 @@ import { AppStateProvider, useAppState } from "@/lib/AppStateContext";
 import { mediaApi, API_BASE_ORIGIN, type PlaybackStatus } from "@/lib/api";
 import { dispatchRefresh } from "@/lib/events";
 import Onboarding from "@/components/layout/Onboarding";
-import { X, WifiOff, RotateCw, Play } from "lucide-react";
+import { X, WifiOff, RotateCw, Play, Server } from "lucide-react";
 
 // View Components
 import HomeView from "@/components/views/HomeView";
@@ -300,6 +300,18 @@ export default function App() {
     }
   };
 
+  const handleRestartBackend = async () => {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("restart_backend");
+      alert("Restart request sent to background service. Please wait a moment and try again.");
+      window.location.reload();
+    } catch (err) {
+      console.error("Failed to restart backend:", err);
+      alert("Failed to restart background service: " + String(err));
+    }
+  };
+
   // UX-05: During startup polling, check if there's a last playback to resume
   const [startupPlayback, setStartupPlayback] = useState<PlaybackStatus>(null);
 
@@ -451,6 +463,14 @@ export default function App() {
             >
               <RotateCw size={16} />
               <span>Try Again</span>
+            </button>
+
+            <button
+              onClick={handleRestartBackend}
+              className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold rounded-xl text-sm transition-all active:scale-95 flex items-center justify-center space-x-2"
+            >
+              <Server size={16} />
+              <span>Restart Background Service</span>
             </button>
 
             <button
