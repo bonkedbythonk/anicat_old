@@ -188,15 +188,29 @@ jobs:
           CURRENT_TAG="$RELEASE_TAG"
           # Only clean up if the current release was actually created
           if gh release view "$CURRENT_TAG" --json tagName --jq '.tagName' 2>/dev/null; then
-            echo "Current release exists. Removing older stable releases (keeping $CURRENT_TAG)..."
+            VERSION=$(cat version.txt)
+            NEW_VAL_TAG="v${VERSION}"
+            echo "Current stable release: $CURRENT_TAG"
+            echo "Current version tag: $NEW_VAL_TAG"
+            echo "Removing older releases (keeping $CURRENT_TAG and $NEW_VAL_TAG)..."
             gh release list --limit 100 --json tagName --jq '.[].tagName' 2>/dev/null \
-              | grep -- '-stable$' || true \
-              | grep -v "$CURRENT_TAG" || true \
+              | grep -E '^v[0-9]' || true \
+              | grep -v "^${CURRENT_TAG}$" || true \
+              | grep -v "^${NEW_VAL_TAG}$" || true \
               | while read -r old_tag; do
-                  echo "  Deleting: $old_tag"
+                  echo "  Deleting release and tag: $old_tag"
                   gh release delete "$old_tag" --yes --cleanup-tag || true
                 done
-            echo "Older stable releases cleaned up."
+            echo "Older stable and version releases cleaned up."
+
+            echo "Removing older git tags from remote origin..."
+            git ls-remote --tags origin | grep -o 'refs/tags/v.*' | cut -d/ -f3 | while read -r old_tag; do
+              if [ "$old_tag" != "$CURRENT_TAG" ] && [ "$old_tag" != "$NEW_VAL_TAG" ]; then
+                echo "  Deleting remote git tag: $old_tag"
+                git push origin --delete "$old_tag" || true
+              fi
+            done
+            echo "Older git tags cleaned up."
           else
             echo "Current release $CURRENT_TAG was not created. Skipping cleanup to preserve existing releases."
           fi
