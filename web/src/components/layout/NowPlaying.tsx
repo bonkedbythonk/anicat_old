@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Play, X, CheckCircle2, Loader2, Music, ArrowRight } from "lucide-react";
 import { mediaApi, type PlaybackStatus } from "@/lib/api";
 import { useUpdateProgress } from "@/lib/useUpdateProgress";
+import { dispatchRefresh } from "@/lib/events";
 
 interface NowPlayingProps {
   onPlay?: (mediaId: number, episode: string) => void;
@@ -18,6 +19,8 @@ export default function NowPlaying({ onPlay }: NowPlayingProps) {
   const [marked, setMarked] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
+  const lastPlaybackRef = useRef<PlaybackStatus | null>(null);
+
   // Shared React Query key with HomeView — deduplicates the polling request
   const { data: playback } = useQuery<PlaybackStatus>({
     queryKey: ["playback-status"],
@@ -26,12 +29,28 @@ export default function NowPlaying({ onPlay }: NowPlayingProps) {
     staleTime: 4000,
   });
 
-  // Reset dismissed/marked state when a new playback session starts
+  // Reset dismissed/marked state and detect session changes/endings to refresh UI
   useEffect(() => {
     if (playback) {
       setDismissed(false);
       setMarked(false);
     }
+
+    if (lastPlaybackRef.current) {
+      if (!playback) {
+        // Player closed or playback ended
+        console.log("Playback session ended. Refreshing views...");
+        dispatchRefresh();
+      } else if (
+        lastPlaybackRef.current.media_id !== playback.media_id ||
+        lastPlaybackRef.current.episode !== playback.episode
+      ) {
+        // Switched to next episode or different anime
+        console.log("Playback changed. Refreshing views...");
+        dispatchRefresh();
+      }
+    }
+    lastPlaybackRef.current = playback || null;
   }, [playback]);
 
   const handleMarkWatched = async () => {
