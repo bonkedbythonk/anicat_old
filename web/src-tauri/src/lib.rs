@@ -262,124 +262,127 @@ pub fn run() {
                 log::info!("[setup] macOS 26 detected — WKWebView process lifecycle messages are normal");
 
                 // ── UX-01: Full macOS Menu Bar ──
-                let app_menu = SubmenuBuilder::new(app, "Anicat")
-                    .item(&PredefinedMenuItem::about(app, Some("About Anicat"), None)?)
-                    .separator()
-                    .item(&MenuItemBuilder::with_id("preferences", "Preferences...")
-                        .accelerator("CmdOrCtrl+,")
-                        .build(app)?)
-                    .separator()
-                    .item(&PredefinedMenuItem::services(app, None)?)
-                    .separator()
-                    .item(&PredefinedMenuItem::hide(app, Some("Hide Anicat"))?)
-                    .item(&PredefinedMenuItem::hide_others(app, Some("Hide Others"))?)
-                    .item(&PredefinedMenuItem::show_all(app, Some("Show All"))?)
-                    .separator()
-                    .item(&PredefinedMenuItem::quit(app, Some("Quit Anicat"))?)
-                    .build()?;
+                #[cfg(target_os = "macos")]
+                {
+                    let app_menu = SubmenuBuilder::new(app, "Anicat")
+                        .item(&PredefinedMenuItem::about(app, Some("About Anicat"), None)?)
+                        .separator()
+                        .item(&MenuItemBuilder::with_id("preferences", "Preferences...")
+                            .accelerator("CmdOrCtrl+,")
+                            .build(app)?)
+                        .separator()
+                        .item(&PredefinedMenuItem::services(app, None)?)
+                        .separator()
+                        .item(&PredefinedMenuItem::hide(app, Some("Hide Anicat"))?)
+                        .item(&PredefinedMenuItem::hide_others(app, Some("Hide Others"))?)
+                        .item(&PredefinedMenuItem::show_all(app, Some("Show All"))?)
+                        .separator()
+                        .item(&PredefinedMenuItem::quit(app, Some("Quit Anicat"))?)
+                        .build()?;
 
-                let file_menu = SubmenuBuilder::new(app, "File")
-                    .item(&MenuItemBuilder::with_id("close_window", "Close Window")
-                        .accelerator("CmdOrCtrl+W")
-                        .build(app)?)
-                    .build()?;
+                    let file_menu = SubmenuBuilder::new(app, "File")
+                        .item(&MenuItemBuilder::with_id("close_window", "Close Window")
+                            .accelerator("CmdOrCtrl+W")
+                            .build(app)?)
+                        .build()?;
 
-                let edit_menu = SubmenuBuilder::new(app, "Edit")
-                    .item(&PredefinedMenuItem::undo(app, Some("Undo"))?)
-                    .item(&PredefinedMenuItem::redo(app, Some("Redo"))?)
-                    .separator()
-                    .item(&PredefinedMenuItem::cut(app, Some("Cut"))?)
-                    .item(&PredefinedMenuItem::copy(app, Some("Copy"))?)
-                    .item(&PredefinedMenuItem::paste(app, Some("Paste"))?)
-                    .item(&PredefinedMenuItem::select_all(app, Some("Select All"))?)
-                    .build()?;
+                    let edit_menu = SubmenuBuilder::new(app, "Edit")
+                        .item(&PredefinedMenuItem::undo(app, Some("Undo"))?)
+                        .item(&PredefinedMenuItem::redo(app, Some("Redo"))?)
+                        .separator()
+                        .item(&PredefinedMenuItem::cut(app, Some("Cut"))?)
+                        .item(&PredefinedMenuItem::copy(app, Some("Copy"))?)
+                        .item(&PredefinedMenuItem::paste(app, Some("Paste"))?)
+                        .item(&PredefinedMenuItem::select_all(app, Some("Select All"))?)
+                        .build()?;
 
-                let view_menu = SubmenuBuilder::new(app, "View")
-                    .item(&MenuItemBuilder::with_id("toggle_fullscreen", "Toggle Full Screen")
-                        .accelerator("Ctrl+Cmd+F")
-                        .build(app)?)
-                    .item(&MenuItemBuilder::with_id("toggle_sidebar", "Toggle Sidebar")
-                        .accelerator("CmdOrCtrl+B")
-                        .build(app)?)
-                    .separator()
-                    .item(&MenuItemBuilder::with_id("nav_home", "Home")
-                        .accelerator("CmdOrCtrl+1")
-                        .build(app)?)
-                    .item(&MenuItemBuilder::with_id("nav_search", "Search")
-                        .accelerator("CmdOrCtrl+K")
-                        .build(app)?)
-                    .item(&MenuItemBuilder::with_id("nav_library", "Library")
-                        .accelerator("CmdOrCtrl+2")
-                        .build(app)?)
-                    .item(&MenuItemBuilder::with_id("nav_schedule", "Schedule")
-                        .accelerator("CmdOrCtrl+3")
-                        .build(app)?)
-                    .build()?;
+                    let view_menu = SubmenuBuilder::new(app, "View")
+                        .item(&MenuItemBuilder::with_id("toggle_fullscreen", "Toggle Full Screen")
+                            .accelerator("Ctrl+Cmd+F")
+                            .build(app)?)
+                        .item(&MenuItemBuilder::with_id("toggle_sidebar", "Toggle Sidebar")
+                            .accelerator("CmdOrCtrl+B")
+                            .build(app)?)
+                        .separator()
+                        .item(&MenuItemBuilder::with_id("nav_home", "Home")
+                            .accelerator("CmdOrCtrl+1")
+                            .build(app)?)
+                        .item(&MenuItemBuilder::with_id("nav_search", "Search")
+                            .accelerator("CmdOrCtrl+K")
+                            .build(app)?)
+                        .item(&MenuItemBuilder::with_id("nav_library", "Library")
+                            .accelerator("CmdOrCtrl+2")
+                            .build(app)?)
+                        .item(&MenuItemBuilder::with_id("nav_schedule", "Schedule")
+                            .accelerator("CmdOrCtrl+3")
+                            .build(app)?)
+                        .build()?;
 
-                let help_menu = SubmenuBuilder::new(app, "Help")
-                    .item(&MenuItemBuilder::with_id("keyboard_shortcuts", "Keyboard Shortcuts")
-                        .accelerator("CmdOrCtrl+?")
-                        .build(app)?)
-                    .build()?;
+                    let help_menu = SubmenuBuilder::new(app, "Help")
+                        .item(&MenuItemBuilder::with_id("keyboard_shortcuts", "Keyboard Shortcuts")
+                            .accelerator("CmdOrCtrl+?")
+                            .build(app)?)
+                        .build()?;
 
-                let menu = MenuBuilder::new(app)
-                    .item(&app_menu)
-                    .item(&file_menu)
-                    .item(&edit_menu)
-                    .item(&view_menu)
-                    .item(&help_menu)
-                    .build()?;
+                    let menu = MenuBuilder::new(app)
+                        .item(&app_menu)
+                        .item(&file_menu)
+                        .item(&edit_menu)
+                        .item(&view_menu)
+                        .item(&help_menu)
+                        .build()?;
 
-                app.set_menu(menu)?;
+                    app.set_menu(menu)?;
 
-                // Handle menu events
-                let app_handle = app.handle().clone();
-                app.on_menu_event(move |_app, event| {
-                    match event.id().as_ref() {
-                        "preferences" => {
-                            if let Some(window) = app_handle.get_webview_window("main") {
-                                let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('settings')");
+                    // Handle menu events
+                    let app_handle = app.handle().clone();
+                    app.on_menu_event(move |_app, event| {
+                        match event.id().as_ref() {
+                            "preferences" => {
+                                if let Some(window) = app_handle.get_webview_window("main") {
+                                    let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('settings')");
+                                }
                             }
-                        }
-                        "nav_home" => {
-                            if let Some(window) = app_handle.get_webview_window("main") {
-                                let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('home')");
+                            "nav_home" => {
+                                if let Some(window) = app_handle.get_webview_window("main") {
+                                    let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('home')");
+                                }
                             }
-                        }
-                        "nav_search" => {
-                            if let Some(window) = app_handle.get_webview_window("main") {
-                                let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('search')");
+                            "nav_search" => {
+                                if let Some(window) = app_handle.get_webview_window("main") {
+                                    let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('search')");
+                                }
                             }
-                        }
-                        "nav_library" => {
-                            if let Some(window) = app_handle.get_webview_window("main") {
-                                let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('library')");
+                            "nav_library" => {
+                                if let Some(window) = app_handle.get_webview_window("main") {
+                                    let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('library')");
+                                }
                             }
-                        }
-                        "nav_schedule" => {
-                            if let Some(window) = app_handle.get_webview_window("main") {
-                                let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('schedule')");
+                            "nav_schedule" => {
+                                if let Some(window) = app_handle.get_webview_window("main") {
+                                    let _ = window.eval("window.__anicat_navigate__ && window.__anicat_navigate__('schedule')");
+                                }
                             }
-                        }
-                        "keyboard_shortcuts" => {
-                            if let Some(window) = app_handle.get_webview_window("main") {
-                                let _ = window.eval("window.__anicat_toggle_help__ && window.__anicat_toggle_help__()");
+                            "keyboard_shortcuts" => {
+                                if let Some(window) = app_handle.get_webview_window("main") {
+                                    let _ = window.eval("window.__anicat_toggle_help__ && window.__anicat_toggle_help__()");
+                                }
                             }
-                        }
-                        "toggle_fullscreen" => {
-                            if let Some(window) = app_handle.get_webview_window("main") {
-                                let is_fullscreen = window.is_fullscreen().unwrap_or(false);
-                                let _ = window.set_fullscreen(!is_fullscreen);
+                            "toggle_fullscreen" => {
+                                if let Some(window) = app_handle.get_webview_window("main") {
+                                    let is_fullscreen = window.is_fullscreen().unwrap_or(false);
+                                    let _ = window.set_fullscreen(!is_fullscreen);
+                                }
                             }
-                        }
-                        "close_window" => {
-                            if let Some(window) = app_handle.get_webview_window("main") {
-                                let _ = window.close();
+                            "close_window" => {
+                                if let Some(window) = app_handle.get_webview_window("main") {
+                                    let _ = window.close();
+                                }
                             }
+                            _ => {}
                         }
-                        _ => {}
-                    }
-                });
+                    });
+                }
 
                 // ── UX-03: Global Shortcut disabled on macOS 26 ──
                 // The accessibility API path changed in macOS 26, causing
