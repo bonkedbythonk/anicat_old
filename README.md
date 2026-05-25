@@ -92,12 +92,6 @@ Then type **`anicat`** to open the home screen and see what to watch next. Use `
 
 ---
 
-## Screenshots
-
-_TODO: Add screenshots showing the search view, episode list, player, and settings._
-
----
-
 ## Legal
 Anicat is for educational and personal use only. See [DISCLAIMER.md](DISCLAIMER.md) and [SECURITY.md](SECURITY.md).
 
