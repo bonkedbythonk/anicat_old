@@ -11,6 +11,8 @@ interface HeroProps {
 }
 
 const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isIntersecting, setIsIntersecting] = useState(true);
   const [clicked, setClicked] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [isVideoVisible, setIsVideoVisible] = useState(false);
@@ -24,21 +26,36 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
   });
 
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsIntersecting(entry.isIntersecting);
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(el);
+    return () => {
+      observer.unobserve(el);
+    };
+  }, []);
+
+  useEffect(() => {
     setShowVideo(false);
     setIsVideoVisible(false);
     if (!item.trailer?.id || item.trailer.site !== "youtube") return;
 
     const enabled = !!config?.stream?.autoplay_trailers;
-    if (!enabled) return;
+    if (!enabled || !isIntersecting) return;
 
     const timer = setTimeout(() => {
       setShowVideo(true);
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, [item.id, item.trailer?.id, item.trailer?.site, config?.stream?.autoplay_trailers]);
-
-
+  }, [item.id, item.trailer?.id, item.trailer?.site, config?.stream?.autoplay_trailers, isIntersecting]);
 
   const title = item.title.english || item.title.romaji || "Unknown";
   const currentProgress = item.user_status?.progress || 0;
@@ -60,7 +77,7 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
 
   return (
     // Rounded corners on lg+, edge-to-edge on mobile via -mx-6
-    <div className="relative h-[52vh] lg:h-[58vh] w-full overflow-hidden group -mx-6 lg:mx-0 lg:rounded-2xl">
+    <div ref={containerRef} className="relative h-[52vh] lg:h-[58vh] w-full overflow-hidden group -mx-6 lg:mx-0 lg:rounded-2xl">
 
       {/* Background */}
       <div className="absolute inset-0 bg-background">
