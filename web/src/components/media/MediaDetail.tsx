@@ -32,6 +32,8 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   const [isPlayingNext, setIsPlayingNext] = useState(false);
   const [isTrailerVisible, setIsTrailerVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<"episodes" | "characters" | "reviews" | "recommendations">("episodes");
+  // Two-step delete confirm (replaces window.confirm which is broken in Tauri WebView)
+  const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
 
   const [isHovered, setIsHovered] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -155,20 +157,24 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
     }
   };
 
-  const handleUpdateProgress = async (newProgress: number) => {
-    await progressEditor.commitProgress(item.id, newProgress);
+  const handleUpdateProgress = (newProgress: number) => {
+    progressEditor.commitProgress(item.id, newProgress);
   };
 
   const handleRemoveFromList = async () => {
-    if (confirm(`Are you sure you want to remove ${item.title.english || item.title.romaji} from your list?`)) {
-      try {
-        await mediaApi.deleteFromList(item.id);
-        dispatchRefresh();
-        onClose();
-      } catch (error) {
-        console.error("Failed to remove from list:", error);
-      }
+    if (!deleteConfirmPending) {
+      // First click: ask for confirmation inline
+      setDeleteConfirmPending(true);
+      // Auto-reset after 3s if user does nothing
+      setTimeout(() => setDeleteConfirmPending(false), 3000);
+      return;
     }
+    // Second click: confirmed — fire immediately
+    setDeleteConfirmPending(false);
+    onClose();
+    mediaApi.deleteFromList(item.id)
+      .then(() => dispatchRefresh())
+      .catch((error) => console.error("Failed to remove from list:", error));
   };
 
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -328,21 +334,20 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                 <div className="relative w-44">
                   <select
                     value={fullItem.user_status?.status?.toLowerCase() || "none"}
-                    onChange={async (e) => {
+                    onChange={(e) => {
                       const newStatus = e.target.value;
                       if (newStatus === "none") {
-                        await handleRemoveFromList();
+                        handleRemoveFromList();
                       } else {
                         setIsUpdatingStatus(true);
-                        try {
-                          await mediaApi.updateStatus(item.id, newStatus);
-                          queryClient.invalidateQueries({ queryKey: ["media-detail", item.id] });
-                          dispatchRefresh();
-                        } catch (err) {
-                          console.error("Failed to update status:", err);
-                        } finally {
-                          setIsUpdatingStatus(false);
-                        }
+                        // Fire-and-forget: don't block the UI on the network call
+                        mediaApi.updateStatus(item.id, newStatus)
+                          .then(() => {
+                            queryClient.invalidateQueries({ queryKey: ["media-detail", item.id] });
+                            queryClient.invalidateQueries({ queryKey: ["lists"] });
+                          })
+                          .catch((err) => console.error("Failed to update status:", err))
+                          .finally(() => setIsUpdatingStatus(false));
                       }
                     }}
                     disabled={isUpdatingStatus}
@@ -362,8 +367,12 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
 
                 <button 
                   onClick={handleRemoveFromList}
-                  title="Remove from List"
-                  className="p-3.5 bg-red-500/10 hover:bg-red-500/20 text-red-500/70 hover:text-red-500 rounded-2xl transition-all border border-red-500/20 active:scale-95"
+                  title={deleteConfirmPending ? "Click again to confirm removal" : "Remove from List"}
+                  className={`p-3.5 rounded-2xl transition-all border active:scale-95 ${
+                    deleteConfirmPending
+                      ? "bg-red-500/80 text-white border-red-500 scale-105 animate-pulse"
+                      : "bg-red-500/10 hover:bg-red-500/20 text-red-500/70 hover:text-red-500 border-red-500/20"
+                  }`}
                 >
                   <Trash2 size={22} />
                 </button>
