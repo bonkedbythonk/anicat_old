@@ -4,9 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { mediaApi, type HealthStatus } from "@/lib/api";
 import { getQueryClient } from "@/components/Providers";
 
-// Frontend version from package.json — used to detect stale backend
-const FRONTEND_VERSION = "4.32.0";
-let _versionMismatchWarned = false;
+// Pulled from package.json at build time — never needs manual updates
+import { version as FRONTEND_VERSION } from "../../package.json";
 
 async function showNativeNotification(title: string, body: string) {
   try {
@@ -92,6 +91,7 @@ export function useHealthPolling(): HealthPollingState {
   });
   const [notificationCount, setNotificationCount] = useState(0);
 
+  const versionMismatchWarned = useRef(false);
   const lastDataVersion = useRef<number | null>(null);
   const lastNotificationCount = useRef<number>(0);
   const lastSeenNotificationId = useRef<number | null>(null);
@@ -131,9 +131,9 @@ export function useHealthPolling(): HealthPollingState {
           status.current_version &&
           status.current_version !== "unknown" &&
           status.current_version !== FRONTEND_VERSION &&
-          !_versionMismatchWarned
+          !versionMismatchWarned.current
         ) {
-          _versionMismatchWarned = true;
+          versionMismatchWarned.current = true;
           console.warn(
             `Version mismatch: frontend ${FRONTEND_VERSION}, backend ${status.current_version}. ` +
             "The backend may need to be rebuilt or restarted."
