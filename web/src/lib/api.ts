@@ -9,36 +9,46 @@ if (isBrowser) {
   console.log('API_BASE_URL:', API_BASE_URL);
 }
 
-export async function fetchFromApi(endpoint: string, options: RequestInit & { silent?: boolean } = {}) {
-  const { silent, ...fetchOptions } = options;
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...fetchOptions,
-    headers: {
-      'Content-Type': 'application/json',
-      ...fetchOptions.headers,
-    },
-  });
-
-  if (!response.ok) {
-    let errorData: any = {};
-    try {
-      errorData = await response.json();
-    } catch (e) {
-      // Ignored
-    }
-    const detail = errorData.detail ?? errorData.message ?? errorData ?? null;
-    const message = detail ? (typeof detail === 'string' ? detail : JSON.stringify(detail)) : `API error: ${response.status} ${response.statusText}`;
-    // UX-19: Only log errors for non-silent (user-initiated) requests
-    if (!silent && isBrowser) {
-      console.error('API ERROR', { endpoint, status: response.status, statusText: response.statusText, errorData });
-    }
-    throw new Error(`${endpoint} - ${message}`);
-  }
+export async function fetchFromApi(endpoint: string, options: RequestInit & { silent?: boolean; timeout?: number } = {}) {
+  const { silent, timeout = 15000, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
-    return await response.json();
-  } catch (e) {
-    return {};
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...fetchOptions,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...fetchOptions.headers,
+      },
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      let errorData: any = {};
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        // Ignored
+      }
+      const detail = errorData.detail ?? errorData.message ?? errorData ?? null;
+      const message = detail ? (typeof detail === 'string' ? detail : JSON.stringify(detail)) : `API error: ${response.status} ${response.statusText}`;
+      // UX-19: Only log errors for non-silent (user-initiated) requests
+      if (!silent && isBrowser) {
+        console.error('API ERROR', { endpoint, status: response.status, statusText: response.statusText, errorData });
+      }
+      throw new Error(`${endpoint} - ${message}`);
+    }
+
+    try {
+      return await response.json();
+    } catch (e) {
+      return {};
+    }
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
   }
 }
 
