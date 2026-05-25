@@ -30,6 +30,7 @@ fn create_command<S: AsRef<std::ffi::OsStr>>(program: S) -> std::process::Comman
 struct SidecarState {
     child: Arc<Mutex<Option<std::process::Child>>>,
     restart_count: Arc<Mutex<u32>>,
+    exiting: Arc<Mutex<bool>>,
 }
 
 impl SidecarState {
@@ -37,6 +38,7 @@ impl SidecarState {
         Self {
             child: Arc::new(Mutex::new(None)),
             restart_count: Arc::new(Mutex::new(0)),
+            exiting: Arc::new(Mutex::new(false)),
         }
     }
 }
@@ -62,6 +64,7 @@ fn spawn_backend() -> Option<std::process::Child> {
             match create_command(&sidecar_path)
                 .env("PYTHONIOENCODING", "utf-8")
                 .env("PYTHONUTF8", "1")
+                .env("ANICAT_SIDECAR", "1")
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
                 .spawn()
@@ -91,6 +94,7 @@ fn spawn_backend() -> Option<std::process::Child> {
                 .current_dir(root)
                 .env("PYTHONIOENCODING", "utf-8")
                 .env("PYTHONUTF8", "1")
+                .env("ANICAT_SIDECAR", "1")
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
                 .spawn()
@@ -107,6 +111,7 @@ fn spawn_backend() -> Option<std::process::Child> {
                 .current_dir(root)
                 .env("PYTHONIOENCODING", "utf-8")
                 .env("PYTHONUTF8", "1")
+                .env("ANICAT_SIDECAR", "1")
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
                 .spawn()
@@ -223,6 +228,10 @@ pub fn run() {
     let sidecar_state = SidecarState::new();
     let child_arc = sidecar_state.child.clone();
     let restart_count_arc = sidecar_state.restart_count.clone();
+    let exiting_arc = sidecar_state.exiting.clone();
+
+    let child_arc_setup = child_arc.clone();
+    let exiting_arc_setup = exiting_arc.clone();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
@@ -435,19 +444,25 @@ pub fn run() {
 
                 // --- Spawn backend ---
                 if let Some(child) = spawn_backend() {
-                    *child_arc.lock().unwrap() = Some(child);
+                    *child_arc_setup.lock().unwrap() = Some(child);
                     log::info!("[sidecar] Backend started");
                 } else {
                     log::error!("[sidecar] Failed to start backend");
                 }
 
                 // --- Watchdog: monitors and restarts backend on crash ---
-                let child_wd = child_arc.clone();
+                let child_wd = child_arc_setup.clone();
                 let restart_wd = restart_count_arc.clone();
+                let exiting_wd = exiting_arc_setup.clone();
                 let _app_handle = app.handle().clone();
 
                 thread::spawn(move || loop {
                     thread::sleep(std::time::Duration::from_secs(2));
+
+                    if *exiting_wd.lock().unwrap() {
+                        log::info!("[sidecar] Watchdog thread exiting due to application exit");
+                        break;
+                    }
 
                     let should_restart = {
                         let mut guard = child_wd.lock().unwrap();
@@ -550,6 +565,20 @@ pub fn run() {
             }
             setup_result
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(move |_app_handle, event| {
+            if let tauri::RunEvent::Exit = event {
+                // Stop the watchdog thread
+                *exiting_arc.lock().unwrap() = true;
+
+                // Kill child process
+                let mut child_guard = child_arc.lock().unwrap();
+                if let Some(ref mut child) = *child_guard {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    log::info!("[sidecar] Killed backend on exit");
+                }
+            }
+        });
 }

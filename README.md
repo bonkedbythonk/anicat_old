@@ -2,13 +2,15 @@
 
 ![Anicat Desktop](assets/branding/dashboard.png)
 
-**A simple way to watch and track anime on your Mac.** Search, stream, download, and track everything in one place — with a beautiful GUI app and a powerful terminal version.
+**A simple way to watch and track anime on your Mac or Windows PC.** Search, stream, download, and track everything in one place — with a beautiful GUI app and a powerful terminal version.
 
 ---
 
 ## How to Install
 
-### 1. Open Terminal
+### macOS
+
+#### 1. Open Terminal
 
 Terminal is an app that lets you install things with a text command.
 
@@ -18,7 +20,7 @@ Terminal is an app that lets you install things with a text command.
 
 The Terminal app will open — it's a black or white window where you can type commands.
 
-### 2. Copy and paste this one command
+#### 2. Copy and paste this one command
 
 Click inside the Terminal window, then paste (Command + V) this line:
 
@@ -30,13 +32,27 @@ Then press **Enter**. The installer will download and set up everything automati
 
 > **What this does:** It downloads the latest version of Anicat from GitHub, moves it to your Applications folder, and sets it up so it works properly on your Mac.
 
-### 3. Open Anicat
+#### 3. Open Anicat
 
 After the install finishes:
 
 1. Open your **Applications** folder (Finder > Applications)
 2. Double-click **Anicat**
 3. If Mac shows a warning, click **Open** (it's safe — the app is just not from the App Store)
+
+---
+
+### Windows
+
+#### 1. Download the Installer
+Go to the [GitHub Releases](https://github.com/bonkedbythonk/anicat/releases) page.
+
+#### 2. Install Anicat
+- Download the latest installer file ending with `_x64-setup.exe` (e.g. `Anicat_4.36.4_x64-setup.exe`).
+- Run the installer and follow the prompt.
+
+#### 3. Open Anicat
+Once installed, launch **Anicat** from your desktop shortcut or Start Menu.
 
 That's it! Anicat will start and you can search for anime right away.
 

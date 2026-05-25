@@ -546,6 +546,122 @@ def _restart_backend_process(after_process: Optional[subprocess.Popen] = None) -
     threading.Thread(target=target, daemon=True).start()
 
 
+def _run_windows_update(update_branch: str, repo_root: str) -> None:
+    """Download the Windows installer from GitHub Releases and run it in the background."""
+    import urllib.request
+    import json
+    import ssl
+    import tempfile
+    import os
+    import sys
+    import signal
+    import time
+
+    try:
+        _log_update("Fetching latest release information from GitHub...")
+        ctx_ssl = ssl._create_unverified_context()
+        url = "https://api.github.com/repos/bonkedbythonk/anicat/releases"
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Anicat-App"}
+        )
+        with urllib.request.urlopen(req, timeout=10, context=ctx_ssl) as response:
+            all_releases = json.loads(response.read().decode())
+        
+        if not isinstance(all_releases, list) or not all_releases:
+            _log_update("Error: No releases found on GitHub.")
+            if UPDATE_IN_PROGRESS_FILE.exists():
+                UPDATE_IN_PROGRESS_FILE.unlink()
+            return
+
+        target_release = None
+        if update_branch == "nightly":
+            for r in all_releases:
+                if r.get("tag_name", "").lower() == "nightly":
+                    target_release = r
+                    break
+        else:
+            # Stable: use the first release (latest)
+            target_release = all_releases[0]
+            
+        if not target_release:
+            _log_update(f"Error: Could not find target release for branch {update_branch}.")
+            if UPDATE_IN_PROGRESS_FILE.exists():
+                UPDATE_IN_PROGRESS_FILE.unlink()
+            return
+            
+        # Find Windows asset (either .exe setup or .msi)
+        windows_asset = None
+        for asset in target_release.get("assets", []):
+            name = asset.get("name", "")
+            if name.endswith((".exe", ".msi")) and not any(x in name.lower() for x in ["sidecar", "server"]):
+                if "setup" in name.lower() or "x64" in name.lower() or name.endswith(".msi"):
+                    windows_asset = asset
+                    break
+                    
+        if not windows_asset:
+            _log_update("Error: Could not find a Windows installer (.exe or .msi) in the release assets.")
+            if UPDATE_IN_PROGRESS_FILE.exists():
+                UPDATE_IN_PROGRESS_FILE.unlink()
+            return
+            
+        asset_name = windows_asset["name"]
+        download_url = windows_asset["browser_download_url"]
+        _log_update(f"Found Windows installer: {asset_name}")
+        
+        temp_dir = tempfile.gettempdir()
+        dest_path = os.path.join(temp_dir, asset_name)
+        
+        _log_update(f"Starting download to: {dest_path}")
+        
+        # Download block-by-block
+        with urllib.request.urlopen(urllib.request.Request(download_url, headers={"User-Agent": "Anicat-App"}), context=ctx_ssl) as dl_resp:
+            total_size = int(dl_resp.headers.get('content-length', 0))
+            downloaded = 0
+            block_size = 1024 * 64
+            last_percent = -1
+            with open(dest_path, 'wb') as f:
+                while True:
+                    chunk = dl_resp.read(block_size)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total_size > 0:
+                        percent = int(downloaded * 100 / total_size)
+                        if percent // 10 > last_percent // 10:
+                            last_percent = percent
+                            _log_update(f"Download progress: {percent}% ({downloaded // (1024 * 1024)}MB / {total_size // (1024 * 1024)}MB)")
+                            
+        _log_update("Download completed successfully.")
+        _log_update("Launching installer and exiting current Anicat instance...")
+        
+        # Wait a moment for logs to flush
+        time.sleep(1)
+        
+        # Run installer
+        start_file = getattr(os, "startfile", None)
+        if start_file:
+            start_file(dest_path)
+        else:
+            _log_update("Error: os.startfile is not available on this platform.")
+            if UPDATE_IN_PROGRESS_FILE.exists():
+                UPDATE_IN_PROGRESS_FILE.unlink()
+            return
+        
+        # Shutdown the current process
+        pid = os.getpid()
+        os.kill(pid, signal.SIGTERM)
+        
+    except Exception as e:
+        _log_update(f"Error during Windows update: {str(e)}")
+        if UPDATE_IN_PROGRESS_FILE.exists():
+            try:
+                UPDATE_IN_PROGRESS_FILE.unlink()
+            except Exception:
+                pass
+
+
 @router.post("/update")
 async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
     """Trigger the official installation script to update the application."""
@@ -725,6 +841,23 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
             _last_update_check = datetime.now()
             _cached_update_available = False
             return {"status": "success", "message": "Downloading pre-built DMG from GitHub Releases. The app will install and restart automatically."}
+        elif platform.system() == "Windows":
+            _log_update("No git repo — downloading Windows installer from GitHub Releases")
+            UPDATE_IN_PROGRESS_FILE.write_text("1", encoding="utf-8")
+            _last_update_check = datetime.now()
+            _cached_update_available = False
+            
+            import threading
+            threading.Thread(
+                target=_run_windows_update,
+                args=(update_branch, repo_root),
+                daemon=True
+            ).start()
+            
+            return {
+                "status": "success",
+                "message": "Downloading Windows installer from GitHub Releases. The app will install and restart automatically."
+            }
 
         return {"status": "error", "message": "Could not determine update method for this platform."}
 
@@ -756,6 +889,7 @@ async def get_update_logs(lines: int = 100):
                     return ""
                 blocks = []
                 bytes_scanned = 0
+                data = b""
                 while bytes_scanned < file_size:
                     read_size = min(buf_size, file_size - bytes_scanned)
                     f.seek(max(0, file_size - bytes_scanned - read_size))

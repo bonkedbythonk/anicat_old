@@ -268,6 +268,7 @@ export default function App() {
 
   const handleCopyDiagnostics = async () => {
     try {
+      const isMac = typeof window !== "undefined" && window.navigator.userAgent.toLowerCase().includes("mac");
       const report = [
         `# AniCat Diagnostic Report`,
         `Generated: ${new Date().toISOString()}`,
@@ -279,9 +280,15 @@ export default function App() {
         `App Version: ${healthStatus?.current_version || "Unknown"}`,
         `Onboarding Seen: ${localStorage.getItem("anicat_onboarding_seen") || "false"}`,
         `\n## Common Fixes:`,
-        `1. Restart the app from your Applications folder.`,
-        `2. On macOS, go to System Settings > Privacy & Security and check for blocked apps.`,
-        `3. If the issue persists, try restarting your Mac.`
+        isMac 
+          ? `1. Restart the app from your Applications folder.` 
+          : `1. Restart the app.`,
+        isMac
+          ? `2. On macOS, go to System Settings > Privacy & Security and check for blocked apps.`
+          : `2. On Windows, verify your antivirus or firewall is not blocking the application.`,
+        isMac
+          ? `3. If the issue persists, try restarting your Mac.`
+          : `3. If the issue persists, try restarting your PC.`
       ].join("\n");
       await navigator.clipboard.writeText(report);
       alert("Diagnostic report copied to clipboard. Please send this to the developer for help.");
@@ -296,7 +303,11 @@ export default function App() {
       await invoke("open_logs_folder");
     } catch (err) {
       console.error("Failed to open logs:", err);
-      alert("Could not open logs folder. Please look inside your user Library/Caches/anicat folder manually.");
+      const isMac = typeof window !== "undefined" && window.navigator.userAgent.toLowerCase().includes("mac");
+      alert(isMac 
+        ? "Could not open logs folder. Please look inside your user Library/Caches/anicat folder manually."
+        : "Could not open logs folder. Please look inside your AppData\\Local\\anicat\\Cache folder manually."
+      );
     }
   };
 

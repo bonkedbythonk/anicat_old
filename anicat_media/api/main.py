@@ -147,8 +147,57 @@ def _cleanup_stale_resources():
         pass
 
 
+def _start_parent_monitor() -> None:
+    """Start a background thread that monitors if the parent process (Tauri) has died.
+
+    If the parent process is dead, the sidecar will terminate itself automatically.
+    """
+    if os.environ.get("ANICAT_SIDECAR") != "1":
+        return
+
+    import threading
+    import time
+    import sys
+
+    parent_pid = os.getppid()
+    if parent_pid <= 1:
+        return
+
+    def monitor():
+        logger.info(f"Parent process monitor active for PID {parent_pid}")
+        while True:
+            time.sleep(3)
+            alive = False
+            try:
+                if sys.platform == "win32":
+                    import ctypes
+                    PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+                    kernel32 = ctypes.windll.kernel32
+                    handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, parent_pid)
+                    if handle:
+                        exit_code = ctypes.c_ulong()
+                        kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code))
+                        kernel32.CloseHandle(handle)
+                        STILL_ACTIVE = 259
+                        alive = (exit_code.value == STILL_ACTIVE)
+                else:
+                    current_parent = os.getppid()
+                    if current_parent == parent_pid:
+                        os.kill(parent_pid, 0)
+                        alive = True
+            except Exception:
+                alive = False
+
+            if not alive:
+                logger.info("Parent process has died. Exiting sidecar...")
+                os._exit(0)
+
+    threading.Thread(target=monitor, daemon=True).start()
+
+
 def create_app(config: AppConfig | None = None) -> FastAPI:
     setup_logging()
+    _start_parent_monitor()
     if config is None:
         loader = ConfigLoader()
         config = loader.load()

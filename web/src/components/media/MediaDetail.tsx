@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Play, Loader2, Star, Users, Calendar, Clock, Building2, Monitor, CheckCircle2, Bookmark, Pause, XCircle, Download, BookOpen, RotateCcw, ChevronDown, ChevronUp, MoreHorizontal, Trash2, Edit2, Check } from "lucide-react";
@@ -33,8 +33,20 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   const [isTrailerVisible, setIsTrailerVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<"episodes" | "characters" | "reviews" | "recommendations">("episodes");
 
-  const [isHovered, setIsHovered] = useState(false);
+  const [isMouseOver, setIsMouseOver] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const hasTriggeredInitial = useRef(false);
+
+  const [prevId, setPrevId] = useState(item.id);
+  if (item.id !== prevId) {
+    setPrevId(item.id);
+    setIsTrailerVisible(false);
+    setIsMouseOver(false);
+  }
+
+  useEffect(() => {
+    hasTriggeredInitial.current = false;
+  }, [item.id]);
 
   const { data: config = null } = useQuery<DetailConfig | null>({
     queryKey: ["media-config", item.id],
@@ -44,11 +56,6 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
     },
     staleTime: 60_000,
   });
-
-  useEffect(() => {
-    setIsTrailerVisible(false);
-    setIsHovered(false);
-  }, [item.id]);
 
   // Initial detail load via React Query
   const {
@@ -67,6 +74,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   const isManga = item.type === "MANGA" || !!(item.format && ["MANGA", "ONE_SHOT", "NOVEL"].includes(item.format));
   const banner = fullItem.banner_image || fullItem.cover_image?.large || item.banner_image || item.cover_image?.large;
   const trailer = item.trailer || fullItem?.trailer;
+  const isHovered = isMouseOver && !!(trailer?.id && trailer.site?.toLowerCase() === "youtube");
 
   // Extracted hooks
   const ambientColor = useAmbientColor(banner);
@@ -110,19 +118,9 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
     staleTime: 60_000,
   });
 
-  const [hasTriggeredInitial, setHasTriggeredInitial] = useState(false);
-
-  // Handle initial action (e.g. from Hero "Play Now" button)
-  useEffect(() => {
-    if (initialAction === "play" && !loading && config && !hasTriggeredInitial) {
-      setHasTriggeredInitial(true);
-      handlePlayNext();
-    }
-  }, [initialAction, loading, config, hasTriggeredInitial]);
-
   const isProcessingAction = useRef(false);
 
-  const handlePlayNext = async () => {
+  const handlePlayNext = useCallback(async () => {
     if (isPlayingNext || isProcessingAction.current) return;
     
     isProcessingAction.current = true;
@@ -153,7 +151,15 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
         isProcessingAction.current = false;
       }, 500);
     }
-  };
+  }, [isPlayingNext, isManga, fullItem.user_status, onRead, config, onPlayEpisode, onClose, item.id]);
+
+  // Handle initial action (e.g. from Hero "Play Now" button)
+  useEffect(() => {
+    if (initialAction === "play" && !loading && config && !hasTriggeredInitial.current) {
+      hasTriggeredInitial.current = true;
+      handlePlayNext();
+    }
+  }, [initialAction, loading, config, handlePlayNext]);
 
   const handleUpdateProgress = async (newProgress: number) => {
     await progressEditor.commitProgress(item.id, newProgress);
@@ -231,16 +237,13 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
           {/* Header Banner with optional muted trailer */}
           <div 
             className="relative h-72 w-full flex-shrink-0 cursor-pointer"
-            onMouseEnter={() => {
-              if (trailer?.id && trailer.site?.toLowerCase() === "youtube") {
-                setIsHovered(true);
-              }
+            onMouseEnter={() => setIsMouseOver(true)}
+            onMouseMove={() => {
+              if (!isMouseOver) setIsMouseOver(true);
             }}
             onMouseLeave={() => {
-              if (trailer?.id && trailer.site?.toLowerCase() === "youtube") {
-                setIsHovered(false);
-                setIsTrailerVisible(false);
-              }
+              setIsMouseOver(false);
+              setIsTrailerVisible(false);
             }}
           >
              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent z-[1]" />
@@ -544,7 +547,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                     {reviews.length > 0 ? (
                       reviews.map((rev, idx) => (
                         <div key={idx} className="p-5 bg-foreground/[0.02] border border-border rounded-2xl space-y-3">
-                           {rev.summary && <div className="text-xs font-black text-foreground/90 tracking-wide uppercase italic leading-snug">"{rev.summary}"</div>}
+                           {rev.summary && <div className="text-xs font-black text-foreground/90 tracking-wide uppercase italic leading-snug">&quot;{rev.summary}&quot;</div>}
                            <div className="text-xs text-muted-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: rev.body.substring(0, 300) + '...' }} />
                         </div>
                       ))
