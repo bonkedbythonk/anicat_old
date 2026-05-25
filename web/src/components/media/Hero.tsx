@@ -38,52 +38,7 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
     return () => clearTimeout(timer);
   }, [item.id, item.trailer?.id, item.trailer?.site, config?.stream?.autoplay_trailers]);
 
-  useEffect(() => {
-    if (!showVideo) {
-      setIsVideoVisible(false);
-      return;
-    }
 
-    const handleMessage = (event: MessageEvent) => {
-      if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return;
-      try {
-        const data = JSON.parse(event.data);
-        let state: number | undefined = undefined;
-        if (data.event === "infoDelivery" && data.info && data.info.playerState !== undefined) {
-          state = data.info.playerState;
-        } else if (data.event === "onStateChange" && data.info !== undefined) {
-          state = typeof data.info === "number" ? data.info : parseInt(data.info);
-        }
-
-        if (state !== undefined) {
-          if (state === 1) {
-            setIsVideoVisible(true);
-          } else if (state === 0) {
-            // Programmatic loop: when video ends, seek to 0 and play again
-            if (iframeRef.current && iframeRef.current.contentWindow) {
-              iframeRef.current.contentWindow.postMessage(
-                JSON.stringify({ event: "command", func: "seekTo", args: [0, true] }),
-                "*"
-              );
-              iframeRef.current.contentWindow.postMessage(
-                JSON.stringify({ event: "command", func: "playVideo", args: "" }),
-                "*"
-              );
-            }
-          } else {
-            setIsVideoVisible(false);
-          }
-        }
-      } catch (e) {
-        // Ignore parsing errors
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-    return () => {
-      window.removeEventListener("message", handleMessage);
-    };
-  }, [showVideo]);
 
   const title = item.title.english || item.title.romaji || "Unknown";
   const currentProgress = item.user_status?.progress || 0;
@@ -127,17 +82,13 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
               <iframe
                 ref={iframeRef}
                 onLoad={() => {
-                  if (iframeRef.current && iframeRef.current.contentWindow) {
-                    iframeRef.current.contentWindow.postMessage(
-                      JSON.stringify({ event: "listening" }),
-                      "*"
-                    );
-                  }
+                  setTimeout(() => {
+                    setIsVideoVisible(true);
+                  }, 600);
                 }}
-                src={`${API_BASE_ORIGIN}/api/actions/youtube-trailer?id=${item.trailer.id}`}
+                src={`https://www.youtube-nocookie.com/embed/${item.trailer.id}?autoplay=1&mute=1&loop=1&playlist=${item.trailer.id}&controls=0&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0`}
                 className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] pointer-events-none transition-opacity duration-1000 ${isVideoVisible ? "opacity-100" : "opacity-0"}`}
                 allow="autoplay; encrypted-media"
-                referrerPolicy="strict-origin-when-cross-origin"
                 title="Airing Trailer"
               />
             </div>

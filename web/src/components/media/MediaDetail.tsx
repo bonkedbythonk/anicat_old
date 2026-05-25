@@ -34,7 +34,6 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   const [activeTab, setActiveTab] = useState<"episodes" | "characters" | "reviews" | "recommendations">("episodes");
 
   const [isHovered, setIsHovered] = useState(false);
-  const isHoveredRef = useRef(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const { data: config = null } = useQuery<DetailConfig | null>({
@@ -46,79 +45,9 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
     staleTime: 60_000,
   });
 
-  const playTrailer = () => {
-    if (iframeRef.current && iframeRef.current.contentWindow) {
-      iframeRef.current.contentWindow.postMessage(
-        JSON.stringify({ event: "command", func: "playVideo", args: "" }),
-        "*"
-      );
-    }
-  };
-
-  const pauseTrailer = () => {
-    if (iframeRef.current && iframeRef.current.contentWindow) {
-      iframeRef.current.contentWindow.postMessage(
-        JSON.stringify({ event: "command", func: "pauseVideo", args: "" }),
-        "*"
-      );
-    }
-  };
-
-  // Sync isHovered state with ref to avoid stale closure in message listener
-  useEffect(() => {
-    isHoveredRef.current = isHovered;
-  }, [isHovered]);
-
   useEffect(() => {
     setIsTrailerVisible(false);
     setIsHovered(false);
-  }, [item.id]);
-
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return;
-      try {
-        const data = JSON.parse(event.data);
-        let state: number | undefined = undefined;
-        if (data.event === "infoDelivery" && data.info && data.info.playerState !== undefined) {
-          state = data.info.playerState;
-        } else if (data.event === "onStateChange" && data.info !== undefined) {
-          state = typeof data.info === "number" ? data.info : parseInt(data.info);
-        }
-
-        if (state !== undefined) {
-          if (state === 1) {
-            if (isHoveredRef.current) {
-              setIsTrailerVisible(true);
-            } else {
-              // Pre-buffered and ready to play; pause until hovered
-              pauseTrailer();
-            }
-          } else if (state === 0) {
-            // Programmatic loop: when video ends, seek to 0 and play again
-            if (iframeRef.current && iframeRef.current.contentWindow) {
-              iframeRef.current.contentWindow.postMessage(
-                JSON.stringify({ event: "command", func: "seekTo", args: [0, true] }),
-                "*"
-              );
-              iframeRef.current.contentWindow.postMessage(
-                JSON.stringify({ event: "command", func: "playVideo", args: "" }),
-                "*"
-              );
-            }
-          } else {
-            setIsTrailerVisible(false);
-          }
-        }
-      } catch (e) {
-        // Ignore parsing errors
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-    return () => {
-      window.removeEventListener("message", handleMessage);
-    };
   }, [item.id]);
 
   // Initial detail load via React Query
@@ -306,14 +235,12 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
               const hasTrailer = !!(trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers);
               if (hasTrailer) {
                 setIsHovered(true);
-                playTrailer();
               }
             }}
             onMouseLeave={() => {
               const hasTrailer = !!(trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers);
               if (hasTrailer) {
                 setIsHovered(false);
-                pauseTrailer();
                 setIsTrailerVisible(false);
               }
             }}
@@ -325,24 +252,20 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                alt={title}
                className={`w-full h-full object-cover transition-opacity duration-1000 ${isTrailerVisible && (trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers) ? "opacity-0" : "opacity-100"}`}
              />
-             {/* Muted trailer iframe — pre-mounted to play instantly on hover */}
-             {trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers && (
+             {/* Muted trailer iframe — mounted only on hover to prevent mixed content / API errors */}
+             {isHovered && trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers && (
                <>
                  <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                    <iframe
                      ref={iframeRef}
                      onLoad={() => {
-                       if (iframeRef.current && iframeRef.current.contentWindow) {
-                         iframeRef.current.contentWindow.postMessage(
-                           JSON.stringify({ event: "listening" }),
-                           "*"
-                         );
-                       }
+                       setTimeout(() => {
+                         setIsTrailerVisible(true);
+                       }, 600);
                      }}
-                     src={`${API_BASE_ORIGIN}/api/actions/youtube-trailer?id=${trailer.id}`}
+                     src={`https://www.youtube-nocookie.com/embed/${trailer.id}?autoplay=1&mute=1&loop=1&playlist=${trailer.id}&controls=0&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0`}
                      className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] pointer-events-none transition-opacity duration-1000 ${isTrailerVisible ? "opacity-100" : "opacity-0"}`}
                      allow="autoplay; encrypted-media"
-                     referrerPolicy="strict-origin-when-cross-origin"
                      title="Anime Trailer"
                    />
                  </div>
