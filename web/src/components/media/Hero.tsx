@@ -76,7 +76,7 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
         />
 
         {/* Muted auto-play trailer — overflow-hidden wrapper clips the scaled iframe */}
-        {showVideo && item.trailer?.id && item.trailer.site === "youtube" && (
+        {showVideo && item.trailer?.id && item.trailer.site?.toLowerCase() === "youtube" && (
           <>
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
               <iframe
@@ -86,10 +86,9 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
                     setIsVideoVisible(true);
                   }, 600);
                 }}
-                src={`https://www.youtube-nocookie.com/embed/${item.trailer.id}?autoplay=1&mute=1&loop=1&playlist=${item.trailer.id}&controls=0&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0`}
+                src={`${API_BASE_ORIGIN}/api/actions/trailer/${item.trailer.id}`}
                 className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] pointer-events-none transition-opacity duration-1000 ${isVideoVisible ? "opacity-100" : "opacity-0"}`}
                 allow="autoplay; encrypted-media"
-                referrerPolicy="no-referrer"
                 title="Airing Trailer"
               />
             </div>

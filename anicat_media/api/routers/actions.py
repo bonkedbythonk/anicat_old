@@ -1,6 +1,6 @@
 from typing import Optional
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-from fastapi.responses import Response, FileResponse
+from fastapi.responses import Response, FileResponse, HTMLResponse
 from pydantic import BaseModel
 import asyncio
 import ipaddress
@@ -985,3 +985,46 @@ async def track_playback(req: PlaybackTrackRequest):
 
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/trailer/{youtube_id}", response_class=HTMLResponse)
+async def get_trailer_embed(youtube_id: str):
+    """
+    Returns a simple HTML page containing a YouTube embed iframe.
+    This acts as a local origin proxy (http://127.0.0.1:13370) to prevent
+    YouTube embed referrer restrictions (Error 153) inside packaged Tauri builds.
+    """
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Trailer</title>
+        <style>
+            html, body {{
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                background-color: transparent;
+            }}
+            iframe {{
+                width: 100%;
+                height: 100%;
+                border: none;
+            }}
+        </style>
+    </head>
+    <body>
+        <iframe
+            src="https://www.youtube-nocookie.com/embed/{youtube_id}?autoplay=1&mute=1&loop=1&playlist={youtube_id}&controls=0&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0"
+            allow="autoplay; encrypted-media"
+            referrerpolicy="strict-origin-when-cross-origin"
+            title="Trailer"
+        ></iframe>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content, status_code=200)
