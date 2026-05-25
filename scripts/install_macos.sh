@@ -49,8 +49,13 @@ fi
 
 echo "Step 1: Finding the latest version..."
 UPDATE_BRANCH="stable"
-if [ -f "$HOME/.config/anicat/config.toml" ]; then
-    if grep -q 'update_branch = "nightly"' "$HOME/.config/anicat/config.toml"; then
+CONFIG_FILE="$HOME/Library/Application Support/anicat/config.toml"
+if [ ! -f "$CONFIG_FILE" ]; then
+    CONFIG_FILE="$HOME/.config/anicat/config.toml"
+fi
+
+if [ -f "$CONFIG_FILE" ]; then
+    if grep -q 'update_branch = "nightly"' "$CONFIG_FILE"; then
         UPDATE_BRANCH="nightly"
     fi
 fi
