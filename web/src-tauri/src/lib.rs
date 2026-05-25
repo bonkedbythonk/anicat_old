@@ -1,12 +1,12 @@
 // UX-01: Full macOS menu bar with standard items + keyboard shortcuts
 use tauri::{
-    menu::{
-        MenuBuilder, MenuItemBuilder, SubmenuBuilder,
-        PredefinedMenuItem,
-    },
+    menu::{MenuBuilder, MenuItemBuilder},
     tray::TrayIconBuilder,
     Manager,
 };
+
+#[cfg(target_os = "macos")]
+use tauri::menu::{PredefinedMenuItem, SubmenuBuilder};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
