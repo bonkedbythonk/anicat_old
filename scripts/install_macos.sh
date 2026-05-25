@@ -56,7 +56,7 @@ if [ -f "$HOME/.config/anicat/config.toml" ]; then
 fi
 
 if [ "$UPDATE_BRANCH" = "nightly" ]; then
-    LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases" | python3 -c "import sys, json; data=json.load(sys.stdin); print(json.dumps(data[0]) if data else '')" 2>/dev/null || curl -s "https://api.github.com/repos/$REPO/releases/latest")
+    LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases" | python3 -c "import sys, json; data=json.load(sys.stdin); nightly=next((r for r in data if r.get('tag_name', '').lower() == 'nightly'), None) if isinstance(data, list) else None; print(json.dumps(nightly) if nightly else '')" 2>/dev/null || curl -s "https://api.github.com/repos/$REPO/releases/latest")
 else
     LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases/latest")
 fi
