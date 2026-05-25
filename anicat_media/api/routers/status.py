@@ -514,6 +514,38 @@ async def check_for_updates():
         logger.error(f"[UPDATE CHECK] Error: {str(e)}")
         return {"status": "error", "update_available": False, "message": f"Failed to check for updates: {str(e)}", "version": "", "release_notes": "", "release_url": ""}
 
+def _restart_backend_process(after_process: Optional[subprocess.Popen] = None) -> None:
+    """Restart the backend process. If after_process is provided, wait for it to complete first."""
+    import time
+    import signal
+    import threading
+
+    pid = os.getpid()
+
+    def target():
+        try:
+            if after_process:
+                # Wait for the build process to finish
+                after_process.wait()
+            
+            # Give a small buffer time
+            time.sleep(1)
+            
+            _log_update("Restarting backend server process...")
+            # Kill this uvicorn process, which Tauri watchdog will restart
+            if os.name == "nt":
+                os.kill(pid, signal.SIGTERM)
+            else:
+                os.kill(pid, signal.SIGKILL)
+        except Exception as e:
+            logger.warning(f"Error in backend restart thread: {e}")
+            # Fallback for unix: send SIGKILL via command
+            if os.name != "nt":
+                subprocess.run(["kill", "-9", str(pid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    threading.Thread(target=target, daemon=True).start()
+
+
 @router.post("/update")
 async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
     """Trigger the official installation script to update the application."""
@@ -596,6 +628,10 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
         # ── Fallback: git-based update (dev checkouts, non-macOS) ──
         if is_git_install:
             _log_update("Falling back to git-based update")
+            
+            # Mark update in progress so frontend shows overlay and tails logs
+            UPDATE_IN_PROGRESS_FILE.write_text("1", encoding="utf-8")
+            
             from anicat_media.utils.subprocess import run_cmd
             rc, stdout, _ = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=5, cwd=repo_root)
             current_branch = stdout.strip() if (rc == 0 and stdout) else "master"
@@ -637,19 +673,25 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
                     _log_update("Frontend files changed — rebuilding...")
                     install_script = os.path.join(repo_root, "scripts", "install.sh")
                     if os.path.exists(install_script):
-                        subprocess.Popen(
-                            ["bash", install_script, "--no-launch"],
-                            cwd=repo_root, start_new_session=True
-                        )
-                        return {"status": "success", "message": f"Frontend changed. Rebuilding from source (this may take a minute)..."}
-                    return {"status": "success", "message": f"Frontend changed but no install.sh found."}
+                        with open(UPDATE_LOG_FILE, "a") as log:
+                            proc = subprocess.Popen(
+                                ["bash", install_script, "--no-launch"],
+                                cwd=repo_root, start_new_session=True,
+                                stdout=log, stderr=subprocess.STDOUT
+                            )
+                        _restart_backend_process(proc)
+                        return {"status": "success", "message": f"Frontend changed. Rebuilding from source (this may take a minute). The app will reload automatically when finished."}
+                    else:
+                        if UPDATE_IN_PROGRESS_FILE.exists():
+                            UPDATE_IN_PROGRESS_FILE.unlink()
+                        return {"status": "success", "message": f"Frontend changed but no install.sh found."}
                 else:
-                    subprocess.Popen(
-                        ["bash", "-c", "sleep 2 && lsof -ti :13370 | xargs kill -HUP 2>/dev/null"],
-                        start_new_session=True
-                    )
+                    _log_update("No frontend changes. Restarting backend...")
+                    _restart_backend_process(None)
                     return {"status": "success", "message": f"Updated. Backend restarting..."}
             else:
+                if UPDATE_IN_PROGRESS_FILE.exists():
+                    UPDATE_IN_PROGRESS_FILE.unlink()
                 return {"status": "error", "message": f"Git pull failed: {result.stderr.strip() or result.stdout.strip()}"}
 
         # ── Pure native/DMG fallback (no .git, not macOS from release) ──

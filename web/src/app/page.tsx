@@ -178,10 +178,16 @@ export default function App() {
       }
     } else if (healthStatus && !healthStatus.updating) {
       // Clear overlay once connection is back and updating has completed
-      setPersistedUpdateOverlay(null);
-      clearUpdateOverlayTimeout();
+      if (activeUpdateOverlay && activeUpdateOverlay.active) {
+        setPersistedUpdateOverlay(null);
+        clearUpdateOverlayTimeout();
+        
+        // Reload page to apply frontend changes
+        window.location.reload();
+      }
     }
-  }, [healthStatus?.updating, healthStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [healthStatus?.updating, healthStatus, activeUpdateOverlay]);
 
   // Cleanup update overlay timeout on unmount
   useEffect(() => {
@@ -242,17 +248,12 @@ export default function App() {
               clearUpdateOverlayTimeout();
               setPersistedUpdateOverlay({ active: true, message, isNative });
               
-              if (!isNative) {
-                // For git development builds, reload automatically after 7 seconds so the user does NOT have to do anything themselves!
-                setTimeout(() => {
-                  window.location.reload();
-                }, 7000);
-              } else {
-                updateOverlayTimeoutRef.current = setTimeout(() => {
-                  setPersistedUpdateOverlay(null);
-                  updateOverlayTimeoutRef.current = null;
-                }, 300000); // 5 min — matches backend stale-file cleanup
-              }
+              // Rely on health polling transition to reload the page once the update completes and the backend is back online.
+              // We set a 5-minute safety timeout to clear the overlay in case uvicorn fails to restart or gets stuck.
+              updateOverlayTimeoutRef.current = setTimeout(() => {
+                setPersistedUpdateOverlay(null);
+                updateOverlayTimeoutRef.current = null;
+              }, 300000); // 5 min — matches backend stale-file cleanup
             }}
           />
         );
