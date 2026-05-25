@@ -47,8 +47,8 @@ fn spawn_backend() -> Option<std::process::Child> {
         let sidecar_path = bin_dir.join(sidecar_filename);
         if sidecar_path.exists() {
             match std::process::Command::new(&sidecar_path)
-                .stdout(std::process::Stdio::piped())
-                .stderr(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
                 .spawn()
             {
                 Ok(child) => {
@@ -74,8 +74,8 @@ fn spawn_backend() -> Option<std::process::Child> {
             match std::process::Command::new(&python_bin)
                 .args(["-m", "uvicorn", "anicat_media.api.main:create_app", "--host", "127.0.0.1", "--port", "13370", "--factory"])
                 .current_dir(root)
-                .stdout(std::process::Stdio::piped())
-                .stderr(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
                 .spawn()
             {
                 Ok(child) => {
@@ -88,8 +88,8 @@ fn spawn_backend() -> Option<std::process::Child> {
             match std::process::Command::new("uv")
                 .args(["run", "uvicorn", "anicat_media.api.main:create_app", "--host", "127.0.0.1", "--port", "13370", "--factory"])
                 .current_dir(root)
-                .stdout(std::process::Stdio::piped())
-                .stderr(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
                 .spawn()
             {
                 Ok(child) => {
