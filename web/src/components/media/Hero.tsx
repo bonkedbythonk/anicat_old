@@ -89,6 +89,7 @@ const Hero = memo(function Hero({ item, onSelect }: HeroProps) {
                 src={`https://www.youtube-nocookie.com/embed/${item.trailer.id}?autoplay=1&mute=1&loop=1&playlist=${item.trailer.id}&controls=0&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0`}
                 className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] pointer-events-none transition-opacity duration-1000 ${isVideoVisible ? "opacity-100" : "opacity-0"}`}
                 allow="autoplay; encrypted-media"
+                referrerPolicy="no-referrer"
                 title="Airing Trailer"
               />
             </div>
