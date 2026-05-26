@@ -229,11 +229,12 @@ local function draw_button(ass, x1, y1, x2, y2, bg_color, border_color, label, f
 end
 
 local function draw_controls(ass, w, h)
-  local pad = 20
-  local btn_h = 32
-  local y1 = h - btn_h - pad - 60
+  local pad = 8
+  local btn_h = 28
+  -- Align inside the ModernZ OSC bar area (bar bottom ~70px)
+  local y1 = h - btn_h - pad - 66
   local y2 = y1 + btn_h
-  local gap = 10
+  local gap = 6
 
   -- Button 5: Prev (Leftmost)
   local prev_width = 65
@@ -270,21 +271,21 @@ local function draw_controls(ass, w, h)
 
   -- Draw Prev Button
   local prev_hovered = state.hovered_btn == 'prev'
-  local prev_bg = prev_hovered and opts.accent or '0F172A'
-  local prev_border = prev_hovered and opts.accent or '334155'
+  local prev_bg = prev_hovered and opts.accent or '050505'
+  local prev_border = prev_hovered and opts.accent or '1c1c1e'
   local prev_text = prev_hovered and 'ffffff' or 'E2E8F0'
-  local prev_fill_alpha = prev_hovered and '00' or '33'
-  local prev_border_alpha = prev_hovered and '00' or '40'
-  draw_button(ass, prev_x1, y1, prev_x2, y2, prev_bg, prev_border, 'Prev', 12, prev_text, prev_fill_alpha, prev_border_alpha, 16)
+  local prev_fill_alpha = prev_hovered and '00' or '55'
+  local prev_border_alpha = prev_hovered and '00' or '30'
+  draw_button(ass, prev_x1, y1, prev_x2, y2, prev_bg, prev_border, 'Prev', 11, prev_text, prev_fill_alpha, prev_border_alpha, 8)
 
   -- Draw Next Button
   local next_hovered = state.hovered_btn == 'next'
-  local next_bg = next_hovered and opts.accent or '0F172A'
-  local next_border = next_hovered and opts.accent or '334155'
+  local next_bg = next_hovered and opts.accent or '050505'
+  local next_border = next_hovered and opts.accent or '1c1c1e'
   local next_text = next_hovered and 'ffffff' or 'E2E8F0'
-  local next_fill_alpha = next_hovered and '00' or '33'
-  local next_border_alpha = next_hovered and '00' or '40'
-  draw_button(ass, next_x1, y1, next_x2, y2, next_bg, next_border, 'Next', 12, next_text, next_fill_alpha, next_border_alpha, 16)
+  local next_fill_alpha = next_hovered and '00' or '55'
+  local next_border_alpha = next_hovered and '00' or '30'
+  draw_button(ass, next_x1, y1, next_x2, y2, next_bg, next_border, 'Next', 11, next_text, next_fill_alpha, next_border_alpha, 8)
 
   -- Draw Skip Button (highlights when a skip segment is active)
   local skip_active = state.active_skip ~= nil
@@ -299,40 +300,40 @@ local function draw_controls(ass, w, h)
   local skip_bg, skip_border, skip_text, skip_fill, skip_border_a
   if skip_active then
     -- Active skip segment: accent-bright with animated-like glow via lighter border
-    skip_bg = skip_hovered and opts.accent or '0F172A'
-    skip_border = skip_hovered and opts.accent or amber_ass and 'f59e0b' or 'eab308'
+    skip_bg = skip_hovered and opts.accent or '050505'
+    skip_border = skip_hovered and opts.accent or 'f59e0b'
     skip_text = skip_hovered and 'ffffff' or 'fbbf24'
-    skip_fill = skip_hovered and '00' or '33'
-    skip_border_a = skip_hovered and '00' or '50'
-  else
-    skip_bg = skip_hovered and opts.accent or '0F172A'
-    skip_border = skip_hovered and opts.accent or '1e293b'
-    skip_text = skip_hovered and 'ffffff' or '475569'
-    skip_fill = skip_hovered and '00' or '33'
+    skip_fill = skip_hovered and '00' or '55'
     skip_border_a = skip_hovered and '00' or '40'
+  else
+    skip_bg = skip_hovered and opts.accent or '050505'
+    skip_border = skip_hovered and opts.accent or '1c1c1e'
+    skip_text = skip_hovered and 'ffffff' or '475569'
+    skip_fill = skip_hovered and '00' or '55'
+    skip_border_a = skip_hovered and '00' or '30'
   end
-  draw_button(ass, skip_x1, y1, skip_x2, y2, skip_bg, skip_border, skip_label, 12, skip_text, skip_fill, skip_border_a, 16)
+  draw_button(ass, skip_x1, y1, skip_x2, y2, skip_bg, skip_border, skip_label, 11, skip_text, skip_fill, skip_border_a, 8)
 
   -- Draw Auto Button
   local auto_enabled = (opts.auto_next == 'yes')
   local auto_label = auto_enabled and 'Auto: On' or 'Auto: Off'
   local auto_hovered = state.hovered_btn == 'auto'
-  local auto_bg = auto_hovered and opts.accent or '0F172A'
-  local auto_border = auto_hovered and opts.accent or '334155'
+  local auto_bg = auto_hovered and opts.accent or '050505'
+  local auto_border = auto_hovered and opts.accent or '1c1c1e'
   local auto_text = auto_hovered and 'ffffff' or 'E2E8F0'
-  local auto_fill_alpha = auto_hovered and '00' or '33'
-  local auto_border_alpha = auto_hovered and '00' or '40'
-  draw_button(ass, auto_x1, y1, auto_x2, y2, auto_bg, auto_border, auto_label, 12, auto_text, auto_fill_alpha, auto_border_alpha, 16)
+  local auto_fill_alpha = auto_hovered and '00' or '55'
+  local auto_border_alpha = auto_hovered and '00' or '30'
+  draw_button(ass, auto_x1, y1, auto_x2, y2, auto_bg, auto_border, auto_label, 11, auto_text, auto_fill_alpha, auto_border_alpha, 8)
 
   -- Draw HQ Button
   local hq_label = state.shaders_on and 'HQ: On' or 'HQ: Off'
   local hq_hovered = state.hovered_btn == 'hq'
-  local hq_bg = hq_hovered and opts.accent or '0F172A'
-  local hq_border = hq_hovered and opts.accent or '334155'
+  local hq_bg = hq_hovered and opts.accent or '050505'
+  local hq_border = hq_hovered and opts.accent or '1c1c1e'
   local hq_text = hq_hovered and 'ffffff' or 'E2E8F0'
-  local hq_fill_alpha = hq_hovered and '00' or '33'
-  local hq_border_alpha = hq_hovered and '00' or '40'
-  draw_button(ass, hq_x1, y1, hq_x2, y2, hq_bg, hq_border, hq_label, 12, hq_text, hq_fill_alpha, hq_border_alpha, 16)
+  local hq_fill_alpha = hq_hovered and '00' or '55'
+  local hq_border_alpha = hq_hovered and '00' or '30'
+  draw_button(ass, hq_x1, y1, hq_x2, y2, hq_bg, hq_border, hq_label, 11, hq_text, hq_fill_alpha, hq_border_alpha, 8)
 end
 
 local function render(force)
