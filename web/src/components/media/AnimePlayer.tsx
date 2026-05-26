@@ -979,6 +979,8 @@ export default function AnimePlayer({
                 <span>Auto-Skip</span>
               </button>
             </div>
+          </div>
+
           <div className="flex items-center space-x-6">
             {hasNextEpisode && onPlayNextEpisode && (
               <button
