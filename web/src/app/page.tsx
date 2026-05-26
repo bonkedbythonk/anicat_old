@@ -18,6 +18,8 @@ import { dispatchRefresh } from "@/lib/events";
 import Onboarding from "@/components/layout/Onboarding";
 import { X, WifiOff, RotateCw, Play } from "lucide-react";
 
+import AnilistLoginRequired from "@/components/shared/AnilistLoginRequired";
+
 // View Components
 import HomeView from "@/components/views/HomeView";
 import MangaView from "@/components/views/MangaView";
@@ -225,6 +227,12 @@ export default function App() {
   }, []);
 
   const renderView = () => {
+    const isAuth = healthStatus?.api_authenticated;
+    
+    if (!isAuth && ["home", "manga", "lists", "notifications", "profile"].includes(activeView)) {
+      return <AnilistLoginRequired viewName={activeView} />;
+    }
+
     switch (activeView) {
       case "home":
         return <HomeView onSelect={appState.selectItem} />;
