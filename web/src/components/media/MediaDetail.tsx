@@ -237,7 +237,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
         <div className="flex-1 overflow-y-auto scrollbar-hide z-10 relative bg-transparent transform-gpu translate-z-0 will-change-scroll">
           {/* Header Banner with optional muted trailer */}
           <div 
-            className="relative h-72 w-full flex-shrink-0 cursor-pointer"
+            className="relative h-72 w-full flex-shrink-0 cursor-pointer forced-dark-container"
             onMouseEnter={() => {
               const hasTrailer = !!(trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers);
               if (hasTrailer) {

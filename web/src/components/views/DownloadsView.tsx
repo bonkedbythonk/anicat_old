@@ -407,7 +407,7 @@ export default function DownloadsView() {
               </button>
 
               {/* Banner Area */}
-              <div className="relative h-56 sm:h-64 bg-[#050505] overflow-hidden shrink-0">
+              <div className="relative h-56 sm:h-64 bg-[#050505] overflow-hidden shrink-0 forced-dark-container">
                 {/* Blurred background cover */}
                 {selectedMedia.cover && (
                   <img

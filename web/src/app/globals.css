@@ -102,6 +102,9 @@ html.light .anicat-logo {
 .synopsis-fade {
   background-image: linear-gradient(to top, var(--card-color) 0%, transparent 100%) !important;
 }
+html.light .synopsis-fade {
+  display: none !important;
+}
 
 /* Standard / Neon Abyss Light Mode detail drawer override */
 html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .media-detail-drawer {
@@ -139,26 +142,64 @@ html.light .text-white\/40 { color: color-mix(in srgb, var(--foreground) 40%, tr
 html.light .text-white\/30 { color: color-mix(in srgb, var(--foreground) 30%, transparent) !important; }
 html.light .text-white\/20 { color: color-mix(in srgb, var(--foreground) 20%, transparent) !important; }
 
-/* Hero card container should always remain dark themed for cinematic contrast */
-.hero-card-container {
+/* Prevent Light Mode overrides from leaking into forced-dark elements (e.g. video player, manga reader, details banner, hero panel) */
+.forced-dark-container {
   --background: #050505 !important;
   --foreground: #ffffff !important;
 }
-.hero-card-container .text-white,
-.hero-card-container [class*="text-white/"] {
+.forced-dark-container .text-white,
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .forced-dark-container .text-white {
   color: #ffffff !important;
 }
-.hero-card-container .text-white\/90 { color: rgba(255, 255, 255, 0.90) !important; }
-.hero-card-container .text-white\/80 { color: rgba(255, 255, 255, 0.80) !important; }
-.hero-card-container .text-white\/75 { color: rgba(255, 255, 255, 0.75) !important; }
-.hero-card-container .text-white\/70 { color: rgba(255, 255, 255, 0.70) !important; }
-.hero-card-container .text-white\/60 { color: rgba(255, 255, 255, 0.60) !important; }
-.hero-card-container .text-white\/55 { color: rgba(255, 255, 255, 0.55) !important; }
-.hero-card-container .text-white\/50 { color: rgba(255, 255, 255, 0.50) !important; }
-.hero-card-container .text-white\/45 { color: rgba(255, 255, 255, 0.45) !important; }
-.hero-card-container .text-white\/40 { color: rgba(255, 255, 255, 0.40) !important; }
-.hero-card-container .text-white\/30 { color: rgba(255, 255, 255, 0.30) !important; }
-.hero-card-container .text-white\/20 { color: rgba(255, 255, 255, 0.20) !important; }
+.forced-dark-container .text-gray-100,
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .forced-dark-container .text-gray-100 {
+  color: #f3f4f6 !important;
+}
+.forced-dark-container .text-gray-200,
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .forced-dark-container .text-gray-200 {
+  color: #e5e7eb !important;
+}
+.forced-dark-container .text-gray-300,
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .forced-dark-container .text-gray-300 {
+  color: #d1d5db !important;
+}
+.forced-dark-container .text-gray-400,
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .forced-dark-container .text-gray-400 {
+  color: #9ca3af !important;
+}
+.forced-dark-container .text-gray-500,
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .forced-dark-container .text-gray-500 {
+  color: #6b7280 !important;
+}
+.forced-dark-container .text-zinc-400,
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .forced-dark-container .text-zinc-400 {
+  color: #a1a1aa !important;
+}
+.forced-dark-container .text-zinc-500,
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .forced-dark-container .text-zinc-500 {
+  color: #71717a !important;
+}
+
+/* Force opacity classes to be white-based inside forced dark containers */
+.forced-dark-container .text-white\/90, html.light .forced-dark-container .text-white\/90 { color: rgba(255, 255, 255, 0.90) !important; }
+.forced-dark-container .text-white\/80, html.light .forced-dark-container .text-white\/80 { color: rgba(255, 255, 255, 0.80) !important; }
+.forced-dark-container .text-white\/75, html.light .forced-dark-container .text-white\/75 { color: rgba(255, 255, 255, 0.75) !important; }
+.forced-dark-container .text-white\/70, html.light .forced-dark-container .text-white\/70 { color: rgba(255, 255, 255, 0.70) !important; }
+.forced-dark-container .text-white\/60, html.light .forced-dark-container .text-white\/60 { color: rgba(255, 255, 255, 0.60) !important; }
+.forced-dark-container .text-white\/55, html.light .forced-dark-container .text-white\/55 { color: rgba(255, 255, 255, 0.55) !important; }
+.forced-dark-container .text-white\/50, html.light .forced-dark-container .text-white\/50 { color: rgba(255, 255, 255, 0.50) !important; }
+.forced-dark-container .text-white\/45, html.light .forced-dark-container .text-white\/45 { color: rgba(255, 255, 255, 0.45) !important; }
+.forced-dark-container .text-white\/40, html.light .forced-dark-container .text-white\/40 { color: rgba(255, 255, 255, 0.40) !important; }
+.forced-dark-container .text-white\/30, html.light .forced-dark-container .text-white\/30 { color: rgba(255, 255, 255, 0.30) !important; }
+.forced-dark-container .text-white\/20, html.light .forced-dark-container .text-white\/20 { color: rgba(255, 255, 255, 0.20) !important; }
+
+/* Force dark gradients inside forced-dark containers (like the hero banner) to prevent white fades in light mode */
+.forced-dark-container .bg-gradient-to-t {
+  background-image: linear-gradient(to top, #050505 0%, rgba(5, 5, 5, 0.55) 55%, rgba(5, 5, 5, 0.05) 100%) !important;
+}
+.forced-dark-container .bg-gradient-to-r {
+  background-image: linear-gradient(to right, rgba(5, 5, 5, 0.75) 0%, rgba(5, 5, 5, 0.15) 50%, transparent 100%) !important;
+}
 
 @layer base {
   html {

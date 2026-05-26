@@ -738,7 +738,7 @@ export default function AnimePlayer({
       ref={containerRef}
       onMouseMove={resetControlsTimeout}
       onMouseLeave={() => isPlaying && setShowControls(false)}
-      className="fixed inset-0 z-[200] bg-[#050505] flex flex-col items-center justify-center select-none overflow-hidden transform-gpu will-change-[transform,opacity]"
+      className="fixed inset-0 z-[200] bg-[#050505] flex flex-col items-center justify-center select-none overflow-hidden transform-gpu will-change-[transform,opacity] forced-dark-container"
     >
       <style>{`
         video::-webkit-media-controls { display: none !important; }
