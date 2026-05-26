@@ -58,9 +58,9 @@ def add(config: AppConfig, media_id: int, episodes: str):
         click.secho(f"Failed: {e}", fg="red")
 
 
-@downloads.command(short_help="View download queue")
+@downloads.command(name="list", short_help="View download queue")
 @click.pass_obj
-def list(config: AppConfig):
+def list_queue(config: AppConfig):
     """View your download queue."""
     from ..service.registry.models import DownloadStatus
 

@@ -76,7 +76,7 @@ class GraphQLCache:
         key_data = f"{url}:{query}:{json.dumps(variables, sort_keys=True)}"
         return hashlib.sha256(key_data.encode()).hexdigest()
 
-    def get(self, url: str, query: str, variables: dict, ttl: int) -> Optional[dict]:
+    def get(self, url: str, query: str, variables: dict, ttl: int | float) -> Optional[dict]:
         """Retrieve a cached response if it exists and is not expired."""
         key = self._get_cache_key(url, query, variables)
         cache_file = self.cache_dir / f"{key}.json"
@@ -274,6 +274,8 @@ def execute_graphql(
             f"GraphQL request failed with status code {response.status_code}: {response.text}"
         )
         response.raise_for_status()
+
+    raise RuntimeError("Unreachable: GraphQL query execution loop ended without returning or raising.")
 
 
 def invalidate_graphql_cache(url: str, graphql_file: Path, variables: dict):

@@ -1,12 +1,16 @@
+from __future__ import annotations
 import time
 import logging
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from ..constants import DISCORD_CLIENT_ID
+
+if TYPE_CHECKING:
+    from pypresence import AioPresence
 
 logger = logging.getLogger(__name__)
 
 try:
-    from pypresence import AioPresence
+    import pypresence
     PYPRESENCE_AVAILABLE = True
 except ImportError:
     PYPRESENCE_AVAILABLE = False
@@ -26,6 +30,7 @@ class DiscordPresenceManager:
         if self.connected and self.client:
             return True
         try:
+            from pypresence import AioPresence
             self.client = AioPresence(self.client_id)
             await self.client.connect()
             self.connected = True

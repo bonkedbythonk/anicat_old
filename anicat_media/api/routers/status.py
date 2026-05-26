@@ -756,6 +756,7 @@ async def get_update_logs(lines: int = 100):
                     return ""
                 blocks = []
                 bytes_scanned = 0
+                data = b""
                 while bytes_scanned < file_size:
                     read_size = min(buf_size, file_size - bytes_scanned)
                     f.seek(max(0, file_size - bytes_scanned - read_size))

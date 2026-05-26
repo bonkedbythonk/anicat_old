@@ -14,6 +14,7 @@ from ...session import Context, session
 from ...state import InternalDirective, MediaApiState, MenuName, State
 from anicat_media.core.theme import ICONS
 from ....service.feedback.service import console
+from rich.panel import Panel
 
 logger = logging.getLogger(__name__)
 MenuAction = Callable[[], State | InternalDirective]

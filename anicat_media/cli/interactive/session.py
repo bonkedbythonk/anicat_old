@@ -145,19 +145,19 @@ class Context:
         if old_provider and old_provider != new_provider and self._media_registry:
             try:
                 count = 0
-                for record in self._media_registry.iter_all():
+                for record in self._media_registry.get_all_media_records():
                     if (
                         record.provider_mapping
                         and new_provider in record.provider_mapping
                     ):
                         del record.provider_mapping[new_provider]
+                        self._media_registry.save_media_record(record)
                         count += 1
                 if count > 0:
                     logger.info(
                         f"Cleared {count} stale cached provider IDs for provider "
                         f"'{new_provider}' — media will re-search on next access."
                     )
-                    self._media_registry.save_all()
             except Exception as e:
                 logger.warning(f"Failed to clear stale provider cache: {e}")
 
