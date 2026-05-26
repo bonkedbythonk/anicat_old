@@ -92,11 +92,14 @@ fi
 echo "Step 3: Preparing installation..."
 
 # Close existing running instances first to release file locks on the app bundle and the server port
-killall "Anicat" 2>/dev/null || true
-killall "Anicat Dev" 2>/dev/null || true
+# Use osascript for graceful quit (more reliable than killall, which often fails silently)
+osascript -e 'tell application "Anicat" to quit' 2>/dev/null || true
+osascript -e 'tell application "Anicat Dev" to quit' 2>/dev/null || true
+sleep 2
+# Force-kill any remaining processes (sidecar, port holder)
 killall "anicat-server" 2>/dev/null || true
 lsof -ti :13370 | xargs kill -9 2>/dev/null || true
-sleep 2
+sleep 1
 
 for volume in /Volumes/Anicat*; do
     if [ -d "$volume" ]; then

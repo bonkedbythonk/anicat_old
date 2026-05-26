@@ -226,6 +226,23 @@ fn restart_backend(state: tauri::State<'_, SidecarState>) -> Result<String, Stri
     Ok("Backend restart initiated".to_string())
 }
 
+// ---------------------------------------------------------------------------
+// Tauri command: restart the entire application (binary reload)
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+fn restart_app(app: tauri::AppHandle) -> Result<String, String> {
+    log::info!("[app] Restarting entire application...");
+    // app.restart() exits the current process and relaunches the binary.
+    // It never returns, so we schedule it after returning the response.
+    let handle = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        handle.restart();
+    });
+    Ok("Application restart initiated".to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     std::panic::set_hook(Box::new(|info| {
@@ -255,7 +272,7 @@ pub fn run() {
         // path changed, causing a hard crash. Re-enable once
         // tauri-plugin-global-shortcut supports macOS 26 natively.
         .manage(sidecar_state)
-        .invoke_handler(tauri::generate_handler![open_logs_folder, restart_backend])
+        .invoke_handler(tauri::generate_handler![open_logs_folder, restart_backend, restart_app])
         .setup(move |app| {
             let setup_result = (|| -> Result<(), Box<dyn std::error::Error>> {
                 // --- Clean up stale processes on port 13370 ---
