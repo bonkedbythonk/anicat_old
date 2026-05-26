@@ -17,7 +17,10 @@ logger = logging.getLogger(__name__)
 # Map the client name to its import path AND the config section it needs.
 API_CLIENTS = {
     "anilist": ("anicat_media.libs.media_api.anilist.api.AniListApi", "anilist"),
-    "jikan": ("anicat_media.libs.media_api.jikan.api.JikanApi", "jikan"),  # For the future
+    "jikan": (
+        "anicat_media.libs.media_api.jikan.api.JikanApi",
+        "jikan",
+    ),  # For the future
 }
 
 
@@ -43,7 +46,7 @@ def create_api_client(client_name: str, config: AppConfig) -> BaseApiClient:
 
     # Retrieve the specific config section from the main AppConfig
     scoped_config = getattr(config, config_section_name)
-    
+
     # Inject the parent config so the client can access general settings if needed
     try:
         object.__setattr__(scoped_config, "parent", config)

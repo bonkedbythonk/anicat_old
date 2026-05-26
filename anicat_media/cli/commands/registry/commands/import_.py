@@ -313,7 +313,9 @@ def _import_data(
                 continue
 
             title = MediaTitle(**media_data.get("title", {}))
-            media_item = MediaItem(id=media_id, title=title, type=MediaType.ANIME, seasonYear=None)
+            media_item = MediaItem(
+                id=media_id, title=title, type=MediaType.ANIME, seasonYear=None
+            )
 
             if dry_run:
                 feedback.info(

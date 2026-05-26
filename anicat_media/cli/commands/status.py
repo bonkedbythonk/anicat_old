@@ -5,6 +5,7 @@ import json as _json
 
 from ...core.constants import LOCAL_API_ORIGIN
 
+
 @click.command()
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON for scripting.")
 @click.pass_obj
@@ -24,19 +25,34 @@ def status(ctx, as_json: bool = False):
                 return
             click.secho("\n✅ Anicat is ONLINE", fg="green", bold=True)
             click.echo(f"  Version: {data.get('current_version', 'unknown')}")
-            click.echo(f"  AniList: {'Connected' if data.get('api_authenticated') else 'Not Logged In'}")
-            click.echo(f"  Network: {'Online' if not data.get('is_offline') else 'Offline'}")
+            click.echo(
+                f"  AniList: {'Connected' if data.get('api_authenticated') else 'Not Logged In'}"
+            )
+            click.echo(
+                f"  Network: {'Online' if not data.get('is_offline') else 'Offline'}"
+            )
 
-            if data.get('update_available'):
-                click.secho("\n✨ An update is available! Install it via the Dashboard.", fg="amber")
+            if data.get("update_available"):
+                click.secho(
+                    "\n✨ An update is available! Install it via the Dashboard.",
+                    fg="amber",
+                )
         else:
             if as_json:
-                click.echo(_json.dumps({"status": "error", "code": response.status_code}))
+                click.echo(
+                    _json.dumps({"status": "error", "code": response.status_code})
+                )
             else:
-                click.secho(f"\n⚠️ Service returned error: {response.status_code}", fg="yellow")
+                click.secho(
+                    f"\n⚠️ Service returned error: {response.status_code}", fg="yellow"
+                )
     except Exception:
         if as_json:
-            click.echo(_json.dumps({"status": "offline", "error": "Background server is not running."}))
+            click.echo(
+                _json.dumps(
+                    {"status": "offline", "error": "Background server is not running."}
+                )
+            )
             sys.exit(1)
         click.secho("\n❌ Anicat is OFFLINE", fg="red", bold=True)
         click.echo("  The background server is not running.")

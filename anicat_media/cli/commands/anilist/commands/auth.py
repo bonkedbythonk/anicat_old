@@ -127,13 +127,9 @@ def _show_auth_instructions(feedback):
 
     open_success = webbrowser.open(ANILIST_AUTH, new=2)
     if open_success:
-        feedback.info(
-            "Your browser has been opened to the AniList authorization page."
-        )
+        feedback.info("Your browser has been opened to the AniList authorization page.")
     else:
-        feedback.info(
-            f"Open this URL in your browser to authorize:\n  {ANILIST_AUTH}"
-        )
+        feedback.info(f"Open this URL in your browser to authorize:\n  {ANILIST_AUTH}")
 
     feedback.info(
         "After authorizing, save your token using one of these methods:\n"

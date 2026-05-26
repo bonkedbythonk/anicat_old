@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Play, Download, Loader2, CheckCircle2, Clock, AlertCircle, BookOpen, XCircle } from "lucide-react";
+import { Play, Download, Loader2, CheckCircle2, Clock, AlertCircle, BookOpen, XCircle, RefreshCw } from "lucide-react";
 import { mediaApi, type Episode } from "@/lib/api";
 import { dispatchRefresh } from "@/lib/events";
 
@@ -16,6 +16,7 @@ interface EpisodeListProps {
   playerType?: "embedded" | "external";
   onUnwatch?: (epNum: string) => void;
   nextAiringEpisode?: number;
+  onRetry?: () => void;
 }
 
 export default function EpisodeList({
@@ -28,13 +29,17 @@ export default function EpisodeList({
   onPlayEpisode,
   playerType = "external",
   onUnwatch,
-  nextAiringEpisode
+  nextAiringEpisode,
+  onRetry,
 }: EpisodeListProps) {
   const [playingEp, setPlayingEp] = useState<string | null>(null);
   const [queueingEp, setQueueingEp] = useState<string | null>(null);
   const [batchStart, setBatchStart] = useState("");
   const [batchEnd, setBatchEnd] = useState("");
   const [batchQueuing, setBatchQueuing] = useState(false);
+  // Local overrides for download status so the icon updates immediately
+  // after queuing, without waiting for a full episode-list refetch.
+  const [localDownloadStatus, setLocalDownloadStatus] = useState<Record<string, string>>({});
 
   // Removed automatic scrolling entirely to ensure UI stability.
   // The list will always start at the top (Episode 1).
@@ -68,8 +73,17 @@ export default function EpisodeList({
     setQueueingEp(epNum);
     try {
       await mediaApi.addToQueue(mediaId, [epNum]);
+      // Update local status immediately so the icon changes to "queued"
+      setLocalDownloadStatus(prev => ({ ...prev, [epNum]: "queued" }));
+      dispatchRefresh();
     } catch (error) {
       console.error("Failed to queue:", error);
+      // Clear local override on failure so we don't show stale state
+      setLocalDownloadStatus(prev => {
+        const next = { ...prev };
+        delete next[epNum];
+        return next;
+      });
     } finally {
       setQueueingEp(null);
     }
@@ -89,6 +103,7 @@ export default function EpisodeList({
       await mediaApi.addToQueue(mediaId, eps);
       setBatchStart("");
       setBatchEnd("");
+      dispatchRefresh();
     } catch (error) {
       console.error("Failed to batch queue:", error);
     } finally {
@@ -118,9 +133,18 @@ export default function EpisodeList({
   return (
     <div className="space-y-4">
       {/* Episode list */}
-      {episodes.length === 0 ? (
-        <div className="text-center py-12 text-gray-600 text-sm">
-          No {isManga ? "chapters" : "episodes"} found from this provider.
+      {!Array.isArray(episodes) || episodes.length === 0 ? (
+        <div className="text-center py-12 text-gray-600 text-sm space-y-3">
+          <p>No {isManga ? "chapters" : "episodes"} found from this provider.</p>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent rounded-xl text-xs font-bold transition-all active:scale-95"
+            >
+              <RefreshCw size={14} />
+              <span>Retry Search</span>
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-1 max-h-[50vh] overflow-y-auto scrollbar-hide pr-1">
@@ -167,7 +191,7 @@ export default function EpisodeList({
                       {ep.title.toLowerCase() === `episode ${epNum}` ? `Episode ${epNum}` : ep.title || `Episode ${epNum}`}
                     </span>
                   </div>
-                  {statusIcon(ep.download_status)}
+                  {statusIcon(localDownloadStatus[epNum] || ep.download_status)}
                 </div>
 
                 {!isUnaired ? (
@@ -177,7 +201,7 @@ export default function EpisodeList({
                         e.stopPropagation();
                         handleQueue(epNum);
                       }}
-                      disabled={queueingEp === epNum || ep.download_status === "completed"}
+                      disabled={queueingEp === epNum || (localDownloadStatus[epNum] || ep.download_status) === "completed"}
                       title="Download"
                       className="flex items-center justify-center w-9 h-9 bg-foreground/[0.04] text-muted-foreground rounded-xl hover:bg-foreground/10 hover:text-foreground transition-all disabled:opacity-30 active:scale-90"
                     >

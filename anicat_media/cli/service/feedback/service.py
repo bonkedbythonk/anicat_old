@@ -28,7 +28,11 @@ class FeedbackService:
 
     def success(self, message: str, details: Optional[str] = None) -> None:
         """Show a success message with optional details."""
-        icon = ICONS.get('SUCCESS', self.app_config.general.icons) if self.app_config.general.icons else ""
+        icon = (
+            ICONS.get("SUCCESS", self.app_config.general.icons)
+            if self.app_config.general.icons
+            else ""
+        )
         main_msg = f"[bold green]{icon}{message}[/bold green]"
 
         if self.app_config.general.selector == "rofi":
@@ -54,7 +58,11 @@ class FeedbackService:
 
     def error(self, message: str, details: Optional[str] = None) -> None:
         """Show an error message with optional details."""
-        icon = ICONS.get('ERROR', self.app_config.general.icons) if self.app_config.general.icons else ""
+        icon = (
+            ICONS.get("ERROR", self.app_config.general.icons)
+            if self.app_config.general.icons
+            else ""
+        )
         main_msg = f"[bold red]{icon}Error: {message}[/bold red]"
 
         if self.app_config.general.selector == "rofi":
@@ -81,7 +89,11 @@ class FeedbackService:
 
     def warning(self, message: str, details: Optional[str] = None) -> None:
         """Show a warning message with optional details."""
-        icon = ICONS.get('WARNING', self.app_config.general.icons) if self.app_config.general.icons else ""
+        icon = (
+            ICONS.get("WARNING", self.app_config.general.icons)
+            if self.app_config.general.icons
+            else ""
+        )
         main_msg = f"[bold yellow]{icon}Warning: {message}[/bold yellow]"
 
         if self.app_config.general.selector == "rofi":
@@ -164,7 +176,11 @@ class FeedbackService:
 
     def pause_for_user(self, message: str = "Press Enter to continue") -> None:
         """Pause execution and wait for user input."""
-        icon = ICONS.get('PAUSE', self.app_config.general.icons) if self.app_config.general.icons else ""
+        icon = (
+            ICONS.get("PAUSE", self.app_config.general.icons)
+            if self.app_config.general.icons
+            else ""
+        )
 
         if self.app_config.general.selector == "rofi":
             try:

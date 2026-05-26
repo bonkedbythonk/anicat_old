@@ -11,10 +11,14 @@ logger = logging.getLogger(__name__)
 
 try:
     import pypresence
+
     PYPRESENCE_AVAILABLE = True
 except ImportError:
     PYPRESENCE_AVAILABLE = False
-    logger.warning("pypresence package is not installed. Discord Rich Presence is disabled.")
+    logger.warning(
+        "pypresence package is not installed. Discord Rich Presence is disabled."
+    )
+
 
 class DiscordPresenceManager:
     def __init__(self, client_id: str = DISCORD_CLIENT_ID):
@@ -31,6 +35,7 @@ class DiscordPresenceManager:
             return True
         try:
             from pypresence import AioPresence
+
             self.client = AioPresence(self.client_id)
             await self.client.connect()
             self.connected = True
@@ -48,7 +53,11 @@ class DiscordPresenceManager:
             return
 
         # Avoid redundant updates if we are already playing this exact media/episode
-        if self.connected and self._current_media_id == media_id and self._current_episode == episode:
+        if (
+            self.connected
+            and self._current_media_id == media_id
+            and self._current_episode == episode
+        ):
             return
 
         try:
@@ -70,7 +79,7 @@ class DiscordPresenceManager:
                 large_image="logo",  # Standard asset key for AniCat
                 large_text="AniCat",
                 small_image="play",
-                small_text="Watching"
+                small_text="Watching",
             )
             logger.info(f"[Discord RPC] Updated: {truncated_title} - {state_str}")
         except Exception as e:
@@ -87,7 +96,11 @@ class DiscordPresenceManager:
             return
 
         # Avoid redundant updates if we are already reading this exact media/chapter
-        if self.connected and self._current_media_id == media_id and self._current_episode == f"chapter_{chapter}":
+        if (
+            self.connected
+            and self._current_media_id == media_id
+            and self._current_episode == f"chapter_{chapter}"
+        ):
             return
 
         try:
@@ -109,7 +122,7 @@ class DiscordPresenceManager:
                 large_image="logo",  # Standard asset key for AniCat
                 large_text="AniCat",
                 small_image="book",  # Distinctive book icon for reading
-                small_text="Reading"
+                small_text="Reading",
             )
             logger.info(f"[Discord RPC] Updated: {truncated_title} - {state_str}")
         except Exception as e:
@@ -131,6 +144,7 @@ class DiscordPresenceManager:
         finally:
             self._current_media_id = None
             self._current_episode = None
+
 
 # Global Singleton Manager
 discord_rpc = DiscordPresenceManager()

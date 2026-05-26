@@ -174,18 +174,24 @@ def render_kitty(file_path, width, height, scale_up):
 def render_sixel(file_path, width, height):
     """Render using Sixel."""
     if which("chafa"):
-        run_cmd(["chafa", "-f", "sixel", "-s", f"{width}x{height}", file_path], capture_output=False)
+        run_cmd(
+            ["chafa", "-f", "sixel", "-s", f"{width}x{height}", file_path],
+            capture_output=False,
+        )
         return True
 
     if which("img2sixel"):
         pixel_width = width * 10
         pixel_height = height * 20
-        run_cmd([
-            "img2sixel",
-            f"--width={pixel_width}",
-            f"--height={pixel_height}",
-            file_path,
-        ], capture_output=False)
+        run_cmd(
+            [
+                "img2sixel",
+                f"--width={pixel_width}",
+                f"--height={pixel_height}",
+                file_path,
+            ],
+            capture_output=False,
+        )
         return True
 
     return False
@@ -194,11 +200,17 @@ def render_sixel(file_path, width, height):
 def render_iterm(file_path, width, height):
     """Render using iTerm2 Inline Image Protocol."""
     if which("imgcat"):
-        run_cmd(["imgcat", "-W", str(width), "-H", str(height), file_path], capture_output=False)
+        run_cmd(
+            ["imgcat", "-W", str(width), "-H", str(height), file_path],
+            capture_output=False,
+        )
         return True
 
     if which("chafa"):
-        run_cmd(["chafa", "-f", "iterm", "-s", f"{width}x{height}", file_path], capture_output=False)
+        run_cmd(
+            ["chafa", "-f", "iterm", "-s", f"{width}x{height}", file_path],
+            capture_output=False,
+        )
         return True
     return False
 
@@ -206,7 +218,10 @@ def render_iterm(file_path, width, height):
 def render_timg(file_path, width, height):
     """Render using timg."""
     if which("timg"):
-        run_cmd(["timg", f"-g{width}x{height}", "--upscale", file_path], capture_output=False)
+        run_cmd(
+            ["timg", f"-g{width}x{height}", "--upscale", file_path],
+            capture_output=False,
+        )
         return True
     return False
 
@@ -345,9 +360,27 @@ def main():
 
         studios_list = media.get("studios", {}).get("nodes", [])
         # Studios are those with isAnimationStudio=true
-        studios = ", ".join([s["name"] for s in studios_list if s.get("name") and s.get("isAnimationStudio")]) or "N/A"
+        studios = (
+            ", ".join(
+                [
+                    s["name"]
+                    for s in studios_list
+                    if s.get("name") and s.get("isAnimationStudio")
+                ]
+            )
+            or "N/A"
+        )
         # Producers are those with isAnimationStudio=false
-        producers = ", ".join([s["name"] for s in studios_list if s.get("name") and not s.get("isAnimationStudio")]) or "N/A"
+        producers = (
+            ", ".join(
+                [
+                    s["name"]
+                    for s in studios_list
+                    if s.get("name") and not s.get("isAnimationStudio")
+                ]
+            )
+            or "N/A"
+        )
 
         synonyms_list = media.get("synonyms", [])
         # Include romaji in synonyms if different from title
@@ -358,7 +391,9 @@ def main():
 
         # Tags
         tags_list = media.get("tags", [])
-        tags = ", ".join([t.get("name", "") for t in tags_list if t.get("name")]) or "N/A"
+        tags = (
+            ", ".join([t.get("name", "") for t in tags_list if t.get("name")]) or "N/A"
+        )
 
         # Next airing episode
         next_airing = media.get("nextAiringEpisode")
@@ -367,9 +402,12 @@ def main():
             airing_at = next_airing.get("airingAt")
             if airing_at:
                 from datetime import datetime
+
                 try:
                     dt = datetime.fromtimestamp(airing_at)
-                    next_episode_str = f"Episode {next_ep} on {dt.strftime('%A, %d %B %Y at %H:%M')}"
+                    next_episode_str = (
+                        f"Episode {next_ep} on {dt.strftime('%A, %d %B %Y at %H:%M')}"
+                    )
                 except (ValueError, OSError):
                     next_episode_str = f"Episode {next_ep}"
             else:

@@ -25,11 +25,11 @@ def _load_cached_titles() -> list[str]:
     """Load titles from cached search results for display in fzf."""
     if not SEARCH_RESULTS_FILE.exists():
         return []
-    
+
     try:
         with open(SEARCH_RESULTS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-        
+
         media_list = data.get("data", {}).get("Page", {}).get("media", [])
         titles = []
         for media in media_list:
@@ -99,9 +99,7 @@ def dynamic_search(ctx: Context, state: State) -> State | InternalDirective:
 
     # Make the search script executable by calling it with python3
     # fzf will pass the query as {q} which becomes the first argument
-    search_command_final = (
-        f"{Path(get_python_executable()).as_posix()} {search_script_file.as_posix()} {{q}}"
-    )
+    search_command_final = f"{Path(get_python_executable()).as_posix()} {search_script_file.as_posix()} {{q}}"
 
     # Header hint for filter syntax
     icons = ctx.config.general.icons

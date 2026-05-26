@@ -47,7 +47,11 @@ def media_actions(ctx: Context, state: State) -> State | InternalDirective:
         )
 
     options: Dict[str, MenuAction] = {}
-    is_manga = media_item.type == MediaType.MANGA or media_item.format in (MediaFormat.MANGA, MediaFormat.NOVEL, MediaFormat.ONE_SHOT)
+    is_manga = media_item.type == MediaType.MANGA or media_item.format in (
+        MediaFormat.MANGA,
+        MediaFormat.NOVEL,
+        MediaFormat.ONE_SHOT,
+    )
 
     if ctx.is_offline:
         if is_manga:
@@ -58,62 +62,115 @@ def media_actions(ctx: Context, state: State) -> State | InternalDirective:
         else:
             if has_downloads:
                 options = {
-                    f"{ICONS.get('PLAY', icons)}Play (Downloaded)": _stream_downloads(ctx, state),
-                    f"{ICONS.get('EPISODES', icons)}Episodes (Downloaded)": _stream_downloads(ctx, state, force_episodes_menu=True),
+                    f"{ICONS.get('PLAY', icons)}Play (Downloaded)": _stream_downloads(
+                        ctx, state
+                    ),
+                    f"{ICONS.get('EPISODES', icons)}Episodes (Downloaded)": _stream_downloads(
+                        ctx, state, force_episodes_menu=True
+                    ),
                 }
-            
-            options.update({
-                f"{ICONS.get('INFO', icons)}View Info": _view_info(ctx, state),
-                f"{ICONS.get('BACK', icons)}Back to Results": lambda: InternalDirective.BACK,
-            })
+
+            options.update(
+                {
+                    f"{ICONS.get('INFO', icons)}View Info": _view_info(ctx, state),
+                    f"{ICONS.get('BACK', icons)}Back to Results": lambda: InternalDirective.BACK,
+                }
+            )
     elif is_manga:
         options = {
-            f"{ICONS.get('SEARCH_MANGA', icons)}Read Chapters": _read_chapters(ctx, state),
-            f"{ICONS.get('RECOMMENDATIONS', icons)}Recommendations": _view_recommendations(ctx, state),
-            f"{ICONS.get('RELATIONS', icons)}Related Manga": _view_relations(ctx, state),
+            f"{ICONS.get('SEARCH_MANGA', icons)}Read Chapters": _read_chapters(
+                ctx, state
+            ),
+            f"{ICONS.get('RECOMMENDATIONS', icons)}Recommendations": _view_recommendations(
+                ctx, state
+            ),
+            f"{ICONS.get('RELATIONS', icons)}Related Manga": _view_relations(
+                ctx, state
+            ),
             f"{ICONS.get('CHARACTERS', icons)}Characters": _view_characters(ctx, state),
             f"{ICONS.get('REVIEWS', icons)}View Reviews": _view_reviews(ctx, state),
-            f"{ICONS.get('ADD', icons)}Add/Update List": _manage_user_media_list(ctx, state),
+            f"{ICONS.get('ADD', icons)}Add/Update List": _manage_user_media_list(
+                ctx, state
+            ),
             f"{ICONS.get('SCORE', icons)}Score Manga": _score_anime(ctx, state),
-            f"{ICONS.get('BROWSER', icons)}Open AniList Page": _open_anilist_page(ctx, state),
+            f"{ICONS.get('BROWSER', icons)}Open AniList Page": _open_anilist_page(
+                ctx, state
+            ),
             f"{ICONS.get('INFO', icons)}View Info": _view_info(ctx, state),
             f"{ICONS.get('BACK', icons)}Back to Results": lambda: InternalDirective.BACK,
         }
     else:
         options = {}
         if has_downloads:
-            options[f"{ICONS.get('PLAY', icons)}Play Downloaded"] = _stream_downloads(ctx, state)
-            options[f"{ICONS.get('EPISODES', icons)}Episodes (Downloaded)"] = _stream_downloads(ctx, state, force_episodes_menu=True)
-            options[f"{ICONS.get('TRASH', icons)}Remove Download(s)"] = _remove_downloads(ctx, state)
-
-        options.update({
-            f"{ICONS.get('PLAY', icons)}Stream {progress}": _stream(ctx, state),
-            f"{ICONS.get('EPISODES', icons)}Episodes": _stream(ctx, state, force_episodes_menu=True),
-        })
+            options[f"{ICONS.get('PLAY', icons)}Play Downloaded"] = _stream_downloads(
+                ctx, state
+            )
+            options[f"{ICONS.get('EPISODES', icons)}Episodes (Downloaded)"] = (
+                _stream_downloads(ctx, state, force_episodes_menu=True)
+            )
+            options[f"{ICONS.get('TRASH', icons)}Remove Download(s)"] = (
+                _remove_downloads(ctx, state)
+            )
 
         options.update(
             {
-                f"{ICONS.get('DOWNLOADS', icons)}Download": _download_episodes(ctx, state),
-                f"{ICONS.get('TRAILER', icons)}Watch Trailer": _watch_trailer(ctx, state),
-                f"{ICONS.get('RECOMMENDATIONS', icons)}Recommendations": _view_recommendations(ctx, state),
-                f"{ICONS.get('RELATIONS', icons)}Related Anime": _view_relations(ctx, state),
-                f"{ICONS.get('CHARACTERS', icons)}Characters": _view_characters(ctx, state),
-                f"{ICONS.get('SCHEDULE', icons)}Airing Schedule": _view_airing_schedule(ctx, state),
-                f"{ICONS.get('REVIEWS', icons)}View Reviews": _view_reviews(ctx, state),
-                f"{ICONS.get('ADD', icons)}Add/Update List": _manage_user_media_list(ctx, state),
-                f"{ICONS.get('ADD', icons)}Add/Update List (Bulk)": _manage_user_media_list_in_bulk(ctx, state),
-                f"{ICONS.get('SCORE', icons)}Score Anime": _score_anime(ctx, state),
-                f"{ICONS.get('BROWSER', icons)}Open AniList Page": _open_anilist_page(ctx, state),
-                f"{ICONS.get('INFO', icons)}View Info": _view_info(ctx, state),
-                f"{ICONS.get('PROVIDER', icons)}Change Provider (Current: {ctx.config.general.provider.value.upper()})": _change_provider(ctx, state),
-                f"{ICONS.get('TOGGLE', icons)}Toggle Auto Select Anime (Current: {ctx.config.general.auto_select_anime_result})": toggle_config_state(ctx, state, "AUTO_ANIME"),
-                f"{ICONS.get('TOGGLE', icons)}Toggle Auto Next Episode (Current: {ctx.config.stream.auto_next})": toggle_config_state(ctx, state, "AUTO_EPISODE"),
-                f"{ICONS.get('TOGGLE', icons)}Toggle Continue From History (Current: {ctx.config.stream.continue_from_watch_history})": toggle_config_state(ctx, state, "CONTINUE_FROM_HISTORY"),
-                f"{ICONS.get('TOGGLE', icons)}Toggle Translation Type  (Current: {ctx.config.stream.translation_type.upper()})": toggle_config_state(ctx, state, "TRANSLATION_TYPE"),
-                f"{ICONS.get('BACK', icons)}Back to Results": lambda: InternalDirective.BACK,
+                f"{ICONS.get('PLAY', icons)}Stream {progress}": _stream(ctx, state),
+                f"{ICONS.get('EPISODES', icons)}Episodes": _stream(
+                    ctx, state, force_episodes_menu=True
+                ),
             }
         )
 
+        options.update(
+            {
+                f"{ICONS.get('DOWNLOADS', icons)}Download": _download_episodes(
+                    ctx, state
+                ),
+                f"{ICONS.get('TRAILER', icons)}Watch Trailer": _watch_trailer(
+                    ctx, state
+                ),
+                f"{ICONS.get('RECOMMENDATIONS', icons)}Recommendations": _view_recommendations(
+                    ctx, state
+                ),
+                f"{ICONS.get('RELATIONS', icons)}Related Anime": _view_relations(
+                    ctx, state
+                ),
+                f"{ICONS.get('CHARACTERS', icons)}Characters": _view_characters(
+                    ctx, state
+                ),
+                f"{ICONS.get('SCHEDULE', icons)}Airing Schedule": _view_airing_schedule(
+                    ctx, state
+                ),
+                f"{ICONS.get('REVIEWS', icons)}View Reviews": _view_reviews(ctx, state),
+                f"{ICONS.get('ADD', icons)}Add/Update List": _manage_user_media_list(
+                    ctx, state
+                ),
+                f"{ICONS.get('ADD', icons)}Add/Update List (Bulk)": _manage_user_media_list_in_bulk(
+                    ctx, state
+                ),
+                f"{ICONS.get('SCORE', icons)}Score Anime": _score_anime(ctx, state),
+                f"{ICONS.get('BROWSER', icons)}Open AniList Page": _open_anilist_page(
+                    ctx, state
+                ),
+                f"{ICONS.get('INFO', icons)}View Info": _view_info(ctx, state),
+                f"{ICONS.get('PROVIDER', icons)}Change Provider (Current: {ctx.config.general.provider.value.upper()})": _change_provider(
+                    ctx, state
+                ),
+                f"{ICONS.get('TOGGLE', icons)}Toggle Auto Select Anime (Current: {ctx.config.general.auto_select_anime_result})": toggle_config_state(
+                    ctx, state, "AUTO_ANIME"
+                ),
+                f"{ICONS.get('TOGGLE', icons)}Toggle Auto Next Episode (Current: {ctx.config.stream.auto_next})": toggle_config_state(
+                    ctx, state, "AUTO_EPISODE"
+                ),
+                f"{ICONS.get('TOGGLE', icons)}Toggle Continue From History (Current: {ctx.config.stream.continue_from_watch_history})": toggle_config_state(
+                    ctx, state, "CONTINUE_FROM_HISTORY"
+                ),
+                f"{ICONS.get('TOGGLE', icons)}Toggle Translation Type  (Current: {ctx.config.stream.translation_type.upper()})": toggle_config_state(
+                    ctx, state, "TRANSLATION_TYPE"
+                ),
+                f"{ICONS.get('BACK', icons)}Back to Results": lambda: InternalDirective.BACK,
+            }
+        )
 
     choice = ctx.selector.choose(
         prompt="Select Action",
@@ -149,7 +206,9 @@ def _get_progress_string(ctx: Context, media_item: Optional[MediaItem]) -> str:
         last_aired = media_item.next_airing.episode - 1
         unwatched = last_aired - (media_item.user_status.progress or 0)
         if unwatched > 0:
-            icon = ICONS.get('NEW', config.general.icons) if config.general.icons else "!"
+            icon = (
+                ICONS.get("NEW", config.general.icons) if config.general.icons else "!"
+            )
             display_title += f" {icon}{unwatched} new{icon}"
 
     return display_title
@@ -161,7 +220,9 @@ def _remove_downloads(ctx: Context, state: State) -> MenuAction:
         if not media_item:
             return InternalDirective.RELOAD
 
-        if not ctx.selector.confirm(f"Are you sure you want to remove ALL downloaded episodes for '{str(media_item.title.english or media_item.title.romaji)}'?"):
+        if not ctx.selector.confirm(
+            f"Are you sure you want to remove ALL downloaded episodes for '{str(media_item.title.english or media_item.title.romaji)}'?"
+        ):
             return InternalDirective.RELOAD
 
         record = ctx.media_registry.get_media_record(media_item.id)
@@ -170,6 +231,7 @@ def _remove_downloads(ctx: Context, state: State) -> MenuAction:
 
         removed_count = 0
         from ....service.registry.models import DownloadStatus
+
         for ep in record.media_episodes:
             if ep.download_status == DownloadStatus.COMPLETED and ep.file_path:
                 try:
@@ -179,22 +241,26 @@ def _remove_downloads(ctx: Context, state: State) -> MenuAction:
                         if sub.exists():
                             sub.unlink()
                     # Also try to remove the directory if it's empty
-                    if ep.file_path.parent.exists() and not any(ep.file_path.parent.iterdir()):
+                    if ep.file_path.parent.exists() and not any(
+                        ep.file_path.parent.iterdir()
+                    ):
                         ep.file_path.parent.rmdir()
-                        
+
                     ep.download_status = DownloadStatus.NOT_DOWNLOADED
                     ep.file_path = None
                     ep.subtitle_paths = []
                     removed_count += 1
                 except Exception as e:
-                    ctx.feedback.error(f"Failed to remove episode {ep.episode_number}: {e}")
+                    ctx.feedback.error(
+                        f"Failed to remove episode {ep.episode_number}: {e}"
+                    )
 
         if removed_count > 0:
             ctx.media_registry.save_media_record(record)
             ctx.feedback.success(f"Removed {removed_count} downloaded episodes.")
         else:
             ctx.feedback.warning("No downloaded episodes were found or removed.")
-        
+
         return InternalDirective.RELOAD
 
     return action
@@ -204,28 +270,31 @@ def _read_chapters(ctx: Context, state: State) -> MenuAction:
     def action():
         feedback = ctx.feedback
         media_item = state.media_api.media_item
-        
+
         if not media_item:
             return InternalDirective.RELOAD
 
         manga_title = str(media_item.title.english or media_item.title.romaji)
-        
+
         manga_provider = ctx.manga_provider
         provider_name = ctx.config.general.manga_provider.value
-        
+
         loading_message = f"Searching {provider_name} for '{manga_title}'"
         search_results = None
         from .....libs.provider.manga.params import MangaSearchParams
+
         with feedback.progress(loading_message):
-            search_results_obj = manga_provider.search(MangaSearchParams(query=str(manga_title or "Unknown")))
+            search_results_obj = manga_provider.search(
+                MangaSearchParams(query=str(manga_title or "Unknown"))
+            )
             search_results = search_results_obj.results if search_results_obj else None
-            
+
         if not search_results:
             feedback.error(f"No results found on {provider_name} for {manga_title}")
             return InternalDirective.RELOAD
-            
+
         result_map = {result.title: result for result in search_results}
-        
+
         provider_choices = list(result_map.keys())
         back_text = f"{' ' if ctx.config.general.icons else ''}Back"
         provider_choices.append(back_text)
@@ -233,22 +302,25 @@ def _read_chapters(ctx: Context, state: State) -> MenuAction:
         selected_title = ctx.selector.choose("Select Provider Match", provider_choices)
         if not selected_title or "Back" in selected_title:
             return InternalDirective.RELOAD
-            
+
         selected_manga = result_map[selected_title]
         manga_id = selected_manga.id
-        
+
         manga_info = None
         from .....libs.provider.manga.params import MangaParams
+
         with feedback.progress("Fetching chapters"):
-            manga_info = manga_provider.get(MangaParams(id=manga_id, query=str(manga_title or "Unknown")))
-            
+            manga_info = manga_provider.get(
+                MangaParams(id=manga_id, query=str(manga_title or "Unknown"))
+            )
+
         if not manga_info or not manga_info.chapters:
             feedback.error("No chapters found")
             return InternalDirective.RELOAD
-            
+
         chapters = manga_info.chapters
         chapter_map = {ch.title or f"Chapter {ch.number}": ch for ch in chapters}
-        
+
         while True:
             chapter_choices = list(chapter_map.keys())
             back_text = f"{' ' if ctx.config.general.icons else ''}Back"
@@ -259,60 +331,70 @@ def _read_chapters(ctx: Context, state: State) -> MenuAction:
             )
             if not selected_chapter_title or "Back" in selected_chapter_title:
                 break
-                
+
             selected_chapter = chapter_map[selected_chapter_title]
-            
+
             chapter_data = None
             with feedback.progress(f"Loading '{selected_chapter_title}'"):
                 chapter_data = manga_provider.get_chapter_thumbnails(
                     manga_info.id, selected_chapter.url or selected_chapter.number
                 )
-                
+
             if not chapter_data or not chapter_data.get("thumbnails"):
                 feedback.error(f"Failed to load pages for {selected_chapter_title}")
                 continue
-                
+
             thumbnails = chapter_data["thumbnails"]
-            
+
             # Use native icat for kitty
             from ....utils.icat import icat_manga_viewer
+
             icat_manga_viewer(thumbnails, f"{manga_title} — {selected_chapter_title}")
-            
+
             # sync anilist progress
             import re
-            match = re.search(r"(?:chapter|ch\.?)\s*(\d+)", selected_chapter_title, re.IGNORECASE)
+
+            match = re.search(
+                r"(?:chapter|ch\.?)\s*(\d+)", selected_chapter_title, re.IGNORECASE
+            )
             if not match:
                 match = re.search(r"(\d+)", selected_chapter_title)
-            
+
             if match:
                 chapter_number = str(int(match.group(1)))
                 from .....libs.player.types import PlayerResult
-                
+
                 result = PlayerResult(
-                    episode=chapter_number,
-                    stop_time=None,
-                    total_time=None
+                    episode=chapter_number, stop_time=None, total_time=None
                 )
                 ctx.watch_history.track(media_item, result)
-                    
+
             # Determine next/previous chapters
             current_index = chapters.index(selected_chapter)
-            
+
             # Since chapters are usually newest to oldest, "Next" is lower index
             # and "Previous" is higher index. Let's make it clear.
             next_chapter = chapters[current_index - 1] if current_index > 0 else None
-            prev_chapter = chapters[current_index + 1] if current_index < len(chapters) - 1 else None
-            
+            prev_chapter = (
+                chapters[current_index + 1]
+                if current_index < len(chapters) - 1
+                else None
+            )
+
             next_options = []
             if next_chapter:
-                next_options.append(f"Next: {next_chapter.title or f'Chapter {next_chapter.number}'}")
+                next_options.append(
+                    f"Next: {next_chapter.title or f'Chapter {next_chapter.number}'}"
+                )
             if prev_chapter:
-                next_options.append(f"Prev: {prev_chapter.title or f'Chapter {prev_chapter.number}'}")
-                
+                next_options.append(
+                    f"Prev: {prev_chapter.title or f'Chapter {prev_chapter.number}'}"
+                )
+
             next_options.extend(["Select another chapter", "Finish"])
-            
+
             continue_reading = ctx.selector.choose("What next?", next_options)
-            
+
             if not continue_reading or continue_reading == "Finish":
                 break
             elif continue_reading.startswith("Next:"):
@@ -322,10 +404,10 @@ def _read_chapters(ctx: Context, state: State) -> MenuAction:
                 selected_chapter = prev_chapter
                 continue
             # "Select another chapter" will fall through and restart the while loop
-            # because selected_chapter is reset at the top of the loop? 
+            # because selected_chapter is reset at the top of the loop?
             # No, it's not. I should set selected_chapter to None if "Select another chapter" is chosen.
             selected_chapter = None
-                
+
         return InternalDirective.RELOAD
 
     return action
@@ -509,8 +591,6 @@ def _change_provider(ctx: Context, state: State) -> MenuAction:
         return InternalDirective.RELOAD
 
     return action
-
-
 
 
 def _score_anime(ctx: Context, state: State) -> MenuAction:

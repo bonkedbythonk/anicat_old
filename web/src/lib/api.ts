@@ -97,6 +97,8 @@ export type MediaItem = {
   };
   // UX-12: Smart Playlist recommendation reason
   playlist_reason?: string;
+  // Relation type (SEQUEL, PREQUEL, SIDE_STORY, etc.)
+  relation_type?: string;
 };
 
 export type Episode = {
@@ -247,6 +249,9 @@ export const mediaApi = {
   getEpisodes: (mediaId: number): Promise<Episode[]> =>
     fetchFromApi(`/media/${mediaId}/episodes`),
 
+  clearProviderCache: (mediaId: number) =>
+    fetchFromApi(`/media/${mediaId}/clear-provider-cache`, { method: 'POST' }),
+
   // ─── User Lists ─────────────────────────────────────
   getUserList: (status?: string, type?: string, page = 1): Promise<MediaSearchResult> => 
     fetchFromApi(`/user/list?${status ? `status=${status}` : ''}${type ? `&type=${type}` : ''}&page=${page}`),
@@ -272,6 +277,9 @@ export const mediaApi = {
 
   getRecommendations: (mediaId: number, page = 1): Promise<MediaItem[]> =>
     fetchFromApi(`/media/${mediaId}/recommendations?page=${page}`),
+
+  getRelations: (mediaId: number): Promise<MediaItem[]> =>
+    fetchFromApi(`/media/${mediaId}/relations`),
 
   getChapterPages: (mediaId: number, chapterNumber: string): Promise<{ thumbnails: string[], title: string }> =>
     fetchFromApi(`/media/${mediaId}/chapter/${chapterNumber}/pages`),

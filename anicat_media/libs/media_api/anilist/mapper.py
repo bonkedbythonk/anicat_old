@@ -215,8 +215,12 @@ def _to_generic_user_status(
         score=entry.get("score"),
         repeat=entry.get("repeat", 0),
         notes=entry.get("notes"),
-        start_date=_to_generic_date(entry.get("startDate")) if entry.get("startDate") else None,
-        completed_at=_to_generic_date(entry.get("completedAt")) if entry.get("completedAt") else None,
+        start_date=_to_generic_date(entry.get("startDate"))
+        if entry.get("startDate")
+        else None,
+        completed_at=_to_generic_date(entry.get("completedAt"))
+        if entry.get("completedAt")
+        else None,
         created_at=str(entry.get("createdAt")) if entry.get("createdAt") else None,
     )
 
@@ -351,22 +355,38 @@ def to_generic_user_profile(data: AnilistViewerData) -> Optional[UserProfile]:
     genres = []
     if "genres" in anime_stats and anime_stats["genres"]:
         # Sort by count desc and limit to 5
-        sorted_genres = sorted(anime_stats["genres"], key=lambda x: x.get("count", 0), reverse=True)
-        genres = [{"genre": g.get("genre"), "count": g.get("count"), "meanScore": g.get("meanScore")} for g in sorted_genres if g]
+        sorted_genres = sorted(
+            anime_stats["genres"], key=lambda x: x.get("count", 0), reverse=True
+        )
+        genres = [
+            {
+                "genre": g.get("genre"),
+                "count": g.get("count"),
+                "meanScore": g.get("meanScore"),
+            }
+            for g in sorted_genres
+            if g
+        ]
 
     favs = viewer_data.get("favourites", {}) or {}
     fav_anime = []
     if favs and favs.get("anime") and favs["anime"].get("nodes"):
-        fav_anime = [_to_generic_media_item(node) for node in favs["anime"]["nodes"] if node]
+        fav_anime = [
+            _to_generic_media_item(node) for node in favs["anime"]["nodes"] if node
+        ]
 
     fav_manga = []
     if favs and favs.get("manga") and favs["manga"].get("nodes"):
-        fav_manga = [_to_generic_media_item(node) for node in favs["manga"]["nodes"] if node]
+        fav_manga = [
+            _to_generic_media_item(node) for node in favs["manga"]["nodes"] if node
+        ]
 
     return UserProfile(
         id=viewer_data["id"],
         name=viewer_data["name"],
-        avatar_url=viewer_data["avatar"]["large"] if viewer_data.get("avatar") else None,
+        avatar_url=viewer_data["avatar"]["large"]
+        if viewer_data.get("avatar")
+        else None,
         banner_url=viewer_data.get("bannerImage"),
         about=viewer_data.get("about"),
         anime_count=anime_stats.get("count", 0),
@@ -383,9 +403,23 @@ def to_generic_user_profile(data: AnilistViewerData) -> Optional[UserProfile]:
 
 # TODO: complete this
 def to_generic_relations(data: dict) -> Optional[List[MediaItem]]:
-    """Maps the 'relations' part of an API response."""
-    nodes = data["data"].get("Media", {}).get("relations", {}).get("nodes", [])
-    return [_to_generic_media_item(node) for node in nodes if node]
+    """Maps the 'relations' part of an API response, including relation type."""
+    relations_data = data["data"].get("Media", {}).get("relations", {})
+    edges = relations_data.get("edges", [])
+
+    if not edges:
+        # Fallback: old-style nodes without relation type
+        nodes = relations_data.get("nodes", [])
+        return [_to_generic_media_item(node) for node in nodes if node]
+
+    result = []
+    for edge in edges:
+        if not edge or not edge.get("node"):
+            continue
+        item = _to_generic_media_item(edge["node"])
+        item.relation_type = edge.get("relationType")
+        result.append(item)
+    return result if result else None
 
 
 def to_generic_recommendations(data: dict) -> Optional[List[MediaItem]]:
@@ -515,8 +549,8 @@ def to_generic_characters_result(data: Dict) -> Optional[CharacterSearchResult]:
     try:
         media_data = data["data"].get("Media")
         if not media_data:
-             return CharacterSearchResult(characters=[])
-             
+            return CharacterSearchResult(characters=[])
+
         characters_data = media_data.get("characters", {}).get("nodes", [])
 
         characters = []
@@ -649,15 +683,31 @@ def to_generic_notifications(
 def to_generic_global_schedule(data: dict) -> dict:
     """Maps global airing schedule response to a simplified result."""
     if not data or "data" not in data:
-        return {"media": [], "page_info": {"total": 0, "current_page": 1, "has_next_page": False, "per_page": 50}}
+        return {
+            "media": [],
+            "page_info": {
+                "total": 0,
+                "current_page": 1,
+                "has_next_page": False,
+                "per_page": 50,
+            },
+        }
 
     page_data = data["data"].get("Page", {})
     if not page_data:
-        return {"media": [], "page_info": {"total": 0, "current_page": 1, "has_next_page": False, "per_page": 50}}
+        return {
+            "media": [],
+            "page_info": {
+                "total": 0,
+                "current_page": 1,
+                "has_next_page": False,
+                "per_page": 50,
+            },
+        }
 
     page_info = _to_generic_page_info(page_data.get("pageInfo", {}))
     raw_schedules = page_data.get("airingSchedules", [])
-    
+
     # We transform each schedule into a MediaItem but with extra airing info
     media_list = []
     for schedule in raw_schedules:
@@ -667,19 +717,21 @@ def to_generic_global_schedule(data: dict) -> dict:
                 # Attach airing info to the media item for convenience in this view
                 media.next_airing = AiringSchedule(
                     episode=schedule.get("episode") or 0,
-                    airing_at=datetime.fromtimestamp(schedule.get("airingAt")) if schedule.get("airingAt") else None
+                    airing_at=datetime.fromtimestamp(schedule.get("airingAt"))
+                    if schedule.get("airingAt")
+                    else None,
                 )
                 media_list.append(media)
         except Exception as e:
             logger.error(f"Failed to map schedule item: {e}")
             continue
-            
+
     return {
         "media": media_list,
         "page_info": {
             "total": page_info.total,
             "current_page": page_info.current_page,
             "has_next_page": page_info.has_next_page,
-            "per_page": page_info.per_page
-        }
+            "per_page": page_info.per_page,
+        },
     }

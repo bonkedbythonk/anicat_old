@@ -31,6 +31,10 @@ class StatBreakdown(TypedDict):
     last_updated: str
 
 
+# Sentinel to distinguish "don't change" (default) from "set to None" (clear)
+_UNSET = object()
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -45,6 +49,7 @@ class MediaRegistryService:
         self._index_file_modified_time = 0.0
         _lock_file = self.config.media_dir / "registry.lock"
         self._lock = FileLock(_lock_file)
+        self._record_cache: Dict[int, tuple[float, MediaRecord]] = {}
 
     def _ensure_directories(self) -> None:
         """Ensure registry directories exist."""
@@ -61,14 +66,17 @@ class MediaRegistryService:
         )
         if not is_modified and self._index is not None:
             return self._index
-            
+
         data = load_json(self._index_file, default=None)
         if data is not None:
             try:
                 self._index = MediaRegistryIndex.model_validate(data)
             except Exception as e:
-                logger.error(f"Malformed state in registry index: {e}. Attempting self-heal.")
+                logger.error(
+                    f"Malformed state in registry index: {e}. Attempting self-heal."
+                )
                 import shutil
+
                 shutil.move(str(self._index_file), str(self._index_file) + ".old")
                 self._index = MediaRegistryIndex()
                 self._save_index(self._index)
@@ -113,19 +121,35 @@ class MediaRegistryService:
     def get_media_record(self, media_id: int) -> Optional[MediaRecord]:
         record_file = self._get_media_file_path(media_id)
         if not record_file.exists():
+            self._record_cache.pop(media_id, None)
             return None
+
+        try:
+            mtime = record_file.stat().st_mtime
+        except Exception:
+            mtime = 0.0
+
+        cached = self._record_cache.get(media_id)
+        if cached and cached[0] == mtime:
+            return cached[1]
 
         data = load_json(record_file, default=None)
         if data is None:
+            self._record_cache.pop(media_id, None)
             return None
-            
+
         try:
             record = MediaRecord.model_validate(data)
+            self._record_cache[media_id] = (mtime, record)
             return record
         except Exception as e:
-            logger.warning(f"Malformed state in media record {media_id}: {e}. Skipping and renaming to .old.")
+            logger.warning(
+                f"Malformed state in media record {media_id}: {e}. Skipping and renaming to .old."
+            )
             import shutil
+
             shutil.move(str(record_file), str(record_file) + ".old")
+            self._record_cache.pop(media_id, None)
             return None
 
     def get_or_create_index_entry(self, media_id: int) -> MediaRegistryIndexEntry:
@@ -158,6 +182,12 @@ class MediaRegistryService:
 
             save_json(record_file, record.model_dump(mode="json"), indent=2)
 
+            try:
+                mtime = record_file.stat().st_mtime
+            except Exception:
+                mtime = datetime.now().timestamp()
+            self._record_cache[media_id] = (mtime, record)
+
             logger.debug(f"Saved media record for {media_id}")
             return True
 
@@ -179,21 +209,28 @@ class MediaRegistryService:
         media_item: Optional[MediaItem] = None,
         progress: Optional[str] = None,
         status: Optional[UserMediaListStatus] = None,
-        last_watch_position: Optional[str] = None,
-        total_duration: Optional[str] = None,
+        last_watch_position: object = _UNSET,
+        total_duration: object = _UNSET,
         score: Optional[float] = None,
         repeat: Optional[int] = None,
         notes: Optional[str] = None,
         last_notified_episode: Optional[str] = None,
         is_synced: Optional[bool] = None,
     ):
-        if media_item:
-            self.get_or_create_record(media_item)
+        # Only create/persist the full media record on first encounter.
+        # Subsequent index-only updates (progress, watch position, etc.) skip
+        # the expensive record JSON write.
+        index_entry = self.get_or_create_index_entry(media_id)
+        if media_item and not self._get_media_file_path(media_id).exists():
+            # First time: persist the full media record for future lookups
+            record = MediaRecord(media_item=media_item)
+            self.save_media_record(record)
+            # save_media_record already touched the index; reload it
+            index = self._load_index()
+            index_entry = index.media_index[f"{self._media_api}_{media_id}"]
         else:
-            self.get_or_create_index_entry(media_id)
-
-        index = self._load_index()
-        index_entry = index.media_index[f"{self._media_api}_{media_id}"]
+            index = self._load_index()
+            index_entry = index.media_index[f"{self._media_api}_{media_id}"]
 
         if progress:
             index_entry.progress = progress
@@ -212,10 +249,10 @@ class MediaRegistryService:
             elif index_entry.status == UserMediaListStatus.COMPLETED:
                 index_entry.status = UserMediaListStatus.REPEATING
 
-        if last_watch_position:
-            index_entry.last_watch_position = last_watch_position
-        if total_duration:
-            index_entry.total_duration = total_duration
+        if last_watch_position is not _UNSET:
+            index_entry.last_watch_position = last_watch_position  # type: ignore[assignment]
+        if total_duration is not _UNSET:
+            index_entry.total_duration = total_duration  # type: ignore[assignment]
         if score is not None:
             index_entry.score = score
         if repeat:
@@ -245,21 +282,24 @@ class MediaRegistryService:
         cleaned = False
         for key, entry in index.media_index.items():
             has_watch_activity = (
-                entry.last_watch_position is not None
-                or (entry.progress or "0") != "0"
+                entry.last_watch_position is not None or (entry.progress or "0") != "0"
             )
             if entry.last_watched is not None and not has_watch_activity:
                 entry.last_watched = None
                 cleaned = True
         if cleaned:
             self._save_index(index)
-            logger.info("Cleaned ghost entries from registry (entries with last_watched but no watch activity)")
+            logger.info(
+                "Cleaned ghost entries from registry (entries with last_watched but no watch activity)"
+            )
 
-    def _get_media_item_with_local_status(self, entry: MediaRegistryIndexEntry) -> Optional[MediaItem]:
+    def _get_media_item_with_local_status(
+        self, entry: MediaRegistryIndexEntry
+    ) -> Optional[MediaItem]:
         record = self.get_media_record(entry.media_id)
         if not record:
             return None
-        
+
         media_item = record.media_item
         # Merge with local registry status/progress/score
         if not media_item.user_status:
@@ -288,19 +328,19 @@ class MediaRegistryService:
         return media_item
 
     # TODO: standardize params passed to this
-    def get_recently_watched(self, limit: Optional[int] = None, type: Optional[MediaType] = None) -> MediaSearchResult:
+    def get_recently_watched(
+        self, limit: Optional[int] = None, type: Optional[MediaType] = None
+    ) -> MediaSearchResult:
         """Get recently watched anime or read manga."""
         index = self._load_index()
 
         # Only include entries that were explicitly watched (last_watched not None)
         # and have actual watch activity (watch position or completed episodes)
         watched_entries = [
-            e for e in index.media_index.values()
+            e
+            for e in index.media_index.values()
             if e.last_watched is not None
-            and (
-                e.last_watch_position is not None
-                or (e.progress or "0") != "0"
-            )
+            and (e.last_watch_position is not None or (e.progress or "0") != "0")
         ]
         sorted_entries = sorted(
             watched_entries, key=lambda x: x.last_watched or datetime.min, reverse=True
@@ -318,9 +358,11 @@ class MediaRegistryService:
         # Exclude entries where the user's AniList status is completed/dropped/planning/paused.
         # Include entries with no user_status (local-only watches) or status WATCHING/REPEATING.
         recent_media = [
-            m for m in recent_media
+            m
+            for m in recent_media
             if m.user_status is None
-            or m.user_status.status in (
+            or m.user_status.status
+            in (
                 UserMediaListStatus.WATCHING,
                 UserMediaListStatus.REPEATING,
             )
@@ -530,7 +572,11 @@ class MediaRegistryService:
                 # Sort by last watched time from registry
                 def get_last_watched(media):
                     entry = index.media_index.get(f"{self._media_api}_{media.id}")
-                    return entry.last_watched if entry and entry.last_watched else datetime.min
+                    return (
+                        entry.last_watched
+                        if entry and entry.last_watched
+                        else datetime.min
+                    )
 
                 return sorted(media_list, key=get_last_watched, reverse=True)
             else:

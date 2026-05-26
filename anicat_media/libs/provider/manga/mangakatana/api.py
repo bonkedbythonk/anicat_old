@@ -35,17 +35,17 @@ class MangaKatanaApi(BaseMangaProvider):
                 results = self._parse_single_result(html, str(response.url))
             else:
                 results = self._parse_search_results(html)
-            
+
             if not results:
                 return MangaSearchResults(results=[])
-                
+
             search_results = []
             for r in results:
-                search_results.append(MangaSearchResult(
-                    id=r["id"],
-                    title=r["title"],
-                    cover_image=r["cover_image"]
-                ))
+                search_results.append(
+                    MangaSearchResult(
+                        id=r["id"], title=r["title"], cover_image=r["cover_image"]
+                    )
+                )
             return MangaSearchResults(results=search_results)
 
         except Exception as e:
@@ -65,20 +65,18 @@ class MangaKatanaApi(BaseMangaProvider):
             data = self._parse_manga_detail(html, params.id)
             if not data:
                 return None
-                
+
             chapters = []
             for ch in data["availableChapters"]:
                 # Extract chapter number from title or URL
                 # Title usually looks like "Chapter 1", "Chapter 1.5", etc.
                 num_match = re.search(r"Chapter\s+(\d+\.?\d*)", ch["title"])
                 num = num_match.group(1) if num_match else "0"
-                
-                chapters.append(MangaChapter(
-                    number=num,
-                    title=ch["title"],
-                    url=ch["url"]
-                ))
-            
+
+                chapters.append(
+                    MangaChapter(number=num, title=ch["title"], url=ch["url"])
+                )
+
             # Reverse chapters to be in ascending order if needed
             # MangaKatana usually lists them newest first
             chapters.reverse()
@@ -87,7 +85,7 @@ class MangaKatanaApi(BaseMangaProvider):
                 id=data["id"],
                 title=data["title"],
                 cover_image=data["poster"],
-                chapters=chapters
+                chapters=chapters,
             )
 
         except Exception as e:
@@ -119,7 +117,7 @@ class MangaKatanaApi(BaseMangaProvider):
                 cover_image = ""
                 if cover_els:
                     cover_image = cover_els[0].get("src", "")
-                
+
                 results.append(
                     {
                         "title": title,
@@ -187,15 +185,15 @@ class MangaKatanaApi(BaseMangaProvider):
             tree = lxml_html.fromstring(html)
 
             # Extract title
-            title_el = tree.xpath(
-                '//h1[contains(@class, "heading")]'
-            ) or tree.xpath("//h1")
+            title_el = tree.xpath('//h1[contains(@class, "heading")]') or tree.xpath(
+                "//h1"
+            )
             title = title_el[0].text_content().strip() if title_el else "Unknown"
 
             # Extract cover image
-            cover_els = tree.xpath(
-                '//*[contains(@class, "cover")]//img'
-            ) or tree.xpath('//*[contains(@class, "media")]//img')
+            cover_els = tree.xpath('//*[contains(@class, "cover")]//img') or tree.xpath(
+                '//*[contains(@class, "media")]//img'
+            )
             poster = cover_els[0].get("src", "") if cover_els else ""
 
             # Extract chapters
@@ -239,11 +237,11 @@ class MangaKatanaApi(BaseMangaProvider):
             re.IGNORECASE,
         )
         chapters = []
-        
+
         chapters_block_match = re.search(
-            r'<div[^>]*class="[^"]*chapters[^"]*"[^>]*>(.*?)</div>\s*</div>', 
-            html, 
-            re.DOTALL | re.IGNORECASE
+            r'<div[^>]*class="[^"]*chapters[^"]*"[^>]*>(.*?)</div>\s*</div>',
+            html,
+            re.DOTALL | re.IGNORECASE,
         )
         search_html = chapters_block_match.group(1) if chapters_block_match else html
 
@@ -282,14 +280,15 @@ class MangaKatanaApi(BaseMangaProvider):
             return None
 
     def _parse_chapter_pages(self, html: str, chapter_url: str):
-        js_array_pattern = re.compile(
-            r"var\s+\w+\s*=\s*\[([^\]]+)\]\s*;", re.DOTALL
-        )
+        js_array_pattern = re.compile(r"var\s+\w+\s*=\s*\[([^\]]+)\]\s*;", re.DOTALL)
 
         image_urls: list[str] = []
         for match in js_array_pattern.finditer(html):
             array_content = match.group(1)
-            url_pattern = re.compile(r"['\"]([^'\"]+(?:\.jpg|\.png|\.webp|\.jpeg)[^'\"]*)['\"]", re.IGNORECASE)
+            url_pattern = re.compile(
+                r"['\"]([^'\"]+(?:\.jpg|\.png|\.webp|\.jpeg)[^'\"]*)['\"]",
+                re.IGNORECASE,
+            )
             urls = url_pattern.findall(array_content)
             if urls and len(urls) > 1:
                 image_urls = urls
@@ -308,15 +307,11 @@ class MangaKatanaApi(BaseMangaProvider):
             else:
                 all_imgs = img_pattern.findall(html)
                 image_urls = [
-                    url
-                    for url in all_imgs
-                    if "mangakatana" in url and "/manga/" in url
+                    url for url in all_imgs if "mangakatana" in url and "/manga/" in url
                 ]
 
         if not image_urls:
-            logger.warning(
-                f"[MANGAKATANA] No images found for chapter: {chapter_url}"
-            )
+            logger.warning(f"[MANGAKATANA] No images found for chapter: {chapter_url}")
             return None
 
         chapter_title = chapter_url.rstrip("/").split("/")[-1]

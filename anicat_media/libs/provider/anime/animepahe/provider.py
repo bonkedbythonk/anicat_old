@@ -54,26 +54,34 @@ class AnimePahe(BaseAnimeProvider):
         Raises RuntimeError on total failure so callers get a clear message.
         """
         import time
+
         max_retries = 3
         for attempt in range(max_retries):
             try:
                 # First hit the main page to get initial cookies
                 self.client.get(ANIMEPAHE_BASE)
-                
+
                 # Fetch check.js without the animepahe.pw Host header
-                check_resp = self.client.get("https://check.ddos-guard.net/check.js", headers={"Host": "check.ddos-guard.net"})
+                check_resp = self.client.get(
+                    "https://check.ddos-guard.net/check.js",
+                    headers={"Host": "check.ddos-guard.net"},
+                )
                 check_resp.raise_for_status()
-                
+
                 # Extract the image paths that set the __ddg2_ cookie
                 paths = re.findall(r"['\"]([^'\"]+id[^'\"]+)['\"]", check_resp.text)
-                
+
                 # Fetch each path to finalize cookie setup
                 for path in paths:
                     url = path if path.startswith("http") else f"{ANIMEPAHE_BASE}{path}"
                     # Need to use correct Host header for animepahe domains
-                    host_header = "check.ddos-guard.net" if "ddos-guard.net" in url else "animepahe.pw"
+                    host_header = (
+                        "check.ddos-guard.net"
+                        if "ddos-guard.net" in url
+                        else "animepahe.pw"
+                    )
                     self.client.get(url, headers={"Host": host_header})
-                    
+
                 logger.debug("DDoS-Guard bypass successful")
                 return
             except Exception as e:
@@ -158,8 +166,11 @@ class AnimePahe(BaseAnimeProvider):
 
         search_result = self._get_search_result(params)
         if not search_result:
-            logger.warning(f"No search result found for ID {params.id} using query '{params.query}'. Creating fallback SearchResult.")
+            logger.warning(
+                f"No search result found for ID {params.id} using query '{params.query}'. Creating fallback SearchResult."
+            )
             from ..types import AnimeEpisodes
+
             search_result = SearchResult(
                 id=params.id,
                 title=params.query,
@@ -170,7 +181,7 @@ class AnimePahe(BaseAnimeProvider):
                 status="Releasing",
                 season="Unknown",
                 poster="",
-                year="Unknown"
+                year="Unknown",
             )
 
         # Use the resolved ID from search results — the cached ID may be
@@ -264,8 +275,7 @@ class AnimePahe(BaseAnimeProvider):
             return first_result
 
         logger.error(
-            f"No search results at all for ID {params.id} "
-            f"with query '{params.query}'"
+            f"No search results at all for ID {params.id} with query '{params.query}'"
         )
         return None
 
@@ -337,9 +347,7 @@ class AnimePahe(BaseAnimeProvider):
                 continue
 
             # Ensure the embed URL uses the current Kwik domain
-            embed_url = re.sub(
-                r"kwik\.\w+", KWIK_HOST, embed_url
-            )
+            embed_url = re.sub(r"kwik\.\w+", KWIK_HOST, embed_url)
 
             embed_response = self.client.get(
                 embed_url,
@@ -380,13 +388,17 @@ class AnimePahe(BaseAnimeProvider):
                 )
 
         if links:
-            cookies_str = "; ".join([f"{k}={v}" for k, v in self.client.cookies.items()])
+            cookies_str = "; ".join(
+                [f"{k}={v}" for k, v in self.client.cookies.items()]
+            )
             headers = {
                 "Referer": "https://kwik.cx/",
                 "User-Agent": self.client.headers["User-Agent"],
-                "Cookie": cookies_str
+                "Cookie": cookies_str,
             }
-            yield Server(name="kwik", links=links, episode_title=episode.title, headers=headers)
+            yield Server(
+                name="kwik", links=links, episode_title=episode.title, headers=headers
+            )
 
     @lru_cache()
     def _get_episode_info(

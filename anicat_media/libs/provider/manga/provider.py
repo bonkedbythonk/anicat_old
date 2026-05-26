@@ -48,7 +48,7 @@ class MangaProviderFactory:
             headers={
                 "User-Agent": random_user_agent(),
                 "Accept-Encoding": "identity",
-                **getattr(provider_class, "HEADERS", {})
+                **getattr(provider_class, "HEADERS", {}),
             }
         )
 

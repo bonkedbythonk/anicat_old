@@ -52,9 +52,7 @@ def stats(config: "AppConfig"):
         # Check if kitten is available for image display
         KITTEN_EXECUTABLE = shutil.which("kitten")
         if not KITTEN_EXECUTABLE:
-            feedback.warning(
-                "Kitten not found - profile image will not be displayed"
-            )
+            feedback.warning("Kitten not found - profile image will not be displayed")
         else:
             # Display profile image using kitten icat
             if profile.user_profile.avatar_url:
@@ -95,4 +93,3 @@ def stats(config: "AppConfig"):
     except Exception as e:
         feedback.error("Unexpected error occurred", str(e))
         raise click.Abort()
-

@@ -31,7 +31,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPlayingNext, setIsPlayingNext] = useState(false);
   const [isTrailerVisible, setIsTrailerVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<"episodes" | "characters" | "reviews" | "recommendations">("episodes");
+  const [activeTab, setActiveTab] = useState<"episodes" | "characters" | "reviews" | "recommendations" | "seasons">("episodes");
   // Two-step delete confirm (replaces window.confirm which is broken in Tauri WebView)
   const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
 
@@ -74,15 +74,19 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   const ambientColor = useAmbientColor(banner);
   const progressEditor = useProgressEditor();
 
-  // Tab data loaded via React Query — cached, deduped, refetched on tab switch
+  // Tab data loaded via React Query — cached, deduped, refetched on tab switch.
+  // Secondary tabs (characters, reviews, recommendations) are lazy-loaded
+  // only when the user switches to them, avoiding 4 simultaneous GraphQL
+  // requests on mount that can trigger AniList rate limits.
   const {
-    data: episodes = [],
-    isLoading: loadingEps,
+    data: episodesRaw,
+    isFetching: loadingEps,
   } = useQuery({
     queryKey: ["media-episodes", item.id],
     queryFn: () => mediaApi.getEpisodes(item.id),
-    staleTime: 60_000,
+    staleTime: 120_000,  // 2 min — episodes don't change mid-session
   });
+  const episodes: Episode[] = Array.isArray(episodesRaw) ? episodesRaw : [];
 
   const {
     data: characters = [],
@@ -93,7 +97,8 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
       const res = await mediaApi.getCharacters(item.id);
       return res.characters ?? [];
     },
-    staleTime: 60_000,
+    staleTime: 600_000,  // 10 min — cast doesn't change
+    enabled: activeTab === "characters",
   });
 
   const {
@@ -101,7 +106,8 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   } = useQuery({
     queryKey: ["media-reviews", item.id],
     queryFn: () => mediaApi.getReviews(item.id),
-    staleTime: 60_000,
+    staleTime: 600_000,  // 10 min
+    enabled: activeTab === "reviews",
   });
 
   const {
@@ -109,7 +115,17 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   } = useQuery({
     queryKey: ["media-recommendations", item.id],
     queryFn: () => mediaApi.getRecommendations(item.id),
-    staleTime: 60_000,
+    staleTime: 600_000,  // 10 min
+    enabled: activeTab === "recommendations",
+  });
+
+  const {
+    data: relations = [],
+  } = useQuery({
+    queryKey: ["media-relations", item.id],
+    queryFn: () => mediaApi.getRelations(item.id),
+    staleTime: 600_000,  // 10 min — relations are static
+    enabled: activeTab === "seasons",
   });
 
   const [hasTriggeredInitial, setHasTriggeredInitial] = useState(false);
@@ -537,7 +553,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
             {/* Tabs */}
             <div className="space-y-6">
               <div className="flex space-x-1 p-1 bg-foreground/5 border border-border rounded-2xl">
-                {(["episodes", "characters", "reviews", "recommendations"] as const).map((tab) => (
+                {(["episodes", "characters", "reviews", "recommendations", "seasons"] as const).map((tab) => (
                   <button 
                     key={tab} 
                     onClick={() => setActiveTab(tab)} 
@@ -564,6 +580,15 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                     playerType={config?.stream?.player_type}
                     onUnwatch={(num) => handleUpdateProgress(Number(num) - 1)} 
                     nextAiringEpisode={fullItem.next_airing?.episode}
+                    onRetry={async () => {
+                      // Clear the backend provider cache first, THEN invalidate
+                      // the React Query cache so the refetch hits a fresh search.
+                      await mediaApi.clearProviderCache(item.id).catch(() => {});
+                      queryClient.invalidateQueries({
+                        queryKey: ["media-episodes", item.id],
+                        refetchType: "all",
+                      });
+                    }}
                   />
                 )}
                 {activeTab === "characters" && (
@@ -611,6 +636,63 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                         <div className="text-[11px] font-bold text-muted-foreground line-clamp-1 group-hover:text-foreground transition-colors">{rec.title.english || rec.title.romaji}</div>
                       </button>
                     ))}
+                  </div>
+                )}
+                {activeTab === "seasons" && (
+                  <div className="space-y-3">
+                    {relations.length > 0 ? (
+                      relations.map(rel => {
+                        const relLabel = rel.relation_type
+                          ? rel.relation_type.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+                          : "Related";
+                        const isSequel = rel.relation_type === "SEQUEL";
+                        const isPrequel = rel.relation_type === "PREQUEL";
+                        const isMainSeason = isSequel || isPrequel;
+                        return (
+                          <button
+                            key={rel.id}
+                            onClick={() => appState.selectItem(rel)}
+                            className={`w-full flex items-center space-x-4 p-3 rounded-2xl border transition-all text-left group ${
+                              isMainSeason
+                                ? "bg-accent/[0.04] border-accent/20 hover:bg-accent/[0.08]"
+                                : "bg-foreground/[0.02] border-border hover:bg-foreground/[0.04]"
+                            }`}
+                          >
+                            <div className={`w-12 h-16 rounded-lg overflow-hidden flex-shrink-0 border ${isMainSeason ? "border-accent/30" : "border-border"}`}>
+                              {rel.cover_image?.large ? (
+                                <img src={rel.cover_image.large} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-foreground/5 flex items-center justify-center text-muted-foreground text-[8px] font-bold">N/A</div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center space-x-2">
+                                <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                                  isMainSeason ? "bg-accent/15 text-accent" : "bg-foreground/10 text-muted-foreground"
+                                }`}>
+                                  {relLabel}
+                                </span>
+                                {rel.format && (
+                                  <span className="text-[9px] font-medium text-muted-foreground/60">{rel.format.replace(/_/g, " ")}</span>
+                                )}
+                              </div>
+                              <div className="text-[12px] font-bold text-foreground group-hover:text-accent transition-colors truncate mt-1">
+                                {rel.title.english || rel.title.romaji}
+                              </div>
+                              <div className="flex items-center space-x-3 mt-1 text-[10px] text-muted-foreground">
+                                {rel.episodes && <span>{rel.episodes} episodes</span>}
+                                {rel.status && <span className="capitalize">{rel.status.toLowerCase().replace(/_/g, " ")}</span>}
+                              </div>
+                            </div>
+                            <div className="text-muted-foreground/30 flex-shrink-0">
+                              <ChevronDown size={16} className="rotate-[-90deg]" />
+                            </div>
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="py-20 text-center text-muted-foreground text-xs font-bold">No related seasons found.</div>
+                    )}
                   </div>
                 )}
               </div>

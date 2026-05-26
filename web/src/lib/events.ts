@@ -16,6 +16,7 @@ const MUTATION_AFFECTED_KEYS = [
   ["library"],
   ["playback-status"],
   ["home-smart-playlist"],
+  ["media-episodes"],
 ] as const;
 
 /**

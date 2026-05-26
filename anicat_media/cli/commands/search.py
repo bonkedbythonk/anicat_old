@@ -48,6 +48,7 @@ def search(config: AppConfig, **options: "Unpack[Options]"):
     # Check sys._anicat_ctx directly (type-safe) rather than importing get_ctx()
     # which returns a _ContextProxy type incompatible with the rest of the CLI.
     import sys
+
     shared = getattr(sys, "_anicat_ctx", None)
     if shared is not None and isinstance(shared, Context):
         ctx = shared
@@ -74,9 +75,7 @@ def search(config: AppConfig, **options: "Unpack[Options]"):
     for anime_title in anime_titles:
         # ---- search for anime ----
         ctx.feedback.info(f"[green bold]Searching for:[/] {anime_title}")
-        with ctx.feedback.progress(
-            f"Fetching anime search results for {anime_title}"
-        ):
+        with ctx.feedback.progress(f"Fetching anime search results for {anime_title}"):
             search_results = ctx.provider.search(
                 SearchParams(
                     query=normalize_title(
@@ -102,9 +101,7 @@ def search(config: AppConfig, **options: "Unpack[Options]"):
 
         # ---- fetch selected anime ----
         with ctx.feedback.progress(f"Fetching {anime_result.title}"):
-            anime = ctx.provider.get(
-                AnimeParams(id=anime_result.id, query=anime_title)
-            )
+            anime = ctx.provider.get(AnimeParams(id=anime_result.id, query=anime_title))
 
         if not anime:
             raise AnicatError(f"Failed to fetch anime {anime_result.title}")
@@ -202,9 +199,7 @@ def stream_anime(
     # Look up the media item via AniList for watch history tracking
     media_item = _resolve_media_item(ctx, anime_title, anime)
 
-    ctx.feedback.info(
-        f"[green bold]Now Streaming:[/] {anime.title} Episode: {episode}"
-    )
+    ctx.feedback.info(f"[green bold]Now Streaming:[/] {anime.title} Episode: {episode}")
 
     player_result = ctx.player.play(
         PlayerParams(
@@ -227,9 +222,7 @@ def stream_anime(
         except Exception as e:
             import logging
 
-            logging.getLogger(__name__).warning(
-                f"Failed to save watch history: {e}"
-            )
+            logging.getLogger(__name__).warning(f"Failed to save watch history: {e}")
 
 
 def _resolve_media_item(
@@ -245,9 +238,7 @@ def _resolve_media_item(
 
         from ...libs.media_api.params import MediaSearchParams
 
-        search_result = ctx.media_api.search_media(
-            MediaSearchParams(query=anime_title)
-        )
+        search_result = ctx.media_api.search_media(MediaSearchParams(query=anime_title))
         if search_result and search_result.media:
             # Pick the best match: prefer exact title match, then first result
             best = search_result.media[0]
@@ -266,9 +257,7 @@ def _resolve_media_item(
                 ):
                     best = m
                     break
-            logger.info(
-                f"Resolved AniList media item #{best.id} for watch history"
-            )
+            logger.info(f"Resolved AniList media item #{best.id} for watch history")
             return best
     except Exception as e:
         logger.warning(f"Could not resolve media item for watch history: {e}")

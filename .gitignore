@@ -97,6 +97,15 @@ htmlcov/
 *.swp
 *~
 
+# AI agent / skill / instruction files (never push to GitHub)
+.github/skills/
+**/CLAUDE.md
+**/copilot-instructions.md
+**/*.agent.md
+**/*.instructions.md
+**/*.prompt.md
+**/*SKILL.md
+
 # Static build artifacts
 anicat_media/api/static/
 # Tauri and build artifacts

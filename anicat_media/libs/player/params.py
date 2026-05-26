@@ -37,4 +37,4 @@ class PlayerParams:
     skip_times: list[dict] | None = None
     fullscreen: bool = False
     auto_next: bool = False
-
+    accent: str | None = None

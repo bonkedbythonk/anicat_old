@@ -128,9 +128,7 @@ class GogoAnime(BaseAnimeProvider):
 
             return anime
         except Exception as e:
-            logger.error(
-                f"GogoAnime query fallback failed for '{params.id}': {e}"
-            )
+            logger.error(f"GogoAnime query fallback failed for '{params.id}': {e}")
             return None
 
     def episode_streams(
@@ -152,15 +150,11 @@ class GogoAnime(BaseAnimeProvider):
             resp = self.client.get(url, follow_redirects=True)
             resp.raise_for_status()
             if resp.status_code == 404:
-                logger.warning(
-                    f"Episode not found on AniNeko: '{s}' episode {ep_num}"
-                )
+                logger.warning(f"Episode not found on AniNeko: '{s}' episode {ep_num}")
                 return None
             server_list = mappers.extract_episode_servers(resp.text)
             if not server_list:
-                logger.warning(
-                    f"No stream servers found for '{s}' episode {ep_num}"
-                )
+                logger.warning(f"No stream servers found for '{s}' episode {ep_num}")
                 return None
             return server_list
 
@@ -180,9 +174,7 @@ class GogoAnime(BaseAnimeProvider):
                 search_results = self.search(
                     SearchParams(
                         query=params.query,
-                        translation_type=getattr(
-                            params, "translation_type", "sub"
-                        ),
+                        translation_type=getattr(params, "translation_type", "sub"),
                     )
                 )
                 if search_results and search_results.results:
@@ -193,9 +185,7 @@ class GogoAnime(BaseAnimeProvider):
                     )
                     server_list = _fetch_servers(resolved)
             except Exception as e:
-                logger.error(
-                    f"GogoAnime episode_streams query fallback failed: {e}"
-                )
+                logger.error(f"GogoAnime episode_streams query fallback failed: {e}")
 
         if server_list is None:
             return None

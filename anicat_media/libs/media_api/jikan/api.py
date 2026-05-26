@@ -114,9 +114,15 @@ class JikanApi(BaseApiClient):
         }
 
         if params.genre_in:
-            genre_ids = [JIKAN_GENRE_ID_MAP[g] for g in params.genre_in if g in JIKAN_GENRE_ID_MAP]
+            genre_ids = [
+                JIKAN_GENRE_ID_MAP[g]
+                for g in params.genre_in
+                if g in JIKAN_GENRE_ID_MAP
+            ]
             if genre_ids:
-                jikan_params["genres"] = ",".join(str(genre_id) for genre_id in genre_ids)
+                jikan_params["genres"] = ",".join(
+                    str(genre_id) for genre_id in genre_ids
+                )
 
         if params.seasonYear:
             jikan_params["start_date"] = f"{params.seasonYear}-01-01"
@@ -125,20 +131,32 @@ class JikanApi(BaseApiClient):
         if params.averageScore_greater is not None:
             jikan_params["min_score"] = params.averageScore_greater
 
-        status_map = JIKAN_MANGA_STATUS_MAP if params.type == MediaType.MANGA else JIKAN_ANIME_STATUS_MAP
+        status_map = (
+            JIKAN_MANGA_STATUS_MAP
+            if params.type == MediaType.MANGA
+            else JIKAN_ANIME_STATUS_MAP
+        )
         if params.status in status_map:
             jikan_params["status"] = status_map[params.status]
 
         if params.format_in:
-            format_map = JIKAN_MANGA_FORMAT_MAP if params.type == MediaType.MANGA else JIKAN_ANIME_FORMAT_MAP
+            format_map = (
+                JIKAN_MANGA_FORMAT_MAP
+                if params.type == MediaType.MANGA
+                else JIKAN_ANIME_FORMAT_MAP
+            )
             for media_format in params.format_in:
                 if media_format in format_map:
                     jikan_params["type"] = format_map[media_format]
                     break
 
         raw_data = self._execute_request(endpoint, params=jikan_params)
-        return mapper.to_generic_search_result(raw_data, original_query=params.query) if raw_data else None
-    
+        return (
+            mapper.to_generic_search_result(raw_data, original_query=params.query)
+            if raw_data
+            else None
+        )
+
     def get_media_item(self, media_id: int) -> Optional[MediaItem]:
         """Fetch a single media item by ID via Jikan."""
         raw_data = self._execute_request(f"/anime/{media_id}")
@@ -280,7 +298,11 @@ class JikanApi(BaseApiClient):
         return None
 
     def get_global_airing_schedule(
-        self, airingAt_greater: int, airingAt_lesser: int, page: int = 1, per_page: int = 50
+        self,
+        airingAt_greater: int,
+        airingAt_lesser: int,
+        page: int = 1,
+        per_page: int = 50,
     ) -> Optional[Any]:
         logger.warning("Jikan API does not support global airing schedules.")
         return None

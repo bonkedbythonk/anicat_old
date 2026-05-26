@@ -72,8 +72,6 @@ def config_view_json(user_config: AppConfig):
     print(json.dumps(user_config.model_dump(mode="json")))
 
 
-
-
 @config.command(
     name="open", help="Open the config file in your default system editor (macOS)"
 )
@@ -88,7 +86,10 @@ def config_open():
         try:
             subprocess.run(["open", "-t", str(USER_CONFIG)], check=True)
         except Exception as e:
-            click.echo(f"Failed to open config with 'open -t': {e}. Falling back to 'open'...", err=True)
+            click.echo(
+                f"Failed to open config with 'open -t': {e}. Falling back to 'open'...",
+                err=True,
+            )
             try:
                 subprocess.run(["open", str(USER_CONFIG)], check=True)
             except Exception as e2:
@@ -122,9 +123,6 @@ def config_update(user_config: AppConfig):
         generate_config_toml_from_app_model(user_config), encoding="utf-8"
     )
     print("Update successful")
-
-
-
 
 
 def _generate_desktop_entry(config: AppConfig):

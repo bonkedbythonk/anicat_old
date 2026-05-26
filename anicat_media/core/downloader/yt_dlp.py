@@ -1,7 +1,6 @@
 import itertools
 import logging
 import shutil
-import subprocess
 import tempfile
 from pathlib import Path
 
@@ -107,7 +106,8 @@ class YtDLPDownloader(BaseDownloader):
             outtmpl_str = str(opts.get("outtmpl", ""))
             opts = opts | {
                 "hls_use_mpegts": True,
-                "outtmpl": ".".join(outtmpl_str.split(".")[:-1]) + ".ts",  # force .ts extension
+                "outtmpl": ".".join(outtmpl_str.split(".")[:-1])
+                + ".ts",  # force .ts extension
             }
         elif params.hls_use_h264:
             ext_args = opts.get("external_downloader_args", {})
@@ -226,7 +226,9 @@ class YtDLPDownloader(BaseDownloader):
             try:
                 from ....utils.subprocess import run_cmd
 
-                rc, out, err = run_cmd(args, timeout=3600, capture_output=False, env=get_clean_env())
+                rc, out, err = run_cmd(
+                    args, timeout=3600, capture_output=False, env=get_clean_env()
+                )
                 if rc != 0:
                     logger.error(f"FFmpeg merge failed: {err or out}")
                     return None

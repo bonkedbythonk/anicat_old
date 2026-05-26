@@ -108,7 +108,10 @@ def render_sixel(file_path, width, height):
     if which("chafa"):
         # Chafa automatically detects Sixel support if terminal reports it,
         # but we force it here if specifically requested via logic flow.
-        run_cmd(["chafa", "-f", "sixel", "-s", f"{width}x{height}", file_path], capture_output=False)
+        run_cmd(
+            ["chafa", "-f", "sixel", "-s", f"{width}x{height}", file_path],
+            capture_output=False,
+        )
         return True
 
     # Option B: img2sixel (Libsixel)
@@ -116,12 +119,15 @@ def render_sixel(file_path, width, height):
     if which("img2sixel"):
         pixel_width = width * 10
         pixel_height = height * 20
-        run_cmd([
-            "img2sixel",
-            f"--width={pixel_width}",
-            f"--height={pixel_height}",
-            file_path,
-        ], capture_output=False)
+        run_cmd(
+            [
+                "img2sixel",
+                f"--width={pixel_width}",
+                f"--height={pixel_height}",
+                file_path,
+            ],
+            capture_output=False,
+        )
         return True
 
     return False
@@ -130,12 +136,18 @@ def render_sixel(file_path, width, height):
 def render_iterm(file_path, width, height):
     """Render using iTerm2 Inline Image Protocol."""
     if which("imgcat"):
-        run_cmd(["imgcat", "-W", str(width), "-H", str(height), file_path], capture_output=False)
+        run_cmd(
+            ["imgcat", "-W", str(width), "-H", str(height), file_path],
+            capture_output=False,
+        )
         return True
 
     # Chafa also supports iTerm
     if which("chafa"):
-        run_cmd(["chafa", "-f", "iterm", "-s", f"{width}x{height}", file_path], capture_output=False)
+        run_cmd(
+            ["chafa", "-f", "iterm", "-s", f"{width}x{height}", file_path],
+            capture_output=False,
+        )
         return True
     return False
 
@@ -143,7 +155,10 @@ def render_iterm(file_path, width, height):
 def render_timg(file_path, width, height):
     """Render using timg (supports half-blocks, quarter-blocks, sixel, kitty, etc)."""
     if which("timg"):
-        run_cmd(["timg", f"-g{width}x{height}", "--upscale", file_path], capture_output=False)
+        run_cmd(
+            ["timg", f"-g{width}x{height}", "--upscale", file_path],
+            capture_output=False,
+        )
         return True
     return False
 
@@ -232,7 +247,10 @@ def fzf_text_info_render():
     if PREVIEW_MODE == "text" or PREVIEW_MODE == "full":
         preview_info_path = INFO_CACHE_DIR / f"{hash_id}.py"
         if preview_info_path.exists():
-            run_cmd([sys.executable, str(preview_info_path), HEADER_COLOR, SEPARATOR_COLOR], capture_output=False)
+            run_cmd(
+                [sys.executable, str(preview_info_path), HEADER_COLOR, SEPARATOR_COLOR],
+                capture_output=False,
+            )
         else:
             # Print dim text
             print("\x1b[2m📝 Loading details...\x1b[0m")

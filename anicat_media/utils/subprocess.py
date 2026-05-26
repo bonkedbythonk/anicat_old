@@ -3,6 +3,7 @@
 Keep this minimal and dependency-free: return a simple tuple of
 (returncode, stdout, stderr) and never raise on non-zero returncodes.
 """
+
 from __future__ import annotations
 
 import subprocess

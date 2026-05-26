@@ -20,6 +20,7 @@ from ...libs.media_api.params import (
     MediaCharactersParams,
     MediaReviewsParams,
     MediaRecommendationParams,
+    MediaRelationsParams,
 )
 
 logger = logging.getLogger(__name__)
@@ -379,12 +380,38 @@ def get_anime_ref(ctx, media, media_id: int):
     from ...core.utils.normalizer import normalize_title
     from ...libs.provider.anime.params import SearchParams as AnimeSearchParams
 
-    search_results = ctx.provider.search(
-        AnimeSearchParams(
-            query=normalize_title(title, provider_name, True),
-            translation_type=ctx.config.stream.translation_type,
+    # Try English/romaji title first, then fall back to the alternate title.
+    # Some providers silently drop results for very long English titles
+    # (e.g. "I Got a Cheat Skill in Another World and Became Unrivaled...").
+    search_queries = []
+    primary = normalize_title(title, provider_name, True)
+    search_queries.append(primary)
+
+    alt_title = None
+    if media.title.english and media.title.romaji:
+        if title == media.title.english:
+            alt_title = media.title.romaji
+        else:
+            alt_title = media.title.english
+    if alt_title:
+        alt_query = normalize_title(alt_title, provider_name, True)
+        if alt_query != primary:
+            search_queries.append(alt_query)
+
+    search_results = None
+    for query in search_queries:
+        search_results = ctx.provider.search(
+            AnimeSearchParams(
+                query=query,
+                translation_type=ctx.config.stream.translation_type,
+            )
         )
-    )
+        if search_results and search_results.results:
+            if query != search_queries[0]:
+                logger.info(
+                    f"Fallback search query '{query}' succeeded for media {media_id}"
+                )
+            break
 
     if not search_results or not search_results.results:
         return None, record
@@ -427,9 +454,29 @@ def get_manga_ref(ctx, media, media_id: int):
     from ...core.utils.normalizer import normalize_title
     from ...libs.provider.manga.params import MangaSearchParams
 
-    search_results = ctx.manga_provider.search(
-        MangaSearchParams(query=normalize_title(title, provider_name, True))
-    )
+    # Try primary title first, then fall back to alternate title
+    search_queries = []
+    primary = normalize_title(title, provider_name, True)
+    search_queries.append(primary)
+
+    alt_title = None
+    if media.title.english and media.title.romaji:
+        if title == media.title.english:
+            alt_title = media.title.romaji
+        else:
+            alt_title = media.title.english
+    if alt_title:
+        alt_query = normalize_title(alt_title, provider_name, True)
+        if alt_query != primary:
+            search_queries.append(alt_query)
+
+    search_results = None
+    for query in search_queries:
+        search_results = ctx.manga_provider.search(
+            MangaSearchParams(query=query)
+        )
+        if search_results and search_results.results:
+            break
 
     if not search_results or not search_results.results:
         return None, record
@@ -456,6 +503,22 @@ def get_manga_ref(ctx, media, media_id: int):
     ctx.media_registry.save_media_record(record)
 
     return manga_ref.id, record
+
+
+@router.post("/{media_id:int}/clear-provider-cache")
+def clear_provider_cache(media_id: int):
+    """Clear the cached provider mapping for a media item, forcing a fresh
+    provider search on the next episode/chapter fetch."""
+    try:
+        ctx = get_ctx()
+        record = ctx.media_registry.get_media_record(media_id)
+        if record and record.provider_mapping:
+            record.provider_mapping.clear()
+            ctx.media_registry.save_media_record(record)
+            logger.info(f"Cleared provider cache for media {media_id}")
+        return {"status": "cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/{media_id:int}/episodes")
@@ -590,6 +653,19 @@ def get_media_recommendations(media_id: int, page: int = 1):
         ctx = get_ctx()
         params = MediaRecommendationParams(id=media_id, page=page)
         return ctx.media_api.get_recommendation_for(params)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{media_id:int}/relations", response_model=List[MediaItem])
+def get_media_relations(media_id: int):
+    """Get related media (sequels, prequels, side stories, etc.) for a specific media."""
+    try:
+        ctx = get_ctx()
+        params = MediaRelationsParams(id=media_id)
+        return ctx.media_api.get_related_anime_for(params) or []
     except HTTPException:
         raise
     except Exception as e:

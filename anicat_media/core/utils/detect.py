@@ -66,10 +66,10 @@ def is_frozen() -> bool:
 def get_python_executable() -> str:
     """
     Get the Python executable path.
-    
+
     In frozen (PyInstaller) apps, sys.executable points to the .exe,
     so we need to find the system Python instead.
-    
+
     Returns:
         Path to a Python executable.
     """
@@ -92,10 +92,16 @@ def get_clean_env() -> dict[str, str]:
     Also ensures common macOS paths are present for non-terminal launches.
     """
     env = os.environ.copy()
-    
+
     # 1. Fix library paths for frozen apps
     if is_frozen():
-        for var in ["LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "DYLD_FRAMEWORK_PATH", "DYLD_FALLBACK_LIBRARY_PATH", "DYLD_FALLBACK_FRAMEWORK_PATH"]:
+        for var in [
+            "LD_LIBRARY_PATH",
+            "DYLD_LIBRARY_PATH",
+            "DYLD_FRAMEWORK_PATH",
+            "DYLD_FALLBACK_LIBRARY_PATH",
+            "DYLD_FALLBACK_FRAMEWORK_PATH",
+        ]:
             orig_var = f"{var}_ORIG"
             if orig_var in env:
                 env[var] = env[orig_var]
@@ -112,14 +118,14 @@ def get_clean_env() -> dict[str, str]:
             "/bin",
             "/usr/sbin",
             "/sbin",
-            os.path.expanduser("~/.local/bin")
+            os.path.expanduser("~/.local/bin"),
         ]
         current_paths = path.split(os.pathsep)
         for p in extra_paths:
             if p not in current_paths:
                 current_paths.append(p)
         env["PATH"] = os.pathsep.join(current_paths)
-        
+
         # 3. Handle macOS Vulkan ICD resolution for MoltenVK out-of-the-box compatibility
         if not env.get("VK_ICD_FILENAMES") and not env.get("VK_DRIVER_FILES"):
             candidate_icds = [
@@ -130,14 +136,20 @@ def get_clean_env() -> dict[str, str]:
                 os.path.expanduser("~/.homebrew/share/vulkan/icd.d/MoltenVK_icd.json"),
                 os.path.expanduser("~/.homebrew/etc/vulkan/icd.d/MoltenVK_icd.json"),
             ]
-            
+
             # Check bundled locations as fallback/priority if they exist
             app_dir = os.path.dirname(sys.executable)
-            bundled_icd = os.path.abspath(os.path.join(app_dir, "..", "Resources", "resources", "lib", "vk_icd.json"))
+            bundled_icd = os.path.abspath(
+                os.path.join(
+                    app_dir, "..", "Resources", "resources", "lib", "vk_icd.json"
+                )
+            )
             if os.path.exists(bundled_icd):
                 candidate_icds.insert(0, bundled_icd)
             else:
-                bundled_icd_alt = os.path.abspath(os.path.join(app_dir, "..", "Resources", "lib", "vk_icd.json"))
+                bundled_icd_alt = os.path.abspath(
+                    os.path.join(app_dir, "..", "Resources", "lib", "vk_icd.json")
+                )
                 if os.path.exists(bundled_icd_alt):
                     candidate_icds.insert(0, bundled_icd_alt)
 
@@ -157,5 +169,5 @@ def get_clean_env() -> dict[str, str]:
             if p not in current_paths:
                 current_paths.append(p)
         env["PATH"] = os.pathsep.join(current_paths)
-        
+
     return env

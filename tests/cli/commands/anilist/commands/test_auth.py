@@ -68,9 +68,7 @@ def test_auth_with_token_argument(
     result = runner.invoke(auth, ["test_token"], obj=mock_config)
 
     assert result.exit_code == 0
-    auth_service_instance.resolve_token.assert_called_with(
-        explicit_token="test_token"
-    )
+    auth_service_instance.resolve_token.assert_called_with(explicit_token="test_token")
     api_client_instance.authenticate.assert_called_with("test_token")
     auth_service_instance.save_user_profile.assert_called_with(
         profile_mock, "test_token"
@@ -97,9 +95,7 @@ def test_auth_with_token_flag(
     result = runner.invoke(auth, ["--token", "flag_token"], obj=mock_config)
 
     assert result.exit_code == 0
-    auth_service_instance.resolve_token.assert_called_with(
-        explicit_token="flag_token"
-    )
+    auth_service_instance.resolve_token.assert_called_with(explicit_token="flag_token")
     api_client_instance.authenticate.assert_called_with("flag_token")
     auth_service_instance.save_user_profile.assert_called_with(
         profile_mock, "flag_token"
@@ -129,9 +125,7 @@ def test_auth_token_flag_overrides_positional_arg(
 
     assert result.exit_code == 0
     # --token flag should take priority over positional arg
-    auth_service_instance.resolve_token.assert_called_with(
-        explicit_token="flag_token"
-    )
+    auth_service_instance.resolve_token.assert_called_with(explicit_token="flag_token")
 
 
 def test_auth_no_token_shows_instructions(

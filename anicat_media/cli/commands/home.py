@@ -42,7 +42,9 @@ def _format_title(item) -> str:
 def _make_media_table(
     title: str,
     items: list,
-    columns: list[tuple[str, str, Literal["default", "left", "center", "right", "full"]]],
+    columns: list[
+        tuple[str, str, Literal["default", "left", "center", "right", "full"]]
+    ],
     max_rows: int = 15,
 ) -> Table:
     """Build a rich Table from a list of media items."""
@@ -421,9 +423,7 @@ def manga(config: AppConfig):
         except Exception:
             pass
 
-    console.print(
-        "\n[dim]anicat search -t MANGA <title>  |  anicat lists[/dim]"
-    )
+    console.print("\n[dim]anicat search -t MANGA <title>  |  anicat lists[/dim]")
 
 
 # ── Library ────────────────────────────────────────────────────────────────
@@ -469,9 +469,7 @@ def _display_media_list(items, label: str):
         us = getattr(item, "user_status", None)
         prog = str(us.progress or "-") if us else "-"
         total = (
-            getattr(item, "episodes", None)
-            or getattr(item, "chapters", None)
-            or "?"
+            getattr(item, "episodes", None) or getattr(item, "chapters", None) or "?"
         )
         score = str(us.score or "-") if us and us.score is not None else "-"
         table.add_row(str(i), title, f"{prog}/{total}", score)

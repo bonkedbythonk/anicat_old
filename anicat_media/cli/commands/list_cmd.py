@@ -40,9 +40,7 @@ def _display_list(items, label):
         us = getattr(item, "user_status", None)
         prog = str(us.progress or "-") if us else "-"
         total = (
-            getattr(item, "episodes", None)
-            or getattr(item, "chapters", None)
-            or "?"
+            getattr(item, "episodes", None) or getattr(item, "chapters", None) or "?"
         )
         score = str(us.score or "-") if us and us.score is not None else "-"
         table.add_row(str(i), title, f"{prog}/{total}", score)
@@ -76,7 +74,10 @@ def _fetch_user_list(config: AppConfig, status: str, mediatype: str = "ANIME"):
     return result.media if result else []
 
 
-@click.group(name="list", short_help="View your AniList (watching, planning, completed, paused, dropped)")
+@click.group(
+    name="list",
+    short_help="View your AniList (watching, planning, completed, paused, dropped)",
+)
 def list_group():
     """View your AniList by status."""
     pass

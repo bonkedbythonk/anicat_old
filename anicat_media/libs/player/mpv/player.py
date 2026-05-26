@@ -424,6 +424,11 @@ class MpvPlayer(BasePlayer):
         val = "yes" if auto_next else "no"
         mpv_args.append(f"--script-opts-append=anicat_ui-auto_next={val}")
 
+        # Pass the UI accent color to the MPV skin so buttons match the theme.
+        # Default matches the CSS --accent-color from globals.css (neon-abyss).
+        accent = getattr(params, "accent", None) or "0A84FF"
+        mpv_args.append(f"--script-opts-append=anicat_ui-accent={accent}")
+
         if params.headers:
             # mpv prefers no spaces after commas and colons in http-header-fields
             headers_list = []

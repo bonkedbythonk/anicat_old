@@ -27,10 +27,7 @@ def _direct_github_check() -> tuple[bool, str]:
     try:
         ctx_ssl = ssl._create_unverified_context()
         url = "https://api.github.com/repos/bonkedbythonk/anicat/releases/latest"
-        req = urllib.request.Request(
-            url,
-            headers={"User-Agent": "Anicat-CLI"}
-        )
+        req = urllib.request.Request(url, headers={"User-Agent": "Anicat-CLI"})
         with urllib.request.urlopen(req, timeout=5, context=ctx_ssl) as response:
             data = json.loads(response.read().decode())
             latest_tag = data.get("tag_name", "")
@@ -56,7 +53,7 @@ class UpdaterService:
 
     def check_version(self, force: bool = False) -> bool:
         """Check for updates via the local API health endpoint.
-        
+
         Falls back to a direct GitHub Releases check if the local API
         is unreachable (e.g. CLI running without the backend).
         """
@@ -71,7 +68,9 @@ class UpdaterService:
                 self.remote_version = data.get("version", "Unknown")
                 return data.get("update_available", False)
         except Exception as e:
-            logger.debug(f"UpdaterService: local API unavailable, trying direct check: {e}")
+            logger.debug(
+                f"UpdaterService: local API unavailable, trying direct check: {e}"
+            )
 
         # -- Tier 2: Direct GitHub Releases check (CLI standalone mode) --
         available, version = _direct_github_check()

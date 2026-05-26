@@ -92,7 +92,11 @@ class BaseApiClient(abc.ABC):
 
     @abc.abstractmethod
     def get_global_airing_schedule(
-        self, airingAt_greater: int, airingAt_lesser: int, page: int = 1, per_page: int = 50
+        self,
+        airingAt_greater: int,
+        airingAt_lesser: int,
+        page: int = 1,
+        per_page: int = 50,
     ) -> Optional[Any]:
         pass
 

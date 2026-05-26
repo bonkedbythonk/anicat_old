@@ -10,12 +10,12 @@ def test_downloads_list_does_not_shadow_builtin():
 
     runner = CliRunner()
     config = AppConfig()
-    
+
     with patch("anicat_media.cli.commands.downloads._get_ctx") as mock_get_ctx:
         mock_ctx = MagicMock()
         mock_get_ctx.return_value = mock_ctx
         mock_ctx.media_registry.get_all_media_records.return_value = []
-        
+
         result = runner.invoke(downloads, ["list"], obj=config)
         assert result.exit_code == 0
         assert "Download queue is empty" in result.output

@@ -67,7 +67,7 @@ class MediaRegistryIndexEntry(BaseModel):
     notes: str = ""
 
     last_notified_episode: Optional[str] = None
-    
+
     is_synced: bool = True
 
     # for first watch only
@@ -82,8 +82,7 @@ class MediaRegistryIndexEntry(BaseModel):
             total_secs = converter.time_to_seconds(self.total_duration)
             if total_secs > 0:
                 return (
-                    converter.time_to_seconds(self.last_watch_position)
-                    / total_secs
+                    converter.time_to_seconds(self.last_watch_position) / total_secs
                 ) * 100
         return 0.0
 

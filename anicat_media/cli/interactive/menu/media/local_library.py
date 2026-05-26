@@ -15,9 +15,9 @@ def local_library(ctx: Context, state: State) -> State | InternalDirective:
 
     # Fetch all records with at least one completed download
     records = list(ctx.media_registry.get_all_media_records())
-    
+
     downloaded_media: Dict[int, MediaItem] = {}
-    
+
     for record in records:
         has_downloads = any(
             ep.download_status == DownloadStatus.COMPLETED
@@ -35,15 +35,13 @@ def local_library(ctx: Context, state: State) -> State | InternalDirective:
     # Sort them by recently watched or title
     # Here we'll just sort by title for simplicity
     sorted_items = sorted(
-        downloaded_media.values(), 
-        key=lambda x: x.title.english or x.title.romaji or ""
+        downloaded_media.values(), key=lambda x: x.title.english or x.title.romaji or ""
     )
 
     search_result_dict = {
-        _format_title(ctx, media_item): media_item
-        for media_item in sorted_items
+        _format_title(ctx, media_item): media_item for media_item in sorted_items
     }
-    
+
     choices: Dict[str, Callable[[], Union[int, State, InternalDirective]]] = {
         title: lambda media_id=item.id: media_id
         for title, item in search_result_dict.items()
@@ -91,13 +89,17 @@ def local_library(ctx: Context, state: State) -> State | InternalDirective:
             media_api=MediaApiState(
                 media_id=next_step,
                 search_result={item.id: item for item in sorted_items},
-                page_info=PageInfo(total=len(sorted_items), current_page=1, has_next_page=False, per_page=len(sorted_items)),
+                page_info=PageInfo(
+                    total=len(sorted_items),
+                    current_page=1,
+                    has_next_page=False,
+                    per_page=len(sorted_items),
+                ),
             ),
         )
 
 
 def _format_title(ctx: Context, media_item: MediaItem) -> str:
-
     title = media_item.title.english or media_item.title.romaji
     progress = "0"
 

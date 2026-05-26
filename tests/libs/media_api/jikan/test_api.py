@@ -2,7 +2,12 @@ from unittest.mock import MagicMock
 
 from anicat_media.libs.media_api.jikan.api import JikanApi
 from anicat_media.libs.media_api.params import MediaSearchParams
-from anicat_media.libs.media_api.types import MediaFormat, MediaGenre, MediaStatus, MediaType
+from anicat_media.libs.media_api.types import (
+    MediaFormat,
+    MediaGenre,
+    MediaStatus,
+    MediaType,
+)
 
 
 def test_search_media_translates_shared_filters_and_uses_manga_endpoint():

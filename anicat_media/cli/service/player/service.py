@@ -50,6 +50,7 @@ class PlayerService:
 
         if replace_kwargs:
             from dataclasses import replace
+
             params = replace(params, **replace_kwargs)
 
         if self.app_config.stream.use_ipc:

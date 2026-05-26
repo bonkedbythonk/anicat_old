@@ -108,9 +108,7 @@ class AniZone(BaseAnimeProvider):
                 )
             )
             if not search_results or not search_results.results:
-                logger.debug(
-                    f"AniZone search returned no results for '{params.query}'"
-                )
+                logger.debug(f"AniZone search returned no results for '{params.query}'")
                 return None
 
             matched = search_results.results[0]
@@ -131,9 +129,7 @@ class AniZone(BaseAnimeProvider):
                 )
             return anime
         except Exception as e:
-            logger.exception(
-                f"AniZone query fallback failed for '{params.id}': {e}"
-            )
+            logger.exception(f"AniZone query fallback failed for '{params.id}': {e}")
             return None
 
     # ------------------------------------------------------------------
@@ -202,9 +198,7 @@ class AniZone(BaseAnimeProvider):
                 if server:
                     yield server
         except Exception as e:
-            logger.exception(
-                f"AniZone episode_streams query fallback failed: {e}"
-            )
+            logger.exception(f"AniZone episode_streams query fallback failed: {e}")
 
     # ------------------------------------------------------------------
     # Helpers

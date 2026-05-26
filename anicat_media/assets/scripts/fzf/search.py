@@ -51,6 +51,7 @@ if not RAW_QUERY.strip():
 # Show filter help if requested
 if RAW_QUERY.strip().lower() in ("@help", "@?", "@h"):
     from _filter_parser import get_help_text
+
     print(get_help_text())
     sys.exit(0)
 
@@ -127,11 +128,11 @@ def main():
         "per_page": 50,
         "genre_not_in": ["Hentai"],  # Default exclusion
     }
-    
+
     # Add search query if provided
     if QUERY:
         variables["query"] = QUERY
-    
+
     # Apply parsed filters from the filter syntax
     for key, value in PARSED_FILTERS.items():
         # Handle array merging for _in and _not_in fields
@@ -155,7 +156,9 @@ def main():
         print(f" {error}")
         # Also show what we tried to search for debugging
         print(f"   Query: {QUERY or '(none)'}")
-        print(f"   Filters: {json.dumps(PARSED_FILTERS) if PARSED_FILTERS else '(none)'}")
+        print(
+            f"   Filters: {json.dumps(PARSED_FILTERS) if PARSED_FILTERS else '(none)'}"
+        )
         sys.exit(1)
 
     if response is None:
@@ -170,7 +173,9 @@ def main():
             error_msgs = [e.get("message", str(e)) for e in errors]
             print(f" API Error: {'; '.join(error_msgs)}")
             # Show variables for debugging
-            print(f"   Filters used: {json.dumps(PARSED_FILTERS, indent=2) if PARSED_FILTERS else '(none)'}")
+            print(
+                f"   Filters used: {json.dumps(PARSED_FILTERS, indent=2) if PARSED_FILTERS else '(none)'}"
+            )
             sys.exit(1)
 
     # Save the raw response for later processing by dynamic_search.py

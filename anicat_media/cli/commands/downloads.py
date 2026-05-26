@@ -26,9 +26,7 @@ def downloads():
 
 @downloads.command(short_help="Add episodes to the download queue")
 @click.argument("media_id", type=int)
-@click.option(
-    "--episodes", "-e", required=True, help="Episode range (e.g., 1-12 or 5)"
-)
+@click.option("--episodes", "-e", required=True, help="Episode range (e.g., 1-12 or 5)")
 @click.pass_obj
 def add(config: AppConfig, media_id: int, episodes: str):
     """Add episodes from a show to the download queue."""

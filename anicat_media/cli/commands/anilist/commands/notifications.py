@@ -41,7 +41,9 @@ def notifications(config: AppConfig):
         return
 
     table = Table(
-        title=f"{ICONS.BELL}AniList Notifications", show_header=True, header_style="bold magenta"
+        title=f"{ICONS.BELL}AniList Notifications",
+        show_header=True,
+        header_style="bold magenta",
     )
     table.add_column("Date", style="dim", width=12)
     table.add_column("Anime Title", style="cyan")
