@@ -106,30 +106,13 @@ local function refresh_state()
 end
 
 local function draw_rounded_rect(ass, x1, y1, x2, y2, r)
-  -- Fall back to simple rectangle — bezier_to is not available in all MPV builds
-  local ok, err = pcall(function()
-    local c = 0.5522847 * (r or 18)
-    ass:draw_start()
-    ass:move_to(x1 + r, y1)
-    ass:line_to(x2 - r, y1)
-    ass:bezier_to(x2 - r + c, y1, x2, y1 + r - c, x2, y1 + r)
-    ass:line_to(x2, y2 - r)
-    ass:bezier_to(x2, y2 - r + c, x2 - r + c, y2, x2 - r, y2)
-    ass:line_to(x1 + r, y2)
-    ass:bezier_to(x1 + r - c, y2, x1, y2 - r + c, x1, y2 - r)
-    ass:line_to(x1, y1 + r)
-    ass:bezier_to(x1, y1 + r - c, x1 + r - c, y1, x1 + r, y1)
-    ass:draw_stop()
-  end)
-  if not ok then
-    -- Fallback: plain rectangle when bezier curves aren't supported
-    ass:draw_start()
-    ass:move_to(x1, y1)
-    ass:line_to(x2, y1)
-    ass:line_to(x2, y2)
-    ass:line_to(x1, y2)
-    ass:draw_stop()
-  end
+  -- Plain rectangle — bezier_to is not available in this MPV build
+  ass:draw_start()
+  ass:move_to(x1, y1)
+  ass:line_to(x2, y1)
+  ass:line_to(x2, y2)
+  ass:line_to(x1, y2)
+  ass:draw_stop()
 end
 
 local function in_rect(x, y, x1, y1, x2, y2)
