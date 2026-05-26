@@ -365,13 +365,21 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
             </div>
           </div>
 
-          <button
-            onClick={handleApplyTheme}
-            className="w-full bg-accent hover:bg-accent-light text-white font-bold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-accent/20 active:scale-95"
-          >
-            <span>Continue</span>
-            <ArrowRight size={20} />
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setStep(1)}
+              className="flex-1 bg-white/[0.04] hover:bg-white/[0.08] text-white font-bold py-4 rounded-2xl transition-all active:scale-95 border border-white/[0.08]"
+            >
+              Back
+            </button>
+            <button
+              onClick={handleApplyTheme}
+              className="flex-[2] bg-accent hover:bg-accent-light text-white font-bold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-accent/20 active:scale-95"
+            >
+              <span>Continue</span>
+              <ArrowRight size={20} />
+            </button>
+          </div>
         </div>
       )
     },
@@ -448,11 +456,18 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
             <p className="text-red-400 text-xs font-semibold animate-shake">{error}</p>
           )}
 
-          <div className="flex flex-col space-y-3 pt-2">
+          <div className="flex gap-3 pt-2">
+            <button 
+              onClick={() => setStep(2)}
+              disabled={saving}
+              className="flex-1 bg-white/[0.04] hover:bg-white/[0.08] text-white font-bold py-4 rounded-2xl transition-all active:scale-95 border border-white/[0.08] disabled:opacity-50"
+            >
+              Back
+            </button>
             <button 
               onClick={handleSavePlaybackSettings}
               disabled={saving}
-              className="w-full bg-accent hover:bg-accent-light text-white font-bold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-accent/20 active:scale-95 disabled:opacity-50"
+              className="flex-[2] bg-accent hover:bg-accent-light text-white font-bold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-accent/20 active:scale-95 disabled:opacity-50"
             >
               {saving ? <Loader2 size={20} className="animate-spin" /> : (
                 <>
@@ -543,15 +558,24 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
           </div>
 
           <div className="flex flex-col space-y-3 pt-2">
-            <button 
-              onClick={handleConnectAnilist}
-              disabled={saving}
-              className="w-full bg-accent hover:bg-accent-light text-white font-bold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-accent/20 active:scale-95 disabled:opacity-50"
-            >
-              {saving ? <Loader2 size={20} className="animate-spin" /> : (
-                <span>Connect Account</span>
-              )}
-            </button>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setStep(3)}
+                disabled={saving}
+                className="flex-1 bg-white/[0.04] hover:bg-white/[0.08] text-white font-bold py-4 rounded-2xl transition-all active:scale-95 border border-white/[0.08] disabled:opacity-50"
+              >
+                Back
+              </button>
+              <button 
+                onClick={handleConnectAnilist}
+                disabled={saving}
+                className="flex-[2] bg-accent hover:bg-accent-light text-white font-bold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-accent/20 active:scale-95 disabled:opacity-50"
+              >
+                {saving ? <Loader2 size={20} className="animate-spin" /> : (
+                  <span>Connect Account</span>
+                )}
+              </button>
+            </div>
             <button 
               onClick={onSkip}
               className="w-full py-3 text-gray-500 hover:text-white font-semibold text-sm transition-colors"
@@ -590,9 +614,12 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
         {/* Progress dots */}
         <div className="pb-8 flex justify-center space-x-2">
           {steps.map((s) => (
-            <div 
+            <button 
               key={s.id} 
-              className={`h-1.5 rounded-full transition-all duration-300 ${s.id === step ? "w-8 bg-accent" : "w-1.5 bg-white/10"}`} 
+              onClick={() => setStep(s.id)}
+              className={`h-1.5 rounded-full transition-all duration-300 focus:outline-none ${s.id === step ? "w-8 bg-accent" : "w-1.5 bg-white/10 hover:bg-white/30"}`}
+              title={`Go to step ${s.id}`}
+              aria-label={`Go to step ${s.id}`}
             />
           ))}
         </div>
