@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { X, Play, Pause, RotateCcw, Volume2, VolumeX, Maximize, Minimize, Loader2, ArrowRight, Video, PictureInPicture2, Type } from "lucide-react";
+import { X, Play, Pause, RotateCcw, Volume2, VolumeX, Maximize, Minimize, Loader2, ArrowRight, Video, PictureInPicture2 } from "lucide-react";
 import { API_BASE_ORIGIN, mediaApi } from "@/lib/api";
 import { dispatchRefresh } from "@/lib/events";
 
@@ -59,21 +59,6 @@ export default function AnimePlayer({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [isHoveredControls, setIsHoveredControls] = useState(false);
   const [autoSkipEnabled, setAutoSkipEnabled] = useState(false);
-  
-  // UX-23: Subtitle customization
-  const [subtitleSize, setSubtitleSize] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("anicat_subtitle_size") || "medium";
-    }
-    return "medium";
-  });
-  const [subtitleBg, setSubtitleBg] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("anicat_subtitle_bg") || "semi";
-    }
-    return "semi";
-  });
-  const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   
   // Resume position persistence — save/restore playback position per episode
   const resumeKey = `anicat_resume_${mediaId}_${episodeNumber}`;
@@ -831,7 +816,7 @@ export default function AnimePlayer({
 
       {/* Glassmorphic Top Controls Bar */}
       <div
-        className={`absolute top-0 inset-x-0 p-5 bg-gradient-to-b from-black/80 to-transparent flex items-center justify-between transition-all duration-500 z-30 ${
+        className={`absolute top-0 inset-x-0 p-5 bg-gradient-to-b from-black/85 via-black/40 to-transparent flex items-center justify-between transition-all duration-500 z-30 ${
           showControls ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
         }`}
       >
@@ -882,7 +867,7 @@ export default function AnimePlayer({
           setIsHoveredControls(false);
           resetControlsTimeout();
         }}
-        className={`absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/90 to-transparent flex flex-col space-y-4 transition-all duration-500 z-30 ${
+        className={`absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/95 via-black/60 to-transparent flex flex-col space-y-4 transition-all duration-500 z-30 ${
           showControls ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"
         }`}
       >
@@ -994,78 +979,6 @@ export default function AnimePlayer({
                 <span>Auto-Skip</span>
               </button>
             </div>
-            {/* GPU Upscaling — launch external MPV with Anime4K shaders */}
-            <div className="flex items-center">
-              <button
-                onClick={handleOpenExternalMpv}
-                className="px-2.5 py-1 rounded-lg text-[9px] uppercase tracking-wider font-black transition-all border flex items-center space-x-1.5 active:scale-95 duration-200 bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20"
-                title="Open in external MPV player with GPU-accelerated Anime4K upscaling shaders"
-              >
-                <Video size={11} />
-                <span>MPV Upscale</span>
-              </button>
-            </div>
-            {/* UX-23: Subtitle Customization */}
-            <div className="relative">
-              <button
-                onClick={() => setShowSubtitleMenu(!showSubtitleMenu)}
-                className={`px-2.5 py-1 rounded-lg text-[9px] uppercase tracking-wider font-black transition-all border flex items-center space-x-1.5 active:scale-95 duration-200 ${
-                  showSubtitleMenu
-                    ? "bg-accent/10 border-accent/20 text-accent"
-                    : "bg-white/[0.04] border-white/5 text-white/50 hover:text-white/80 hover:bg-white/[0.08]"
-                }`}
-                title="Subtitle settings"
-              >
-                <Type size={12} />
-                <span>CC</span>
-              </button>
-              {showSubtitleMenu && (
-                <div className="absolute bottom-full mb-2 left-0 bg-surface/95 backdrop-blur-xl border border-white/[0.08] rounded-xl p-4 space-y-3 shadow-2xl min-w-[180px] z-[260]">
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Size</label>
-                    <div className="flex space-x-1">
-                      {["small", "medium", "large"].map(s => (
-                        <button
-                          key={s}
-                          onClick={() => {
-                            setSubtitleSize(s);
-                            localStorage.setItem("anicat_subtitle_size", s);
-                          }}
-                          className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
-                            subtitleSize === s ? "bg-accent text-white" : "bg-white/[0.04] text-white/60 hover:bg-white/[0.08]"
-                          }`}
-                        >
-                          {s === "small" ? "S" : s === "medium" ? "M" : "L"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Background</label>
-                    <div className="flex space-x-1">
-                      {[
-                        { key: "none", label: "None" },
-                        { key: "semi", label: "Semi" },
-                        { key: "solid", label: "Solid" },
-                      ].map(opt => (
-                        <button
-                          key={opt.key}
-                          onClick={() => {
-                            setSubtitleBg(opt.key);
-                            localStorage.setItem("anicat_subtitle_bg", opt.key);
-                          }}
-                          className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
-                            subtitleBg === opt.key ? "bg-accent text-white" : "bg-white/[0.04] text-white/60 hover:bg-white/[0.08]"
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
 
           <div className="flex items-center space-x-6">
@@ -1097,12 +1010,12 @@ export default function AnimePlayer({
         </div>
       </div>
 
-      {/* UX-08: AniSkip button — always visible, state varies */}
-      <div className="absolute bottom-24 right-8 z-[240]">
-        {activeSkip ? (
+      {/* UX-08: AniSkip button — appears during intros/outros */}
+      {activeSkip && (
+        <div className="absolute bottom-24 right-8 z-[240] animate-slide-in-right">
           <button
             onClick={() => handleSeekAndPlay(activeSkip.end)}
-            className="flex items-center space-x-3 px-5 py-3 bg-black/70 backdrop-blur-xl border border-white/15 hover:border-white/25 text-white font-extrabold rounded-2xl shadow-2xl transition-all active:scale-95 group cursor-pointer animate-slide-in-right"
+            className="flex items-center space-x-3 px-5 py-3 bg-black/70 backdrop-blur-xl border border-white/15 hover:border-white/25 text-white font-extrabold rounded-2xl shadow-2xl transition-all active:scale-95 group cursor-pointer"
           >
             <span className="text-xs uppercase tracking-[0.15em] text-white/90">
               Skip {activeSkip.type === 'op' ? 'Intro' : 'Outro'}
@@ -1123,25 +1036,8 @@ export default function AnimePlayer({
               />
             </div>
           </button>
-        ) : skipTimes.length > 0 ? (
-          <button
-            onClick={() => {
-              const nextSkip = skipTimes[0];
-              if (nextSkip) handleSeekAndPlay(nextSkip.start);
-            }}
-            className="flex items-center space-x-2 px-4 py-2.5 bg-black/40 backdrop-blur-md border border-white/[0.06] hover:border-white/15 text-white/50 hover:text-white/80 font-semibold rounded-xl transition-all active:scale-95 cursor-pointer text-xs"
-            title="Skip to next intro/outro"
-          >
-            <ArrowRight size={12} />
-            <span>Skip Intro</span>
-          </button>
-        ) : (
-          <div className="flex items-center space-x-2 px-4 py-2.5 bg-black/20 backdrop-blur-md border border-white/[0.04] text-white/20 font-semibold rounded-xl text-xs select-none pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-            <ArrowRight size={12} />
-            <span>No skip data</span>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* End-of-Series Rating Modal */}
       {showRatingModal && (
