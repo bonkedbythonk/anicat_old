@@ -38,8 +38,18 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
   const [error, setError] = useState<string | null>(null);
 
   // Theme/style state
-  const [selectedTheme, setSelectedTheme] = useState<"system" | "dark" | "light">("system");
-  const [selectedStyle, setSelectedStyle] = useState<UiStyle>("neon-abyss");
+  const [selectedTheme, setSelectedTheme] = useState<"system" | "dark" | "light">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("anicat_theme") as any) || "system";
+    }
+    return "system";
+  });
+  const [selectedStyle, setSelectedStyle] = useState<UiStyle>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("anicat_ui_style") as UiStyle) || "neon-abyss";
+    }
+    return "neon-abyss";
+  });
 
   // Playback customization states
   const [config, setConfig] = useState<any>(null);
@@ -73,8 +83,10 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
     }
   }, []);
 
-  const handleApplyTheme = () => {
+  // Actively apply theme/style as selections are made
+  useEffect(() => {
     if (typeof window === "undefined") return;
+
     localStorage.setItem("anicat_theme", selectedTheme);
     localStorage.setItem("anicat_ui_style", selectedStyle);
 
@@ -89,6 +101,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
 
     // Apply style
     document.documentElement.setAttribute("data-style", selectedStyle);
+    
     // Load fonts if needed
     if (selectedStyle === "sakura-zen") {
       if (!document.getElementById("font-noto-serif-jp")) {
@@ -107,7 +120,9 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
         document.head.appendChild(link);
       }
     }
+  }, [selectedTheme, selectedStyle]);
 
+  const handleApplyTheme = () => {
     setStep(3);
   };
 
