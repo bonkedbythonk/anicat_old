@@ -567,8 +567,11 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
   const currentStep = steps.find(s => s.id === step)!;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-background/80 backdrop-blur-md animate-fade-in">
-      <div className="max-w-xl w-full max-h-[90vh] bg-surface border border-white/[0.08] rounded-2xl overflow-y-auto scrollbar-hide shadow-2xl relative">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/90 animate-fade-in">
+      <div 
+        className="max-w-xl w-full max-h-[90vh] border border-border rounded-2xl overflow-y-auto scrollbar-hide shadow-2xl relative"
+        style={{ backgroundColor: "var(--background)" }}
+      >
         {/* Background glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-accent/10 blur-[100px] -z-10" />
         
