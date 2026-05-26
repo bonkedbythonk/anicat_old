@@ -67,7 +67,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
 
   // Derived values (computed from state/props, must precede hooks that consume them)
   const isManga = item.type === "MANGA" || !!(item.format && ["MANGA", "ONE_SHOT", "NOVEL"].includes(item.format));
-  const banner = fullItem.banner_image || fullItem.cover_image?.large || item.banner_image || item.cover_image?.large;
+  const banner = fullItem?.banner_image || fullItem?.cover_image?.large || item?.banner_image || item?.cover_image?.large;
   const trailer = item.trailer || fullItem?.trailer;
 
   // Extracted hooks
@@ -173,9 +173,45 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
     // Second click: confirmed — fire immediately
     setDeleteConfirmPending(false);
     onClose();
+
+    // Optimistic: remove from all list caches immediately
+    const qc = queryClient;
+    const listQueryKeys = [
+      ["lists"],
+      ["home-recently-watched"],
+      ["home-watching"],
+      ["library"],
+    ];
+    // Snapshot each list cache for rollback
+    interface ListPage { media?: MediaItem[]; page_info?: unknown; }
+    const snapshots: Map<string, ListPage | undefined> = new Map();
+    for (const key of listQueryKeys) {
+      snapshots.set(JSON.stringify(key), qc.getQueryData<ListPage>(key as unknown[]));
+      qc.setQueryData(key as unknown[], (old: ListPage | undefined) => {
+        if (!old?.media) return old;
+        return { ...old, media: old.media.filter((m: MediaItem) => m.id !== item.id) };
+      });
+    }
+    // Mark the media-detail cache as stale so it refetches fresh data
+    // if the user re-opens the detail (don't removeQueries — the component
+    // may still be mounted during exit animation and would crash on null data).
+    qc.invalidateQueries({ queryKey: ["media-detail", item.id] });
+
     mediaApi.deleteFromList(item.id)
-      .then(() => dispatchRefresh())
-      .catch((error) => console.error("Failed to remove from list:", error));
+      .then(() => {
+        // Invalidate to ensure consistency with server
+        for (const key of listQueryKeys) {
+          qc.invalidateQueries({ queryKey: key as unknown[] });
+        }
+        qc.invalidateQueries({ queryKey: ["playback-status"] });
+      })
+      .catch((error) => {
+        console.error("Failed to remove from list:", error);
+        // Rollback: restore snapshots
+        for (const [keyStr, snapshot] of snapshots) {
+          qc.setQueryData(JSON.parse(keyStr) as unknown[], snapshot);
+        }
+      });
   };
 
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -183,7 +219,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   const appState = useAppState();
 
 
-  const title = fullItem.title.english || fullItem.title.romaji;
+  const title = fullItem?.title?.english || fullItem?.title?.romaji || item?.title?.english || item?.title?.romaji || '';
 
   return (
     <div className="fixed inset-0 z-[150] flex justify-end overflow-hidden">

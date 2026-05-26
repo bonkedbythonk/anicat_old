@@ -418,7 +418,7 @@ const Hero = memo(function Hero({
             <div className="hidden md:flex flex-col w-72 lg:w-80 shrink-0 bg-black/40 border border-white/5 backdrop-blur-md rounded-2xl p-4 space-y-3 self-center max-h-[320px] overflow-y-auto scrollbar-hide">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-wider text-gray-500">
-                  Command Queue
+                  Up Next
                 </span>
                 <span className="text-[10px] px-2 py-0.5 bg-accent/20 text-accent font-bold rounded-md">
                   {queue.length} items

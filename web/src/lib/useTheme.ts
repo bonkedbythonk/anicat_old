@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-export type UiStyle = "neon-abyss" | "sakura-zen" | "retro-manga";
+export type UiStyle = "neon-abyss" | "sakura-zen" | "retro-manga" | "forest-moss";
 
 const SAKURA_ZEN_FONT_URL =
   "https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&display=swap";

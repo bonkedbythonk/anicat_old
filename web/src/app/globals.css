@@ -107,21 +107,20 @@ html.light .synopsis-fade {
 }
 
 /* Standard / Neon Abyss Light Mode detail drawer override */
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .media-detail-drawer {
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .media-detail-drawer {
   background-color: var(--card-color) !important;
   border-left: 1px solid var(--border-color) !important;
 }
 
-/* Standard / Neon Abyss Light Mode text overrides */
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-white { color: var(--foreground) !important; }
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-gray-100 { color: rgba(38, 35, 31, 0.90) !important; }
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-gray-200 { color: rgba(38, 35, 31, 0.80) !important; }
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-gray-300 { color: rgba(38, 35, 31, 0.70) !important; }
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-gray-400 { color: rgba(38, 35, 31, 0.58) !important; }
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-gray-500 { color: rgba(38, 35, 31, 0.46) !important; }
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-gray-600 { color: rgba(38, 35, 31, 0.34) !important; }
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-gray-700 { color: rgba(38, 35, 31, 0.24) !important; }
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-gray-800 { color: rgba(38, 35, 31, 0.16) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .text-white { color: var(--foreground) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .text-gray-100 { color: rgba(38, 35, 31, 0.90) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .text-gray-200 { color: rgba(38, 35, 31, 0.80) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .text-gray-300 { color: rgba(38, 35, 31, 0.70) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .text-gray-400 { color: rgba(38, 35, 31, 0.58) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .text-gray-500 { color: rgba(38, 35, 31, 0.46) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .text-gray-600 { color: rgba(38, 35, 31, 0.34) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .text-gray-700 { color: rgba(38, 35, 31, 0.24) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .text-gray-800 { color: rgba(38, 35, 31, 0.16) !important; }
 
 /* Ambient background blobs overrides in light mode */
 html.light .ambient-blob {
@@ -148,35 +147,35 @@ html.light .text-white\/20 { color: color-mix(in srgb, var(--foreground) 20%, tr
   --foreground: #ffffff !important;
 }
 .forced-dark-container .text-white,
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .forced-dark-container .text-white {
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .forced-dark-container .text-white {
   color: #ffffff !important;
 }
 .forced-dark-container .text-gray-100,
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .forced-dark-container .text-gray-100 {
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .forced-dark-container .text-gray-100 {
   color: #f3f4f6 !important;
 }
 .forced-dark-container .text-gray-200,
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .forced-dark-container .text-gray-200 {
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .forced-dark-container .text-gray-200 {
   color: #e5e7eb !important;
 }
 .forced-dark-container .text-gray-300,
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .forced-dark-container .text-gray-300 {
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .forced-dark-container .text-gray-300 {
   color: #d1d5db !important;
 }
 .forced-dark-container .text-gray-400,
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .forced-dark-container .text-gray-400 {
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .forced-dark-container .text-gray-400 {
   color: #9ca3af !important;
 }
 .forced-dark-container .text-gray-500,
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .forced-dark-container .text-gray-500 {
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .forced-dark-container .text-gray-500 {
   color: #6b7280 !important;
 }
 .forced-dark-container .text-zinc-400,
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .forced-dark-container .text-zinc-400 {
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .forced-dark-container .text-zinc-400 {
   color: #a1a1aa !important;
 }
 .forced-dark-container .text-zinc-500,
-html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .forced-dark-container .text-zinc-500 {
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]):not([data-style="forest-moss"]) .forced-dark-container .text-zinc-500 {
   color: #71717a !important;
 }
 
@@ -199,6 +198,32 @@ html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .force
 }
 .forced-dark-container .bg-gradient-to-r {
   background-image: linear-gradient(to right, rgba(5, 5, 5, 0.75) 0%, rgba(5, 5, 5, 0.15) 50%, transparent 100%) !important;
+}
+
+/* Sakura Zen — dark gradients use theme background instead of pure black */
+html[data-style="sakura-zen"] .forced-dark-container .bg-gradient-to-t {
+  background-image: linear-gradient(to top, #130910 0%, rgba(19, 9, 16, 0.65) 55%, rgba(19, 9, 16, 0.05) 100%) !important;
+}
+html[data-style="sakura-zen"] .forced-dark-container .bg-gradient-to-r {
+  background-image: linear-gradient(to right, rgba(19, 9, 16, 0.80) 0%, rgba(19, 9, 16, 0.18) 50%, transparent 100%) !important;
+}
+
+/* Sakura Zen light mode — lighter gradient so hero isn't jarring against pastel background */
+html[data-style="sakura-zen"].light .forced-dark-container .bg-gradient-to-t,
+html[data-style="sakura-zen"].system:not(.dark) .forced-dark-container .bg-gradient-to-t {
+  background-image: linear-gradient(to top, rgba(19, 9, 16, 0.60) 0%, rgba(232, 160, 180, 0.25) 55%, rgba(253, 246, 240, 0.05) 100%) !important;
+}
+html[data-style="sakura-zen"].light .forced-dark-container .bg-gradient-to-r,
+html[data-style="sakura-zen"].system:not(.dark) .forced-dark-container .bg-gradient-to-r {
+  background-image: linear-gradient(to right, rgba(19, 9, 16, 0.55) 0%, rgba(232, 160, 180, 0.12) 50%, transparent 100%) !important;
+}
+
+/* Retro Manga — dark gradients use ink-brown instead of pure black */
+html[data-style="retro-manga"] .forced-dark-container .bg-gradient-to-t {
+  background-image: linear-gradient(to top, #191410 0%, rgba(25, 20, 16, 0.65) 55%, rgba(25, 20, 16, 0.05) 100%) !important;
+}
+html[data-style="retro-manga"] .forced-dark-container .bg-gradient-to-r {
+  background-image: linear-gradient(to right, rgba(25, 20, 16, 0.80) 0%, rgba(25, 20, 16, 0.18) 50%, transparent 100%) !important;
 }
 
 @layer base {
@@ -284,7 +309,9 @@ html.light .glass-button {
 
 /* Card hover glow — macOS 26 WKWebView safe: no will-change/backface-visibility/translateZ */
 .card-glow {
-  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: border-color 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+              transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .card-glow:hover {
@@ -614,8 +641,8 @@ html[data-style="sakura-zen"] .glass-button:hover {
 
 /* ── Cards ── */
 html[data-style="sakura-zen"] .card-glow {
-  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
-              box-shadow 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
   border-radius: 20px;
 }
 
@@ -670,6 +697,172 @@ html[data-style="sakura-zen"] .animate-blob {
 .animate-pulse-glow {
   animation: pulseGlow 2s infinite;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UI Skin: Forest Moss
+   Deep pine and evergreen shades, soft organic border-radiuses, and rich sage accents.
+   Activated by:  html[data-style="forest-moss"]
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Forest Moss — Dark variant (default) */
+html[data-style="forest-moss"] {
+  --background: #0a1a12;
+  --foreground: #eaf4ef;
+  --accent-color: #10b981;
+  --accent-light: #34d399;
+  --secondary-color: #059669;
+  --card-color: rgba(18, 48, 33, 0.4);
+  --surface-color: rgba(18, 48, 33, 0.4);
+  --border-color: rgba(52, 211, 153, 0.08);
+  --dynamic-white: #eaf4ef;
+  --dynamic-black: #050f0b;
+  --glass-bg: rgba(18, 48, 33, 0.45);
+  --glass-border: rgba(52, 211, 153, 0.15);
+}
+
+/* Forest Moss — Light variant */
+html[data-style="forest-moss"].light,
+html[data-style="forest-moss"].system:not(.dark) {
+  @media (prefers-color-scheme: light) {
+    --background: #f0f7f4;
+    --foreground: #1b3226;
+    --accent-color: #166534;
+    --accent-light: #15803d;
+    --secondary-color: #047857;
+    --card-color: #e2efe9;
+    --surface-color: #e2efe9;
+    --border-color: rgba(27, 50, 38, 0.08);
+    --dynamic-white: #1b3226;
+    --dynamic-black: #e2efe9;
+    --glass-bg: rgba(226, 239, 233, 0.85);
+    --glass-border: rgba(27, 50, 38, 0.08);
+  }
+}
+
+html[data-style="forest-moss"].light {
+  --background: #f0f7f4;
+  --foreground: #1b3226;
+  --accent-color: #166534;
+  --accent-light: #15803d;
+  --secondary-color: #047857;
+  --card-color: #e2efe9;
+  --surface-color: #e2efe9;
+  --border-color: rgba(27, 50, 38, 0.08);
+  --dynamic-white: #1b3226;
+  --dynamic-black: #e2efe9;
+  --glass-bg: rgba(226, 239, 233, 0.85);
+  --glass-border: rgba(27, 50, 38, 0.08);
+}
+
+/* Forest Moss Element Overrides */
+html[data-style="forest-moss"] .glass-panel {
+  background-color: rgba(10, 26, 18, 0.75) !important;
+  backdrop-filter: blur(36px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(150%) !important;
+  border: 1px solid rgba(52, 211, 153, 0.18) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+  border-radius: 16px !important;
+}
+
+html[data-style="forest-moss"].light .glass-panel {
+  background-color: rgba(240, 247, 244, 0.85) !important;
+  border: 1px solid rgba(27, 50, 38, 0.12) !important;
+}
+
+html[data-style="forest-moss"] aside {
+  background: rgba(8, 22, 15, 0.88) !important;
+  backdrop-filter: blur(40px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(160%) !important;
+  border-right: 1px solid rgba(52, 211, 153, 0.15) !important;
+  box-shadow: 2px 0 50px -8px rgba(16, 185, 129, 0.15) !important;
+}
+
+html[data-style="forest-moss"].light aside {
+  background: rgba(226, 239, 233, 0.92) !important;
+  border-right: 1px solid rgba(27, 50, 38, 0.12) !important;
+  box-shadow: 2px 0 30px -8px rgba(27, 50, 38, 0.08) !important;
+}
+
+html[data-style="forest-moss"] input:not([type="checkbox"]):not([type="radio"]),
+html[data-style="forest-moss"] select,
+html[data-style="forest-moss"] textarea {
+  background-color: rgba(18, 48, 33, 0.25) !important;
+  border-color: rgba(52, 211, 153, 0.15) !important;
+  color: var(--foreground) !important;
+}
+
+html[data-style="forest-moss"] input:focus,
+html[data-style="forest-moss"] select:focus,
+html[data-style="forest-moss"] textarea:focus {
+  border-color: rgba(52, 211, 153, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15) !important;
+}
+
+html[data-style="forest-moss"] input::placeholder,
+html[data-style="forest-moss"] textarea::placeholder {
+  color: rgba(110, 175, 144, 0.45) !important;
+}
+
+html[data-style="forest-moss"] .glass-button {
+  background-color: rgba(16, 185, 129, 0.14) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.12),
+              inset 0 0 0 1px rgba(52, 211, 153, 0.2),
+              0 4px 10px rgba(0,0,0,0.18) !important;
+  color: var(--foreground) !important;
+}
+
+html[data-style="forest-moss"] .glass-button:hover {
+  background-color: rgba(16, 185, 129, 0.24) !important;
+}
+
+html[data-style="forest-moss"] .card-glow {
+  border-radius: 16px;
+  border-color: rgba(52, 211, 153, 0.1) !important;
+}
+
+html[data-style="forest-moss"] .card-glow:hover {
+  border-color: rgba(52, 211, 153, 0.3) !important;
+  box-shadow: 0 12px 30px rgba(5, 15, 11, 0.6), 0 0 15px -3px rgba(16, 185, 129, 0.25) !important;
+}
+
+html[data-style="forest-moss"] .hero-gradient {
+  background: linear-gradient(to top, var(--background) 0%, rgba(10, 26, 18, 0.75) 40%, transparent 100%) !important;
+}
+
+html[data-style="forest-moss"].light .hero-gradient {
+  background: linear-gradient(to top, var(--background) 0%, rgba(240, 247, 244, 0.75) 40%, transparent 100%) !important;
+}
+
+html[data-style="forest-moss"] .media-detail-drawer {
+  background-color: rgba(10, 26, 18, 0.96) !important;
+  border-left: 1px solid rgba(52, 211, 153, 0.2) !important;
+}
+
+html[data-style="forest-moss"].light .media-detail-drawer {
+  background-color: rgba(240, 247, 244, 0.96) !important;
+  border-left: 1px solid rgba(27, 50, 38, 0.15) !important;
+}
+
+/* Forest Moss Muted text mappings */
+html[data-style="forest-moss"] .text-gray-100 { color: rgba(234, 244, 239, 0.95) !important; }
+html[data-style="forest-moss"] .text-gray-200 { color: rgba(234, 244, 239, 0.88) !important; }
+html[data-style="forest-moss"] .text-gray-300 { color: rgba(167, 219, 194, 0.85) !important; }
+html[data-style="forest-moss"] .text-gray-400 { color: rgba(148, 203, 177, 0.75) !important; }
+html[data-style="forest-moss"] .text-gray-500 { color: rgba(110, 175, 144, 0.62) !important; }
+html[data-style="forest-moss"] .text-gray-600 { color: rgba(82, 143, 114, 0.50) !important; }
+html[data-style="forest-moss"] .text-gray-700 { color: rgba(54, 111, 84, 0.38) !important; }
+html[data-style="forest-moss"] .text-gray-800 { color: rgba(38, 86, 63, 0.26) !important; }
+html[data-style="forest-moss"] .text-white     { color: var(--foreground) !important; }
+
+/* Forest Moss Light variant overrides */
+html[data-style="forest-moss"].light .text-gray-100 { color: rgba(27, 50, 38, 0.95) !important; }
+html[data-style="forest-moss"].light .text-gray-200 { color: rgba(27, 50, 38, 0.88) !important; }
+html[data-style="forest-moss"].light .text-gray-300 { color: rgba(27, 50, 38, 0.78) !important; }
+html[data-style="forest-moss"].light .text-gray-400 { color: rgba(27, 50, 38, 0.65) !important; }
+html[data-style="forest-moss"].light .text-gray-500 { color: rgba(27, 50, 38, 0.52) !important; }
+html[data-style="forest-moss"].light .text-gray-600 { color: rgba(27, 50, 38, 0.40) !important; }
+html[data-style="forest-moss"].light .text-gray-700 { color: rgba(27, 50, 38, 0.28) !important; }
+html[data-style="forest-moss"].light .text-gray-800 { color: rgba(27, 50, 38, 0.18) !important; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    UI Skin: Retro Manga
@@ -1116,11 +1309,14 @@ select {
    SAFETY: No backdrop-filter, translateZ(0), will-change, backface-visibility,
    or @property rules. All of those crash WKWebView on macOS 26.
    Effects use opacity, gradients, and box-shadow instead.
+
+   NOTE: Every rule is also scoped to `:not([data-style="sakura-zen"]):not([data-style="retro-manga"])`
+   so liquid glass never leaks into non-Neon-Abyss themes even if the class is present.
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* Glass elevation — cards and surfaces gain deeper refractive quality */
 /* Glass elevation — cards and surfaces gain deeper refractive quality */
-html.liquid-glass .glass {
+html.liquid-glass:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .glass {
   background: color-mix(in srgb, var(--surface-color) 30%, transparent);
   backdrop-filter: blur(50px) saturate(200%);
   -webkit-backdrop-filter: blur(50px) saturate(200%);
@@ -1132,7 +1328,7 @@ html.liquid-glass .glass {
 }
 
 /* Card glow — enhanced prismatic refraction on hover */
-html.liquid-glass .card-glow:hover {
+html.liquid-glass:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .card-glow:hover {
   box-shadow:
     0 20px 50px -8px rgba(0, 0, 0, 0.6),
     0 0 20px -5px rgba(99, 102, 241, 0.3);
@@ -1140,31 +1336,31 @@ html.liquid-glass .card-glow:hover {
 }
 
 /* Prismatic border shimmer on hover for interactive elements */
-html.liquid-glass a:hover,
-html.liquid-glass button:hover,
-html.liquid-glass [role="button"]:hover {
+html.liquid-glass:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) a:hover,
+html.liquid-glass:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) button:hover,
+html.liquid-glass:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) [role="button"]:hover {
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.15),
     0 0 20px -5px rgba(99, 102, 241, 0.1);
 }
 
 /* Sidebar — deeper glass when liquid glass is active */
-html.liquid-glass .glass-fixed {
+html.liquid-glass:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .glass-fixed {
   background: color-mix(in srgb, var(--surface-color) 45%, transparent);
   backdrop-filter: blur(50px) saturate(200%);
   -webkit-backdrop-filter: blur(50px) saturate(200%);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-html.liquid-glass.light .glass-fixed,
-html.liquid-glass.system:not(.dark) .glass-fixed {
+html.liquid-glass:not([data-style="sakura-zen"]):not([data-style="retro-manga"]).light .glass-fixed,
+html.liquid-glass:not([data-style="sakura-zen"]):not([data-style="retro-manga"]).system:not(.dark) .glass-fixed {
   background: color-mix(in srgb, var(--surface-color) 60%, transparent);
   border-right: 1px solid rgba(38, 35, 31, 0.08);
 }
 
 /* Heading text — subtle refractive shimmer */
-html.liquid-glass h1,
-html.liquid-glass h2 {
+html.liquid-glass:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) h1,
+html.liquid-glass:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) h2 {
   background: linear-gradient(
     135deg,
     var(--foreground) 0%,
@@ -1177,8 +1373,8 @@ html.liquid-glass h2 {
 }
 
 /* Smooth liquid transitions for theme-aware elements */
-html.liquid-glass .card-glow,
-html.liquid-glass .glass {
+html.liquid-glass:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .card-glow,
+html.liquid-glass:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .glass {
   transition:
     transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
     box-shadow 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),

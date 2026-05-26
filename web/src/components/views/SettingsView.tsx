@@ -355,7 +355,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   label="Style"
                   description="Choose a complete visual skin for the interface."
                 >
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {/* Neon Abyss */}
                     <button
                       onClick={() => handleStyleChange("neon-abyss")}
@@ -432,6 +432,33 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                       </div>
                       {uiStyle === "retro-manga" && (
                         <div className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "#e8272c" }}>
+                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Forest Moss */}
+                    <button
+                      onClick={() => handleStyleChange("forest-moss")}
+                      className={`relative rounded-2xl overflow-hidden border-2 transition-all text-left ${
+                        uiStyle === "forest-moss"
+                          ? "border-[#10b981] shadow-lg shadow-[#10b981]/20"
+                          : "border-white/[0.06] hover:border-white/[0.15]"
+                      }`}
+                    >
+                      {/* Preview swatch */}
+                      <div className="h-20 w-full" style={{ background: "linear-gradient(135deg, #050f0b 0%, #0a1a12 60%, #123021 100%)" }}>
+                        <div className="flex gap-1 p-2 h-full items-end">
+                          <div className="flex-1 h-8 rounded-lg" style={{ background: "rgba(18,48,33,0.6)", border: "1px solid rgba(52,211,153,0.15)" }} />
+                          <div className="flex-1 h-5 rounded-lg" style={{ background: "rgba(16,185,129,0.3)", border: "1px solid rgba(16,185,129,0.4)" }} />
+                        </div>
+                      </div>
+                      <div className="px-3 py-2" style={{ background: "rgba(16, 185, 129, 0.04)" }}>
+                        <div className="text-xs font-bold" style={{ color: "#10b981" }}>Forest Moss</div>
+                        <div className="text-[10px] mt-0.5 text-gray-500">Organic green / Fresh woodland</div>
+                      </div>
+                      {uiStyle === "forest-moss" && (
+                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "#10b981" }}>
                           <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                         </div>
                       )}

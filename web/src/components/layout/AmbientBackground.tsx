@@ -84,6 +84,38 @@ const SKIN_CONFIGS: Record<string, SkinConfig> = {
     base: "var(--background)",
     blobs: [],
   },
+  "forest-moss": {
+    base: "var(--background)",
+    blobs: [
+      {
+        gradient: "radial-gradient(circle, rgba(16,185,129,0.7) 0%, rgba(16,185,129,0) 70%)",
+        size: "85vw",
+        opacity: "0.12",
+        blur: "110px",
+        position: { top: "-10%", left: "-10%" },
+        duration: "22s",
+        direction: "alternate",
+      },
+      {
+        gradient: "radial-gradient(circle, rgba(52,211,153,0.5) 0%, rgba(52,211,153,0) 70%)",
+        size: "75vw",
+        opacity: "0.08",
+        blur: "130px",
+        position: { bottom: "-15%", right: "-15%" },
+        duration: "26s",
+        direction: "alternate-reverse",
+      },
+      {
+        gradient: "radial-gradient(circle, rgba(6,78,59,0.6) 0%, rgba(6,78,59,0) 70%)",
+        size: "65vw",
+        opacity: "0.06",
+        blur: "90px",
+        position: { top: "35%", left: "25%" },
+        duration: "32s",
+        direction: "alternate",
+      },
+    ],
+  },
 };
 
 export default function AmbientBackground() {
