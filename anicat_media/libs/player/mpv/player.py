@@ -304,7 +304,7 @@ class MpvPlayer(BasePlayer):
         Returns:
             list[str]: List of MPV CLI arguments.
         """
-        mpv_args = []
+        mpv_args = ["--no-resume-playback"]
 
         if sys.platform == "darwin":
             mpv_args.append("--vo=gpu")
