@@ -2,10 +2,16 @@ from datetime import datetime, timedelta
 from typing import Optional
 import logging
 import os
-from fastapi import APIRouter
+from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
 import subprocess
-from anicat_media.core.constants import VERSION, COMMIT, LOG_FILE, UPDATE_LOG_FILE, UPDATE_IN_PROGRESS_FILE
+from anicat_media.core.constants import (
+    VERSION,
+    COMMIT,
+    LOG_FILE,
+    UPDATE_LOG_FILE,
+    UPDATE_IN_PROGRESS_FILE,
+)
 from anicat_media.cli.config import ConfigLoader
 import shutil
 import sys
@@ -40,12 +46,13 @@ class CheckUpdateResponse(BaseModel):
 
 router = APIRouter()
 
+
 @router.get("/logs")
-async def get_logs(lines: int = 100):
+def get_logs(lines: int = 100):
     """Retrieve the last N lines from the log file."""
     if not os.path.exists(LOG_FILE):
         return {"logs": "Log file not found."}
-    
+
     try:
         # Efficient tail implementation that avoids loading entire file into memory
         def tail(path, n=100, buf_size=1024):
@@ -66,7 +73,9 @@ async def get_logs(lines: int = 100):
                     data = b"".join(blocks)
                     lines_list = data.splitlines()
                     if len(lines_list) >= n:
-                        return b"\n".join(lines_list[-n:]).decode("utf-8", errors="replace")
+                        return b"\n".join(lines_list[-n:]).decode(
+                            "utf-8", errors="replace"
+                        )
                 # If we get here, return what we have
                 data = b"".join(blocks)
                 lines_list = data.splitlines()
@@ -76,22 +85,27 @@ async def get_logs(lines: int = 100):
     except Exception as e:
         return {"logs": f"Error reading logs: {str(e)}"}
 
+
 from ..deps import get_ctx
+
 
 # UX-27: MPV availability detection for onboarding
 class MpvAvailableResponse(BaseModel):
     available: bool
     path: Optional[str] = None
 
+
 @router.get("/mpv-available", response_model=MpvAvailableResponse)
-async def mpv_available():
+def mpv_available():
     """Check if MPV is installed and accessible on the system PATH."""
     mpv_path = shutil.which("mpv")
     if mpv_path:
         return {"available": True, "path": mpv_path}
     # Also check bundled MPV paths
     bundled_paths = [
-        os.path.join(os.path.dirname(sys.executable), "..", "Resources", "resources", "mpv"),
+        os.path.join(
+            os.path.dirname(sys.executable), "..", "Resources", "resources", "mpv"
+        ),
         os.path.join(os.path.dirname(sys.executable), "..", "Resources", "mpv"),
     ]
     for p in bundled_paths:
@@ -99,11 +113,13 @@ async def mpv_available():
             return {"available": True, "path": p}
     return {"available": False, "path": None}
 
+
 class PlaybackInfo(BaseModel):
     media_id: int
     media_title: str
     episode: str
     started_at: str
+
 
 class HealthInfo(BaseModel):
     api_connected: bool
@@ -116,6 +132,7 @@ class HealthInfo(BaseModel):
     data_version: int = 0
     current_version: str = "unknown"
     provider_status: Optional[str] = None
+
 
 # Module-level storage for last playback event
 _last_playback: Optional[PlaybackInfo] = None
@@ -167,10 +184,7 @@ def _check_github_update(update_branch: str) -> dict:
         ctx_ssl = ssl._create_unverified_context()
         url = "https://api.github.com/repos/bonkedbythonk/anicat/releases"
 
-        req = urllib.request.Request(
-            url,
-            headers={"User-Agent": "Anicat-App"}
-        )
+        req = urllib.request.Request(url, headers={"User-Agent": "Anicat-App"})
         with urllib.request.urlopen(req, timeout=5, context=ctx_ssl) as response:
             all_releases = json.loads(response.read().decode())
 
@@ -204,7 +218,9 @@ def _check_github_update(update_branch: str) -> dict:
                 # Fallback: no commit information, assume available
                 result["available"] = True
 
-            result["version"] = f"nightly ({remote_sha[:12]}...)" if remote_sha else "nightly"
+            result["version"] = (
+                f"nightly ({remote_sha[:12]}...)" if remote_sha else "nightly"
+            )
             result["release_notes"] = release_notes
             result["release_url"] = release_url
             return result
@@ -230,12 +246,14 @@ def _check_github_update(update_branch: str) -> dict:
         logger.error(f"[UPDATE CHECK] GitHub Releases check failed: {str(e)}")
         return result
 
+
 # Notifications/profile fetch cache to avoid rate limits
 _last_notifications_check: Optional[datetime] = None
 _cached_unread_notifications: int = 0
 
 # AniList activity timestamp for cross-device sync detection
 _last_anilist_activity: Optional[int] = None
+
 
 def set_playback(media_id: int, media_title: str, episode: str):
     """Called by the actions router when playback starts."""
@@ -255,11 +273,12 @@ def set_playback(media_id: int, media_title: str, episode: str):
         if ctx.config.general.discord:
             import asyncio
             from ...core.utils.discord_rpc import discord_rpc
-            asyncio.create_task(discord_rpc.update_watching(
-                title=media_title,
-                episode=episode,
-                media_id=media_id
-            ))
+
+            asyncio.create_task(
+                discord_rpc.update_watching(
+                    title=media_title, episode=episode, media_id=media_id
+                )
+            )
     except Exception as e:
         logger.debug(f"Failed to schedule Discord RPC update: {e}")
 
@@ -272,7 +291,7 @@ def _clear_playback():
 
 
 @router.get("/playback", response_model=Optional[PlaybackInfo])
-async def get_playback_status():
+def get_playback_status(background_tasks: BackgroundTasks):
     """Get the current/last playback status."""
     global _last_playback, _playback_expiry
     # Auto-dismiss if MPV is no longer running
@@ -291,7 +310,9 @@ async def get_playback_status():
             # Prefer pgrep when available to avoid heavy process listings
             if shutil.which("pgrep"):
                 try:
-                    subprocess.check_output(["pgrep", "mpv"])  # raises CalledProcessError if none
+                    subprocess.check_output(
+                        ["pgrep", "mpv"]
+                    )  # raises CalledProcessError if none
                 except subprocess.CalledProcessError:
                     mpv_running = False
                 except Exception:
@@ -304,11 +325,12 @@ async def get_playback_status():
             if _last_playback:
                 _last_playback = None
                 _playback_expiry = None
-                
+
                 # Clear Discord RPC
                 try:
                     from ...core.utils.discord_rpc import discord_rpc
-                    await discord_rpc.clear()
+
+                    background_tasks.add_task(discord_rpc.clear)
                 except Exception:
                     pass
     except Exception:
@@ -320,30 +342,34 @@ async def get_playback_status():
         _playback_expiry = None
         try:
             from ...core.utils.discord_rpc import discord_rpc
-            await discord_rpc.clear()
+
+            background_tasks.add_task(discord_rpc.clear)
         except Exception:
             pass
-            
+
     return _last_playback
 
+
 @router.delete("/playback")
-async def clear_playback():
+def clear_playback(background_tasks: BackgroundTasks):
     """Clear the current playback status (e.g., after marking watched)."""
     global _last_playback, _playback_expiry
     _last_playback = None
     _playback_expiry = None
-    
+
     # Clear Discord RPC
     try:
         from ...core.utils.discord_rpc import discord_rpc
-        await discord_rpc.clear()
+
+        background_tasks.add_task(discord_rpc.clear)
     except Exception:
         pass
-        
+
     return {"status": "cleared"}
 
+
 @router.get("/health", response_model=HealthInfo)
-async def get_health():
+def get_health():
     """Get system health status."""
     try:
         ctx = get_ctx()
@@ -352,16 +378,22 @@ async def get_health():
 
         now = datetime.now()
         # Determine repository root once
-        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        repo_root = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        )
 
-        if _last_update_check is None or now - _last_update_check > timedelta(minutes=15):
+        if _last_update_check is None or now - _last_update_check > timedelta(
+            minutes=15
+        ):
             _last_update_check = now
             _cached_update_available = False
             try:
                 try:
                     loader = ConfigLoader()
                     current_config = loader.load(allow_setup=False)
-                    update_branch = getattr(current_config.general, "update_branch", "stable")
+                    update_branch = getattr(
+                        current_config.general, "update_branch", "stable"
+                    )
                 except Exception:
                     update_branch = "stable"
 
@@ -374,10 +406,17 @@ async def get_health():
                 pass
 
         # Auto-check for updates every hour in the background (fire-and-forget)
-        if not _last_update_check or (datetime.now() - _last_update_check) > timedelta(hours=1):
+        if not _last_update_check or (datetime.now() - _last_update_check) > timedelta(
+            hours=1
+        ):
             try:
                 if os.path.exists(os.path.join(repo_root, ".git")):
-                    subprocess.Popen(["git", "fetch", "--quiet"], cwd=repo_root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    subprocess.Popen(
+                        ["git", "fetch", "--quiet"],
+                        cwd=repo_root,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
                 _last_update_check = datetime.now()
             except Exception:
                 pass
@@ -387,34 +426,45 @@ async def get_health():
         # Get unread notification count (cached to avoid hitting rate limits)
         global _last_notifications_check, _cached_unread_notifications
         unread_notifications = _cached_unread_notifications
-        
+
         # Refresh token status from config to ensure we aren't using stale memory
         loader = ConfigLoader()
         current_config = loader.load(allow_setup=False)
-        api_authenticated = bool(current_config.anilist.token and len(current_config.anilist.token) > 10)
-        
+        api_authenticated = bool(
+            current_config.anilist.token and len(current_config.anilist.token) > 10
+        )
+
         api_connected = ctx.media_api.is_connected()
-        
+
         # Perform the actual AniList query only once every 5 minutes (always fetch in tests)
         is_testing = "pytest" in sys.modules
-        if is_testing or not _last_notifications_check or now - _last_notifications_check > timedelta(minutes=5):
+        if (
+            is_testing
+            or not _last_notifications_check
+            or now - _last_notifications_check > timedelta(minutes=5)
+        ):
             _last_notifications_check = now
             try:
                 profile = ctx.media_api.get_viewer_profile()
                 if profile:
                     api_connected = True
                     ctx.is_offline = False
-                    if hasattr(profile, 'unread_notifications'):
-                        _cached_unread_notifications = getattr(profile, 'unread_notifications') or 0
+                    if hasattr(profile, "unread_notifications"):
+                        _cached_unread_notifications = (
+                            getattr(profile, "unread_notifications") or 0
+                        )
                         unread_notifications = _cached_unread_notifications
                     # Detect external AniList changes by checking the last activity timestamp.
                     # If AniList has newer activity than our last known state, bump data_version
                     # so the frontend re-fetches all views.
-                    last_activity = getattr(profile, 'updated_at', None)
+                    last_activity = getattr(profile, "updated_at", None)
                     if last_activity is not None:
                         anilist_unix = int(last_activity)
                         global _last_anilist_activity
-                        if _last_anilist_activity is not None and anilist_unix > _last_anilist_activity:
+                        if (
+                            _last_anilist_activity is not None
+                            and anilist_unix > _last_anilist_activity
+                        ):
                             ctx.data_version += 1
                         _last_anilist_activity = anilist_unix
             except Exception:
@@ -424,7 +474,7 @@ async def get_health():
         provider_status: Optional[str] = None
         try:
             provider = ctx.provider if ctx._provider is not None else None
-            if provider and hasattr(provider, 'status_message'):
+            if provider and hasattr(provider, "status_message"):
                 provider_status = provider.status_message
         except Exception:
             pass
@@ -437,7 +487,9 @@ async def get_health():
                 mtime = os.path.getmtime(UPDATE_IN_PROGRESS_FILE)
                 age = datetime.now().timestamp() - mtime
                 if age > 300:  # 5 minutes
-                    logger.warning("[UPDATE] Stale update flag detected (>5min). Clearing.")
+                    logger.warning(
+                        "[UPDATE] Stale update flag detected (>5min). Clearing."
+                    )
                     UPDATE_IN_PROGRESS_FILE.unlink()
                     updating = False
             except Exception:
@@ -466,20 +518,35 @@ async def get_health():
             current_version="unknown",
         )
 
+
 @router.post("/check-update")
-async def check_for_updates():
+def check_for_updates():
     """Manually trigger an update check, ignoring cache."""
     global _last_update_check, _cached_update_available
     # Respect opt-out environment variable for automated update checks
     if os.environ.get("ANICAT_DISABLE_AUTO_UPDATE", "0") == "1":
-        return {"status": "error", "update_available": False, "message": "Auto-updates disabled by environment", "version": "", "release_notes": "", "release_url": ""}
+        return {
+            "status": "error",
+            "update_available": False,
+            "message": "Auto-updates disabled by environment",
+            "version": "",
+            "release_notes": "",
+            "release_url": "",
+        }
 
     # Respect user's config setting (allow disabling update checks via AppConfig)
     try:
         loader = ConfigLoader()
         current_config = loader.load(allow_setup=False)
         if not getattr(current_config.general, "check_for_updates", True):
-            return {"status": "error", "update_available": False, "message": "Auto-updates disabled in configuration", "version": "", "release_notes": "", "release_url": ""}
+            return {
+                "status": "error",
+                "update_available": False,
+                "message": "Auto-updates disabled in configuration",
+                "version": "",
+                "release_notes": "",
+                "release_url": "",
+            }
         update_branch = getattr(current_config.general, "update_branch", "stable")
     except Exception:
         update_branch = "stable"
@@ -512,7 +579,15 @@ async def check_for_updates():
         }
     except Exception as e:
         logger.error(f"[UPDATE CHECK] Error: {str(e)}")
-        return {"status": "error", "update_available": False, "message": f"Failed to check for updates: {str(e)}", "version": "", "release_notes": "", "release_url": ""}
+        return {
+            "status": "error",
+            "update_available": False,
+            "message": f"Failed to check for updates: {str(e)}",
+            "version": "",
+            "release_notes": "",
+            "release_url": "",
+        }
+
 
 def _restart_backend_process(after_process: Optional[subprocess.Popen] = None) -> None:
     """Restart the backend process. If after_process is provided, wait for it to complete first."""
@@ -527,10 +602,10 @@ def _restart_backend_process(after_process: Optional[subprocess.Popen] = None) -
             if after_process:
                 # Wait for the build process to finish
                 after_process.wait()
-            
+
             # Give a small buffer time
             time.sleep(1)
-            
+
             _log_update("Restarting backend server process...")
             # Kill this uvicorn process, which Tauri watchdog will restart
             if os.name == "nt":
@@ -541,129 +616,17 @@ def _restart_backend_process(after_process: Optional[subprocess.Popen] = None) -
             logger.warning(f"Error in backend restart thread: {e}")
             # Fallback for unix: send SIGKILL via command
             if os.name != "nt":
-                subprocess.run(["kill", "-9", str(pid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(
+                    ["kill", "-9", str(pid)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
 
     threading.Thread(target=target, daemon=True).start()
 
 
-def _run_windows_update(update_branch: str, repo_root: str) -> None:
-    """Download the Windows installer from GitHub Releases and run it in the background."""
-    import urllib.request
-    import json
-    import ssl
-    import tempfile
-    import os
-    import sys
-    import signal
-    import time
-
-    try:
-        _log_update("Fetching latest release information from GitHub...")
-        ctx_ssl = ssl._create_unverified_context()
-        url = "https://api.github.com/repos/bonkedbythonk/anicat/releases"
-        req = urllib.request.Request(
-            url,
-            headers={"User-Agent": "Anicat-App"}
-        )
-        with urllib.request.urlopen(req, timeout=10, context=ctx_ssl) as response:
-            all_releases = json.loads(response.read().decode())
-        
-        if not isinstance(all_releases, list) or not all_releases:
-            _log_update("Error: No releases found on GitHub.")
-            if UPDATE_IN_PROGRESS_FILE.exists():
-                UPDATE_IN_PROGRESS_FILE.unlink()
-            return
-
-        target_release = None
-        if update_branch == "nightly":
-            for r in all_releases:
-                if r.get("tag_name", "").lower() == "nightly":
-                    target_release = r
-                    break
-        else:
-            # Stable: use the first release (latest)
-            target_release = all_releases[0]
-            
-        if not target_release:
-            _log_update(f"Error: Could not find target release for branch {update_branch}.")
-            if UPDATE_IN_PROGRESS_FILE.exists():
-                UPDATE_IN_PROGRESS_FILE.unlink()
-            return
-            
-        # Find Windows asset (either .exe setup or .msi)
-        windows_asset = None
-        for asset in target_release.get("assets", []):
-            name = asset.get("name", "")
-            if name.endswith((".exe", ".msi")) and not any(x in name.lower() for x in ["sidecar", "server"]):
-                if "setup" in name.lower() or "x64" in name.lower() or name.endswith(".msi"):
-                    windows_asset = asset
-                    break
-                    
-        if not windows_asset:
-            _log_update("Error: Could not find a Windows installer (.exe or .msi) in the release assets.")
-            if UPDATE_IN_PROGRESS_FILE.exists():
-                UPDATE_IN_PROGRESS_FILE.unlink()
-            return
-            
-        asset_name = windows_asset["name"]
-        download_url = windows_asset["browser_download_url"]
-        _log_update(f"Found Windows installer: {asset_name}")
-        
-        temp_dir = tempfile.gettempdir()
-        dest_path = os.path.join(temp_dir, asset_name)
-        
-        _log_update(f"Starting download to: {dest_path}")
-        
-        # Download block-by-block
-        with urllib.request.urlopen(urllib.request.Request(download_url, headers={"User-Agent": "Anicat-App"}), context=ctx_ssl) as dl_resp:
-            total_size = int(dl_resp.headers.get('content-length', 0))
-            downloaded = 0
-            block_size = 1024 * 64
-            last_percent = -1
-            with open(dest_path, 'wb') as f:
-                while True:
-                    chunk = dl_resp.read(block_size)
-                    if not chunk:
-                        break
-                    f.write(chunk)
-                    downloaded += len(chunk)
-                    if total_size > 0:
-                        percent = int(downloaded * 100 / total_size)
-                        if percent // 10 > last_percent // 10:
-                            last_percent = percent
-                            _log_update(f"Download progress: {percent}% ({downloaded // (1024 * 1024)}MB / {total_size // (1024 * 1024)}MB)")
-                            
-        _log_update("Download completed successfully.")
-        _log_update("Launching installer and exiting current Anicat instance...")
-        
-        # Wait a moment for logs to flush
-        time.sleep(1)
-        
-        # Run installer
-        start_file = getattr(os, "startfile", None)
-        if start_file:
-            start_file(dest_path)
-        else:
-            _log_update("Error: os.startfile is not available on this platform.")
-            if UPDATE_IN_PROGRESS_FILE.exists():
-                UPDATE_IN_PROGRESS_FILE.unlink()
-            return
-        
-        # Shutdown the current process
-        pid = os.getpid()
-        os.kill(pid, signal.SIGTERM)
-        
-    except Exception as e:
-        _log_update(f"Error during Windows update: {str(e)}")
-        if UPDATE_IN_PROGRESS_FILE.exists():
-            try:
-                UPDATE_IN_PROGRESS_FILE.unlink()
-            except Exception:
-                pass
-
-
 @router.post("/update")
-async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
+def trigger_update(req: Optional[UpdateTriggerRequest] = None):
     """Trigger the official installation script to update the application."""
     global _last_update_check, _cached_update_available
     try:
@@ -678,7 +641,10 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
         # Respect opt-out environment variable for automated updates
         if os.environ.get("ANICAT_DISABLE_AUTO_UPDATE", "0") == "1":
             _log_update("Auto-updates disabled by environment variable")
-            return {"status": "error", "message": "Auto-updates disabled by environment"}
+            return {
+                "status": "error",
+                "message": "Auto-updates disabled by environment",
+            }
 
         # Respect user's config setting
         try:
@@ -686,7 +652,10 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
             current_config = loader.load(allow_setup=False)
             if not getattr(current_config.general, "check_for_updates", True):
                 _log_update("Auto-updates disabled in configuration")
-                return {"status": "error", "message": "Auto-updates disabled in configuration"}
+                return {
+                    "status": "error",
+                    "message": "Auto-updates disabled in configuration",
+                }
             update_branch = getattr(current_config.general, "update_branch", "stable")
         except Exception:
             update_branch = "stable"
@@ -696,7 +665,9 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
 
         _log_update(f"Update target branch: {update_branch}")
 
-        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        repo_root = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        )
         is_git_install = os.path.exists(os.path.join(repo_root, ".git"))
 
         # ── Fast path: download pre-built DMG from GitHub Releases ──
@@ -705,7 +676,9 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
         _log_update("Checking for pre-built release...")
         release_info = _check_github_update(update_branch)
         if release_info.get("available") and release_info.get("release_url"):
-            _log_update(f"Pre-built release found: {release_info.get('version', 'unknown')}")
+            _log_update(
+                f"Pre-built release found: {release_info.get('version', 'unknown')}"
+            )
             # Use install_macos.sh which downloads and installs the DMG
             if os.name == "posix" and sys.platform == "darwin":
                 _log_update("Starting DMG download via install_macos.sh...")
@@ -737,19 +710,25 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
                         _log_update(f"Remote installer started (PID {proc.pid})")
                 _last_update_check = datetime.now()
                 _cached_update_available = False
-                return {"status": "success", "message": "Downloading pre-built DMG from GitHub Releases. The app will install and restart automatically."}
+                return {
+                    "status": "success",
+                    "message": "Downloading pre-built DMG from GitHub Releases. The app will install and restart automatically.",
+                }
             else:
                 _log_update("Not on macOS — falling back to git update")
 
         # ── Fallback: git-based update (dev checkouts, non-macOS) ──
         if is_git_install:
             _log_update("Falling back to git-based update")
-            
+
             # Mark update in progress so frontend shows overlay and tails logs
             UPDATE_IN_PROGRESS_FILE.write_text("1", encoding="utf-8")
-            
+
             from anicat_media.utils.subprocess import run_cmd
-            rc, stdout, _ = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=5, cwd=repo_root)
+
+            rc, stdout, _ = run_cmd(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"], timeout=5, cwd=repo_root
+            )
             current_branch = stdout.strip() if (rc == 0 and stdout) else "master"
             _log_update(f"Current branch: {current_branch}")
 
@@ -762,11 +741,21 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
             _log_update("Stashed local changes")
 
             if current_branch != target_branch:
-                subprocess.run(["git", "checkout", target_branch], cwd=repo_root, capture_output=True)
+                subprocess.run(
+                    ["git", "checkout", target_branch],
+                    cwd=repo_root,
+                    capture_output=True,
+                )
                 _log_update(f"Switched to branch {target_branch}")
 
             _log_update("Running git pull...")
-            result = subprocess.run(["git", "pull", "origin", target_branch], cwd=repo_root, capture_output=True, text=True, timeout=60)
+            result = subprocess.run(
+                ["git", "pull", "origin", target_branch],
+                cwd=repo_root,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
             subprocess.run(["git", "stash", "pop"], cwd=repo_root, capture_output=True)
             _log_update(f"Git pull completed (exit code {result.returncode})")
 
@@ -778,10 +767,22 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
                 try:
                     diff_result = subprocess.run(
                         ["git", "diff", "--name-only", "@{1}.."],
-                        cwd=repo_root, capture_output=True, text=True, timeout=10
+                        cwd=repo_root,
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
                     )
-                    changed = diff_result.stdout.strip().split("\n") if diff_result.stdout.strip() else []
-                    frontend_changed = any(f.startswith("web/") or f.startswith("src-tauri/") or f == "package.json" for f in changed)
+                    changed = (
+                        diff_result.stdout.strip().split("\n")
+                        if diff_result.stdout.strip()
+                        else []
+                    )
+                    frontend_changed = any(
+                        f.startswith("web/")
+                        or f.startswith("src-tauri/")
+                        or f == "package.json"
+                        for f in changed
+                    )
                 except Exception:
                     frontend_changed = True
 
@@ -792,26 +793,41 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
                         with open(UPDATE_LOG_FILE, "a") as log:
                             proc = subprocess.Popen(
                                 ["bash", install_script, "--no-launch"],
-                                cwd=repo_root, start_new_session=True,
-                                stdout=log, stderr=subprocess.STDOUT
+                                cwd=repo_root,
+                                start_new_session=True,
+                                stdout=log,
+                                stderr=subprocess.STDOUT,
                             )
                         _restart_backend_process(proc)
-                        return {"status": "success", "message": f"Frontend changed. Rebuilding from source (this may take a minute). The app will reload automatically when finished."}
+                        return {
+                            "status": "success",
+                            "message": "Frontend changed. Rebuilding from source (this may take a minute). The app will reload automatically when finished.",
+                        }
                     else:
                         if UPDATE_IN_PROGRESS_FILE.exists():
                             UPDATE_IN_PROGRESS_FILE.unlink()
-                        return {"status": "success", "message": f"Frontend changed but no install.sh found."}
+                        return {
+                            "status": "success",
+                            "message": "Frontend changed but no install.sh found.",
+                        }
                 else:
                     _log_update("No frontend changes. Restarting backend...")
                     _restart_backend_process(None)
-                    return {"status": "success", "message": f"Updated. Backend restarting..."}
+                    return {
+                        "status": "success",
+                        "message": "Updated. Backend restarting...",
+                    }
             else:
                 if UPDATE_IN_PROGRESS_FILE.exists():
                     UPDATE_IN_PROGRESS_FILE.unlink()
-                return {"status": "error", "message": f"Git pull failed: {result.stderr.strip() or result.stdout.strip()}"}
+                return {
+                    "status": "error",
+                    "message": f"Git pull failed: {result.stderr.strip() or result.stdout.strip()}",
+                }
 
         # ── Pure native/DMG fallback (no .git, not macOS from release) ──
         import platform
+
         if platform.system() == "Darwin":
             _log_update("No git repo — downloading DMG from GitHub Releases")
             UPDATE_IN_PROGRESS_FILE.write_text("1", encoding="utf-8")
@@ -840,47 +856,43 @@ async def trigger_update(req: Optional[UpdateTriggerRequest] = None):
                     _log_update(f"Remote installer started (PID {proc.pid})")
             _last_update_check = datetime.now()
             _cached_update_available = False
-            return {"status": "success", "message": "Downloading pre-built DMG from GitHub Releases. The app will install and restart automatically."}
-        elif platform.system() == "Windows":
-            _log_update("No git repo — downloading Windows installer from GitHub Releases")
-            UPDATE_IN_PROGRESS_FILE.write_text("1", encoding="utf-8")
-            _last_update_check = datetime.now()
-            _cached_update_available = False
-            
-            import threading
-            threading.Thread(
-                target=_run_windows_update,
-                args=(update_branch, repo_root),
-                daemon=True
-            ).start()
-            
             return {
                 "status": "success",
-                "message": "Downloading Windows installer from GitHub Releases. The app will install and restart automatically."
+                "message": "Downloading pre-built DMG from GitHub Releases. The app will install and restart automatically.",
             }
 
-        return {"status": "error", "message": "Could not determine update method for this platform."}
+        return {
+            "status": "error",
+            "message": "Could not determine update method for this platform.",
+        }
 
     except subprocess.TimeoutExpired:
         _log_update("Update timed out")
-        return {"status": "error", "message": "Update timed out. Please try running 'git pull' manually in the terminal."}
+        return {
+            "status": "error",
+            "message": "Update timed out. Please try running 'git pull' manually in the terminal.",
+        }
     except Exception as e:
         _log_update(f"Update failed: {e}")
         return {"status": "error", "message": f"Unexpected error: {str(e)}"}
 
+
 # ── Update Log Stream Endpoint ──
+
 
 class UpdateLogsResponse(BaseModel):
     logs: str
     updating: bool
 
+
 @router.get("/update/logs", response_model=UpdateLogsResponse)
-async def get_update_logs(lines: int = 100):
+def get_update_logs(lines: int = 100):
     """Return the last N lines from the update log file."""
     updating = UPDATE_IN_PROGRESS_FILE.exists()
     if not UPDATE_LOG_FILE.exists():
         return {"logs": "Update has not started yet.\n", "updating": updating}
     try:
+
         def tail(path, n=100, buf_size=1024):
             with open(path, "rb") as f:
                 f.seek(0, os.SEEK_END)
@@ -898,33 +910,45 @@ async def get_update_logs(lines: int = 100):
                     bytes_scanned += read_size
                     data = b"".join(blocks)
                     if len(data.splitlines()) >= n:
-                        return b"\n".join(data.splitlines()[-n:]).decode("utf-8", errors="replace")
-                return b"\n".join(data.splitlines()[-n:]).decode("utf-8", errors="replace")
+                        return b"\n".join(data.splitlines()[-n:]).decode(
+                            "utf-8", errors="replace"
+                        )
+                return b"\n".join(data.splitlines()[-n:]).decode(
+                    "utf-8", errors="replace"
+                )
+
         return {"logs": tail(UPDATE_LOG_FILE, lines), "updating": updating}
     except Exception as e:
         return {"logs": f"Error reading update logs: {e}", "updating": updating}
 
+
 @router.post("/reconnect")
-async def reconnect():
+def reconnect():
     """Force a reconnection attempt to the media API."""
     ctx = get_ctx()
     try:
         ctx.is_offline = False
         # Force a reset of _media_api to re-trigger auth with current config
         ctx._media_api = None
-        
+
         # Accessing media_api property triggers initialization and authentication
         api = ctx.media_api
-        
+
         # Attempt to fetch profile to verify real connectivity
         profile = api.get_viewer_profile()
-        
+
         if profile:
             ctx.is_offline = False
-            return {"status": "success", "message": f"Successfully reconnected! Welcome back, {profile.name}."}
+            return {
+                "status": "success",
+                "message": f"Successfully reconnected! Welcome back, {profile.name}.",
+            }
         else:
             ctx.is_offline = True
-            return {"status": "error", "message": "Reconnection failed: Token invalid or AniList unreachable."}
+            return {
+                "status": "error",
+                "message": "Reconnection failed: Token invalid or AniList unreachable.",
+            }
     except Exception as e:
         ctx.is_offline = True
         return {"status": "error", "message": f"Reconnection error: {str(e)}"}

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Play, X, CheckCircle2, Loader2, Music, ArrowRight } from "lucide-react";
 import { mediaApi, type PlaybackStatus } from "@/lib/api";
 import { useUpdateProgress } from "@/lib/useUpdateProgress";
+import { dispatchRefresh } from "@/lib/events";
 
 interface NowPlayingProps {
   onPlay?: (mediaId: number, episode: string) => void;
@@ -18,6 +19,8 @@ export default function NowPlaying({ onPlay }: NowPlayingProps) {
   const [marked, setMarked] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
+  const lastPlaybackRef = useRef<PlaybackStatus | null>(null);
+
   // Shared React Query key with HomeView — deduplicates the polling request
   const { data: playback } = useQuery<PlaybackStatus>({
     queryKey: ["playback-status"],
@@ -26,12 +29,28 @@ export default function NowPlaying({ onPlay }: NowPlayingProps) {
     staleTime: 4000,
   });
 
-  // Reset dismissed/marked state when a new playback session starts
+  // Reset dismissed/marked state and detect session changes/endings to refresh UI
   useEffect(() => {
     if (playback) {
       setDismissed(false);
       setMarked(false);
     }
+
+    if (lastPlaybackRef.current) {
+      if (!playback) {
+        // Player closed or playback ended
+        console.log("Playback session ended. Refreshing views...");
+        dispatchRefresh();
+      } else if (
+        lastPlaybackRef.current.media_id !== playback.media_id ||
+        lastPlaybackRef.current.episode !== playback.episode
+      ) {
+        // Switched to next episode or different anime
+        console.log("Playback changed. Refreshing views...");
+        dispatchRefresh();
+      }
+    }
+    lastPlaybackRef.current = playback || null;
   }, [playback]);
 
   const handleMarkWatched = async () => {
@@ -66,7 +85,7 @@ export default function NowPlaying({ onPlay }: NowPlayingProps) {
   if (!playback || dismissed) return null;
 
   return (
-    <div className="fixed bottom-0 left-[72px] lg:left-60 right-0 z-[90] animate-slide-up">
+    <div className="fixed bottom-0 left-[72px] lg:left-[248px] right-0 z-[90] animate-slide-up">
       <div className="mx-4 mb-4 bg-surface/95 border border-white/[0.08] rounded-2xl p-4 flex items-center justify-between shadow-2xl shadow-black/50">
         <div className="flex items-center space-x-4 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 animate-pulse-glow">

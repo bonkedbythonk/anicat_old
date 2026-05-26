@@ -1,12 +1,12 @@
 // UX-01: Full macOS menu bar with standard items + keyboard shortcuts
 use tauri::{
-    menu::{MenuBuilder, MenuItemBuilder},
+    menu::{
+        MenuBuilder, MenuItemBuilder, SubmenuBuilder,
+        PredefinedMenuItem,
+    },
     tray::TrayIconBuilder,
     Manager,
 };
-
-#[cfg(target_os = "macos")]
-use tauri::menu::{PredefinedMenuItem, SubmenuBuilder};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -30,7 +30,6 @@ fn create_command<S: AsRef<std::ffi::OsStr>>(program: S) -> std::process::Comman
 struct SidecarState {
     child: Arc<Mutex<Option<std::process::Child>>>,
     restart_count: Arc<Mutex<u32>>,
-    exiting: Arc<Mutex<bool>>,
 }
 
 impl SidecarState {
@@ -38,7 +37,6 @@ impl SidecarState {
         Self {
             child: Arc::new(Mutex::new(None)),
             restart_count: Arc::new(Mutex::new(0)),
-            exiting: Arc::new(Mutex::new(false)),
         }
     }
 }
@@ -47,40 +45,7 @@ impl SidecarState {
 // Spawn backend — tries bundled binary first, falls back to dev mode
 // ---------------------------------------------------------------------------
 
-fn spawn_backend() -> Option<std::process::Child> {
-    let exe_dir = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|d| d.to_path_buf()));
-
-    // --- Try bundled sidecar (production .app) ---
-    if let Some(ref bin_dir) = exe_dir {
-        let sidecar_filename = if cfg!(windows) {
-            "anicat-server.exe"
-        } else {
-            "anicat-server"
-        };
-        let sidecar_path = bin_dir.join(sidecar_filename);
-        if sidecar_path.exists() {
-            match create_command(&sidecar_path)
-                .env("PYTHONIOENCODING", "utf-8")
-                .env("PYTHONUTF8", "1")
-                .env("ANICAT_SIDECAR", "1")
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .spawn()
-            {
-                Ok(child) => {
-                    log::info!("[sidecar] Bundled binary: {}", sidecar_path.display());
-                    return Some(child);
-                }
-                Err(e) => {
-                    log::error!("[sidecar] Bundled binary failed: {} — {}", sidecar_path.display(), e);
-                }
-            }
-        }
-    }
-
-    // --- Dev fallback: find project root and use uv run uvicorn ---
+fn spawn_dev_backend() -> Option<std::process::Child> {
     let project_dir = find_project_root();
     if let Some(ref root) = project_dir {
         let python_bin = if cfg!(windows) {
@@ -94,7 +59,6 @@ fn spawn_backend() -> Option<std::process::Child> {
                 .current_dir(root)
                 .env("PYTHONIOENCODING", "utf-8")
                 .env("PYTHONUTF8", "1")
-                .env("ANICAT_SIDECAR", "1")
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
                 .spawn()
@@ -111,7 +75,6 @@ fn spawn_backend() -> Option<std::process::Child> {
                 .current_dir(root)
                 .env("PYTHONIOENCODING", "utf-8")
                 .env("PYTHONUTF8", "1")
-                .env("ANICAT_SIDECAR", "1")
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
                 .spawn()
@@ -124,7 +87,62 @@ fn spawn_backend() -> Option<std::process::Child> {
             }
         }
     } else {
-        log::error!("[sidecar] Could not find project root for dev fallback");
+        log::error!("[sidecar] Could not find project root for dev backend");
+    }
+    None
+}
+
+fn spawn_bundled_backend() -> Option<std::process::Child> {
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()));
+
+    if let Some(ref bin_dir) = exe_dir {
+        let sidecar_filename = if cfg!(windows) {
+            "anicat-server.exe"
+        } else {
+            "anicat-server"
+        };
+        let sidecar_path = bin_dir.join(sidecar_filename);
+        if sidecar_path.exists() {
+            match create_command(&sidecar_path)
+                .env("PYTHONIOENCODING", "utf-8")
+                .env("PYTHONUTF8", "1")
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .spawn()
+            {
+                Ok(child) => {
+                    log::info!("[sidecar] Bundled binary: {}", sidecar_path.display());
+                    return Some(child);
+                }
+                Err(e) => {
+                    log::error!("[sidecar] Bundled binary failed: {} — {}", sidecar_path.display(), e);
+                }
+            }
+        }
+    }
+    None
+}
+
+fn spawn_backend() -> Option<std::process::Child> {
+    // In debug mode, prioritize live Python dev server so backend changes are live-reloaded
+    if cfg!(debug_assertions) {
+        if let Some(child) = spawn_dev_backend() {
+            return Some(child);
+        }
+    }
+
+    // Try bundled sidecar
+    if let Some(child) = spawn_bundled_backend() {
+        return Some(child);
+    }
+
+    // Fallback if not debug or if bundled failed
+    if !cfg!(debug_assertions) {
+        if let Some(child) = spawn_dev_backend() {
+            return Some(child);
+        }
     }
 
     None
@@ -228,10 +246,6 @@ pub fn run() {
     let sidecar_state = SidecarState::new();
     let child_arc = sidecar_state.child.clone();
     let restart_count_arc = sidecar_state.restart_count.clone();
-    let exiting_arc = sidecar_state.exiting.clone();
-
-    let child_arc_setup = child_arc.clone();
-    let exiting_arc_setup = exiting_arc.clone();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
@@ -444,25 +458,19 @@ pub fn run() {
 
                 // --- Spawn backend ---
                 if let Some(child) = spawn_backend() {
-                    *child_arc_setup.lock().unwrap() = Some(child);
+                    *child_arc.lock().unwrap() = Some(child);
                     log::info!("[sidecar] Backend started");
                 } else {
                     log::error!("[sidecar] Failed to start backend");
                 }
 
                 // --- Watchdog: monitors and restarts backend on crash ---
-                let child_wd = child_arc_setup.clone();
+                let child_wd = child_arc.clone();
                 let restart_wd = restart_count_arc.clone();
-                let exiting_wd = exiting_arc_setup.clone();
                 let _app_handle = app.handle().clone();
 
                 thread::spawn(move || loop {
                     thread::sleep(std::time::Duration::from_secs(2));
-
-                    if *exiting_wd.lock().unwrap() {
-                        log::info!("[sidecar] Watchdog thread exiting due to application exit");
-                        break;
-                    }
 
                     let should_restart = {
                         let mut guard = child_wd.lock().unwrap();
@@ -487,10 +495,8 @@ pub fn run() {
                     if should_restart {
                         let mut rc = restart_wd.lock().unwrap();
                         if *rc >= 5 {
-                            log::warn!("[sidecar] {} crashes — auto-restart suspended. Call restart_backend to reset.", *rc);
-                            drop(rc);
-                            thread::sleep(std::time::Duration::from_secs(10));
-                            continue;
+                            log::error!("[sidecar] {} crashes — giving up", *rc);
+                            break;
                         }
                         *rc += 1;
                         drop(rc);
@@ -565,20 +571,6 @@ pub fn run() {
             }
             setup_result
         })
-        .build(tauri::generate_context!())
-        .expect("error while building tauri application")
-        .run(move |_app_handle, event| {
-            if let tauri::RunEvent::Exit = event {
-                // Stop the watchdog thread
-                *exiting_arc.lock().unwrap() = true;
-
-                // Kill child process
-                let mut child_guard = child_arc.lock().unwrap();
-                if let Some(ref mut child) = *child_guard {
-                    let _ = child.kill();
-                    let _ = child.wait();
-                    log::info!("[sidecar] Killed backend on exit");
-                }
-            }
-        });
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }

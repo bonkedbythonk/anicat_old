@@ -244,9 +244,7 @@ def extract_episode_servers(raw_html: str) -> list[tuple[str, str]]:
             # Look for a sibling element with server name text before this element
             before = raw_html[: match.start()]
             # Find the last text node before the data-video element
-            text_before = re.findall(
-                r">\s*([^<]{2,30})\s*<", before
-            )
+            text_before = re.findall(r">\s*([^<]{2,30})\s*<", before)
             if text_before:
                 name = text_before[-1].strip()
 

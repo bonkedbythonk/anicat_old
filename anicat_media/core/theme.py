@@ -48,19 +48,19 @@ class Icons:
     PROVIDER: str = " "
     TOGGLE: str = " "
     SAVE: str = " "
-    
+
     # Player controls
     NEXT: str = "󰒭 "
     PREVIOUS: str = "󰒮 "
     REPLAY: str = " "
     HOME: str = " "
-    
+
     # Feedback
     SUCCESS: str = " "
     ERROR: str = " "
     WARNING: str = " "
     PAUSE: str = " "
-    
+
     # UI Elements
     STATS: str = "📊 "
     GENRE: str = "🎭 "
@@ -68,7 +68,7 @@ class Icons:
     STAR: str = "⭐ "
     BELL: str = "🔔 "
     SPARKLES: str = "✨ "
-    
+
     # Visual indicators
     NEW: str = "🔹"  # Keeping this as it's a good indicator, maybe NF equivalent later
     DOT: str = " "

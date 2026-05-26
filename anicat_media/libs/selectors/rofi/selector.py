@@ -43,7 +43,7 @@ class RofiSelector(BaseSelector):
             input=rofi_input,
             stdout=subprocess.PIPE,
             text=True,
-            env=detect.get_clean_env()
+            env=detect.get_clean_env(),
         )
 
         if result.returncode == 0:
@@ -107,7 +107,7 @@ class RofiSelector(BaseSelector):
             input=rofi_input,
             stdout=subprocess.PIPE,
             text=True,
-            env=detect.get_clean_env()
+            env=detect.get_clean_env(),
         )
 
         if result.returncode == 0:

@@ -17,7 +17,7 @@ if sys.platform == "darwin":
         "/bin",
         "/usr/sbin",
         "/sbin",
-        os.path.expanduser("~/.local/bin")
+        os.path.expanduser("~/.local/bin"),
     ]
     current_paths = path.split(os.pathsep)
     for p in extra_paths:
@@ -48,11 +48,13 @@ class _ContextProxy:
     @property
     def _ctx(self) -> Context | None:
         import sys
+
         return getattr(sys, "_anicat_ctx", None)
 
     @_ctx.setter
     def _ctx(self, val: Any) -> None:
         import sys
+
         setattr(sys, "_anicat_ctx", val)
 
     def set(self, ctx: Context) -> None:
@@ -84,6 +86,7 @@ class _ContextProxy:
     def __setattr__(self, name, value):
         if name == "_ctx":
             import sys
+
             setattr(sys, "_anicat_ctx", value)
             return
         ctx_val = self._ctx
@@ -99,20 +102,21 @@ def setup_logging():
     """Setup file logging for the sidecar."""
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
-    
+
     # File handler
     fh = logging.FileHandler(LOG_FILE)
     fh.setLevel(logging.INFO)
-    formatter = logging.Formatter('[%(asctime)s][sidecar][%(levelname)s] %(message)s')
+    formatter = logging.Formatter("[%(asctime)s][sidecar][%(levelname)s] %(message)s")
     fh.setFormatter(formatter)
     logger.addHandler(fh)
-    
+
     # Stream handler (console)
     sh = logging.StreamHandler()
     sh.setFormatter(formatter)
     logger.addHandler(sh)
-    
+
     logger.info(f"Logging initialized at {LOG_FILE}")
+
 
 def _cleanup_stale_resources():
     """Remove stale resources left by force-closed previous runs.
@@ -134,6 +138,7 @@ def _cleanup_stale_resources():
     # a phantom episode from a previous session.
     try:
         from .routers.status import _clear_playback
+
         _clear_playback()
     except Exception:
         pass
@@ -141,6 +146,7 @@ def _cleanup_stale_resources():
     # Clear the "update in progress" flag. The new process has started.
     try:
         from anicat_media.core.constants import UPDATE_IN_PROGRESS_FILE
+
         if UPDATE_IN_PROGRESS_FILE.exists():
             UPDATE_IN_PROGRESS_FILE.unlink()
     except Exception:
@@ -242,9 +248,13 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
     app.include_router(actions.router, prefix="/api/actions", tags=["actions"])
     app.include_router(queue.router, prefix="/api/queue", tags=["queue"])
     app.include_router(config_router.router, prefix="/api/config", tags=["config"])
-    app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
+    app.include_router(
+        notifications.router, prefix="/api/notifications", tags=["notifications"]
+    )
     app.include_router(status.router, prefix="/api/status", tags=["status"])
-    app.include_router(registry_router.router, prefix="/api/registry", tags=["registry"])
+    app.include_router(
+        registry_router.router, prefix="/api/registry", tags=["registry"]
+    )
 
     api_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(os.path.dirname(api_dir))
@@ -258,7 +268,7 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
         @app.exception_handler(404)
         async def not_found_handler(request, exc):
             return FileResponse(os.path.join(web_static_dir, "index.html"))
-            
+
     # Priority 2: Built files in the web/out directory (Development build)
     elif os.path.exists(web_out_dir) and os.listdir(web_out_dir):
         app.mount("/", StaticFiles(directory=web_out_dir, html=True), name="static")
@@ -266,18 +276,20 @@ def create_app(config: AppConfig | None = None) -> FastAPI:
         @app.exception_handler(404)
         async def dev_not_found_handler(request, exc):
             return FileResponse(os.path.join(web_out_dir, "index.html"))
-            
+
     # Priority 3: No built files found
     else:
+
         @app.get("/")
         async def root():
             return {
-                "status": "error", 
+                "status": "error",
                 "message": "Frontend not found. Please run './scripts/install.sh' or 'npm run build' in the 'web' folder.",
-                "paths_checked": [web_static_dir, web_out_dir]
+                "paths_checked": [web_static_dir, web_out_dir],
             }
 
     return app
+
 
 if __name__ == "__main__":
     import uvicorn

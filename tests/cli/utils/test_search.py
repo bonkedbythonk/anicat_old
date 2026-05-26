@@ -1,6 +1,10 @@
 from anicat_media.cli.utils.search import find_best_match_title
 from anicat_media.libs.media_api.types import MediaItem, MediaTitle
-from anicat_media.libs.provider.anime.types import AnimeEpisodes, ProviderName, SearchResult
+from anicat_media.libs.provider.anime.types import (
+    AnimeEpisodes,
+    ProviderName,
+    SearchResult,
+)
 
 
 def _search_result(title: str, season: str, year: str) -> SearchResult:

@@ -251,7 +251,9 @@ def search(config: AppConfig, **options: "Unpack[SearchOptions]"):
             and start_date_lesser is not None
             and start_date_greater > start_date_lesser
         ):
-            raise AnicatError("Start date greater cannot be later than start date lesser")
+            raise AnicatError(
+                "Start date greater cannot be later than start date lesser"
+            )
 
         if (
             end_date_greater is not None

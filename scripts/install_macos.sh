@@ -49,14 +49,19 @@ fi
 
 echo "Step 1: Finding the latest version..."
 UPDATE_BRANCH="stable"
-if [ -f "$HOME/.config/anicat/config.toml" ]; then
-    if grep -q 'update_branch = "nightly"' "$HOME/.config/anicat/config.toml"; then
+CONFIG_FILE="$HOME/Library/Application Support/anicat/config.toml"
+if [ ! -f "$CONFIG_FILE" ]; then
+    CONFIG_FILE="$HOME/.config/anicat/config.toml"
+fi
+
+if [ -f "$CONFIG_FILE" ]; then
+    if grep -q 'update_branch = "nightly"' "$CONFIG_FILE"; then
         UPDATE_BRANCH="nightly"
     fi
 fi
 
 if [ "$UPDATE_BRANCH" = "nightly" ]; then
-    LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases" | python3 -c "import sys, json; data=json.load(sys.stdin); print(json.dumps(data[0]) if data else '')" 2>/dev/null || curl -s "https://api.github.com/repos/$REPO/releases/latest")
+    LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases" | python3 -c "import sys, json; data=json.load(sys.stdin); nightly=next((r for r in data if r.get('tag_name', '').lower() == 'nightly'), None) if isinstance(data, list) else None; print(json.dumps(nightly) if nightly else '')" 2>/dev/null || curl -s "https://api.github.com/repos/$REPO/releases/latest")
 else
     LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases/latest")
 fi

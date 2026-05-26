@@ -39,10 +39,13 @@ class WatchHistoryService:
         completion_percentage = 0.0
         if player_result.stop_time and player_result.total_time:
             from ....core.utils.converter import calculate_completion_percentage
+
             completion_percentage = calculate_completion_percentage(
                 player_result.stop_time, player_result.total_time
             )
-            is_completed = completion_percentage >= self.config.stream.episode_complete_at
+            is_completed = (
+                completion_percentage >= self.config.stream.episode_complete_at
+            )
 
         # Determine what progress to write to local registry
         if is_completed:
@@ -59,7 +62,7 @@ class WatchHistoryService:
                 progress_value = str(media_item.user_status.progress)
             else:
                 progress_value = None
-            
+
             last_watch_pos = player_result.stop_time
             total_dur = player_result.total_time
 
@@ -106,8 +109,7 @@ class WatchHistoryService:
                     f"successfully updated remote progress with {player_result.episode}"
                 )
                 self.media_registry.update_media_index_entry(
-                    media_id=media_item.id,
-                    is_synced=True
+                    media_id=media_item.id, is_synced=True
                 )
             else:
                 logger.warning(
@@ -120,17 +122,17 @@ class WatchHistoryService:
 
     def get_episode(self, media_item: MediaItem):
         index_entry = self.media_registry.get_media_index_entry(media_item.id)
-        
+
         # 1. Get baseline from AniList (Remote)
         remote_progress = 0
         if media_item.user_status:
             remote_progress = media_item.user_status.progress or 0
-        
+
         # 2. Get baseline from Local Registry
         local_progress = remote_progress
         start_time = None
         total_duration = None
-        
+
         if index_entry:
             try:
                 local_progress = int(index_entry.progress or 0)
@@ -143,7 +145,19 @@ class WatchHistoryService:
         #    AniList is a fallback that may be up to 5 minutes stale).
         best_progress = max(local_progress, remote_progress)
 
-        # 4. Handle Completion and Increment
+        # 4. Handle stale resume positions from old registry data (before the
+        #    last_watch_position clearing bug was fixed). If AniList progress
+        #    has moved past the local value, the partial-watch data belongs to
+        #    a previous episode — discard it.
+        if start_time and local_progress < best_progress:
+            logger.debug(
+                f"Discarding stale resume position for media {media_item.id}: "
+                f"local progress={local_progress}, best progress={best_progress}"
+            )
+            start_time = None
+            total_duration = None
+
+        # 5. Handle Completion and Increment
         # C3: Only increment when we have actual evidence the current episode was completed.
         # The old code unconditionally incremented in the `else` branch, causing episodes
         # to be skipped every time the media detail page was loaded.
@@ -168,14 +182,23 @@ class WatchHistoryService:
         if episode_completed:
             best_progress += 1
 
-        # Determine the next episode to watch
+        # Determine the next episode to watch.
+        # best_progress represents the highest completed episode number.
+        # next_episode is the first unwatched episode.
         total_eps = media_item.episodes or 0
         if total_eps > 0 and best_progress >= total_eps:
             # Series is completed; start over at episode 1
             next_episode = 1
             start_time = None
         else:
-            next_episode = best_progress + 1
+            # best_progress was NOT incremented for completion → resume
+            # the in-progress episode (best_progress + 1) with its position.
+            # best_progress WAS incremented for completion → advance to
+            # the next episode (best_progress) from the beginning.
+            if episode_completed:
+                next_episode = best_progress
+            else:
+                next_episode = best_progress + 1
 
         return str(next_episode), start_time
 

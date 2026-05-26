@@ -10,7 +10,7 @@ export interface UseProgressEditorReturn {
   setEditValue: (value: string) => void;
   startEditing: (currentProgress: number) => void;
   cancelEditing: () => void;
-  commitProgress: (mediaId: number, newProgress: number) => Promise<void>;
+  commitProgress: (mediaId: number, newProgress: number) => void;
 }
 
 /**
@@ -40,10 +40,12 @@ export function useProgressEditor(): UseProgressEditorReturn {
   }, []);
 
   const commitProgress = useCallback(
-    async (mediaId: number, newProgress: number) => {
-      await mediaApi.updateStatus(mediaId, undefined, undefined, newProgress);
-      dispatchRefresh();
+    (mediaId: number, newProgress: number) => {
+      // Close the editing UI immediately — don't block on the network call
       setIsEditing(false);
+      mediaApi.updateStatus(mediaId, undefined, undefined, newProgress)
+        .then(() => dispatchRefresh())
+        .catch((err) => console.error("Failed to update progress:", err));
     },
     []
   );

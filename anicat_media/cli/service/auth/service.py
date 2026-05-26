@@ -3,7 +3,7 @@ import logging
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
- 
+
 if TYPE_CHECKING:
     from ....core.config import AppConfig
 
@@ -128,4 +128,3 @@ class AuthService:
             with AtomicWriter(self.path) as f:
                 json.dump(auth.model_dump(), f, indent=2)
             logger.info(f"Successfully saved user credentials to {self.path}")
-

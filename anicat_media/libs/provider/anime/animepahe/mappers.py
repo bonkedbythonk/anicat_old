@@ -87,7 +87,11 @@ def map_to_anime_result(
 
 
 def map_to_server(
-    episode: AnimeEpisodeInfo, translation_type: Any, quality: Any, stream_link: Any, headers: dict[str, str] | None = None
+    episode: AnimeEpisodeInfo,
+    translation_type: Any,
+    quality: Any,
+    stream_link: Any,
+    headers: dict[str, str] | None = None,
 ) -> Server:
     links = [
         EpisodeStream(
@@ -96,4 +100,6 @@ def map_to_server(
             translation_type=translation_type_map[translation_type],
         )
     ]
-    return Server(name="kwik", links=links, episode_title=episode.title, headers=headers or {})
+    return Server(
+        name="kwik", links=links, episode_title=episode.title, headers=headers or {}
+    )

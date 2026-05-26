@@ -26,12 +26,17 @@ class FzfSelector(BaseSelector):
 
         self.header_color = config.header_color.split(",")
         if config.show_header_ascii_art:
-            self.header = "\n".join(
-                [
-                    f"\033[38;2;{self.header_color[0]};{self.header_color[1]};{self.header_color[2]};m{line}\033[0m"
-                    for line in config.header_ascii_art.replace("\t", "").split("\n")
-                ]
-            ) + "\n"
+            self.header = (
+                "\n".join(
+                    [
+                        f"\033[38;2;{self.header_color[0]};{self.header_color[1]};{self.header_color[2]};m{line}\033[0m"
+                        for line in config.header_ascii_art.replace("\t", "").split(
+                            "\n"
+                        )
+                    ]
+                )
+                + "\n"
+            )
         else:
             self.header = ""
 
@@ -105,8 +110,6 @@ class FzfSelector(BaseSelector):
         default_choice = "Yes" if default else "No"
         result = self.choose(prompt, choices, header=f"Default: {default_choice}")
         return result == "Yes"
-
- 
 
     def ask(self, prompt, *, default=None):
         return inquirer.text(  # type: ignore

@@ -1,14 +1,32 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Loader2, CheckCircle2, Save, Cpu, PlayCircle, HardDrive, Globe, Activity, RotateCcw, XCircle, AlertCircle, Download } from "lucide-react";
+import { Loader2, CheckCircle2, Save, Cpu, PlayCircle, HardDrive, Globe, RotateCcw, XCircle, AlertCircle, Download } from "lucide-react";
 import { mediaApi, type HealthStatus, API_BASE_ORIGIN } from "@/lib/api";
-import { useTheme } from "@/lib/useTheme";
+import type { UiStyle } from "@/lib/useTheme";
 import ErrorBanner from "@/components/ErrorBanner";
 
 interface SettingsViewProps {
   health: HealthStatus | null;
   onUpdateStarted?: (message?: string) => void;
+}
+
+interface RegistryStats {
+  registry?: {
+    total_media_breakdown?: {
+      total?: number;
+    };
+  };
+  downloads?: {
+    downloaded?: number;
+  };
+}
+
+interface ConfigOptions {
+  stream?: {
+    quality?: string[];
+    player_type?: string[];
+  };
 }
 
 export default function SettingsView({ health, onUpdateStarted }: SettingsViewProps) {
@@ -17,7 +35,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<"general" | "player" | "downloads" | "account" | "maintenance">("general");
-  const [registryStats, setRegistryStats] = useState<any>(null);
+  const [registryStats, setRegistryStats] = useState<RegistryStats | null>(null);
   const [backingUp, setBackingUp] = useState(false);
   const [backupUrl, setBackupUrl] = useState<string | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
@@ -25,28 +43,32 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
   const [updateMessage, setUpdateMessage] = useState<{ text: string; type: "success" | "error" | null }>({ text: "", type: null });
   const [releaseNotes, setReleaseNotes] = useState<string>("");
   const [releaseUrl, setReleaseUrl] = useState<string>("");
-  const [options, setOptions] = useState<Record<string, any> | null>(null);
+  const [options, setOptions] = useState<ConfigOptions | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [autoSkip, setAutoSkip] = useState(false);
   const [theme, setTheme] = useState<"system" | "dark" | "light">("system");
-  const [colorPreset, setColorPreset] = useState<string>("seasonal");
+  const [uiStyle, setUiStyle] = useState<UiStyle>("neon-abyss");
+  const [fallingParticles, setFallingParticles] = useState(true);
   const hasUpdate = Boolean(health?.update_available || stagedHasUpdate);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedAutoSkip = localStorage.getItem("anicat_auto_skip");
-      setAutoSkip(savedAutoSkip === "true");
-
       const savedTheme = localStorage.getItem("anicat_theme") as "system" | "dark" | "light" | null;
-      if (savedTheme) {
-        setTheme(savedTheme);
-      }
+      const savedStyle = localStorage.getItem("anicat_ui_style") as UiStyle | null;
+      const savedFalling = localStorage.getItem("anicat_falling_particles");
 
-      const savedPreset = localStorage.getItem("anicat_color_preset");
-      if (savedPreset) {
-        setColorPreset(savedPreset);
-      }
+      setTimeout(() => {
+        setAutoSkip(savedAutoSkip === "true");
+        if (savedTheme) {
+          setTheme(savedTheme);
+        }
+        if (savedStyle) {
+          setUiStyle(savedStyle);
+        }
+        setFallingParticles(savedFalling !== "false");
+      }, 0);
     }
   }, []);
 
@@ -73,12 +95,32 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
     }, 300);
   };
 
-  const handleColorPresetChange = (newPreset: string) => {
+  const handleStyleChange = (newStyle: UiStyle) => {
     document.documentElement.classList.add("theme-transition");
-    setColorPreset(newPreset);
-    localStorage.setItem("anicat_color_preset", newPreset);
-    window.dispatchEvent(new StorageEvent('storage', { key: 'anicat_color_preset', newValue: newPreset }));
-    
+
+    // Apply immediately — don't wait for the StorageEvent roundtrip
+    document.documentElement.setAttribute("data-style", newStyle);
+    if (newStyle === "sakura-zen") {
+      if (!document.getElementById("font-noto-serif-jp")) {
+        const link = document.createElement("link");
+        link.id = "font-noto-serif-jp";
+        link.rel = "stylesheet";
+        link.href = "https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&display=swap";
+        document.head.appendChild(link);
+      }
+    } else if (newStyle === "retro-manga") {
+      if (!document.getElementById("font-retro-manga")) {
+        const link = document.createElement("link");
+        link.id = "font-retro-manga";
+        link.rel = "stylesheet";
+        link.href = "https://fonts.googleapis.com/css2?family=Bangers&family=Noto+Sans+JP:wght@400;700&display=swap";
+        document.head.appendChild(link);
+      }
+    }
+
+    setUiStyle(newStyle);
+    localStorage.setItem("anicat_ui_style", newStyle);
+    window.dispatchEvent(new StorageEvent("storage", { key: "anicat_ui_style", newValue: newStyle }));
     setTimeout(() => {
       document.documentElement.classList.remove("theme-transition");
     }, 300);
@@ -160,26 +202,6 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
     }
   };
 
-  const handleSave = async () => {
-    if (!config) return;
-    setSaving(true);
-    setSuccessMessage(null);
-    setErrorMessage(null);
-    try {
-      await mediaApi.updateConfig(config);
-      setSaved(true);
-      setSuccessMessage("Settings saved successfully.");
-      setTimeout(() => setSaved(false), 2000);
-    } catch (err: any) {
-      console.error("Save failed:", err);
-      // Attempt to show structured server errors if present
-      const msg = err?.message || "Unknown error";
-      setErrorMessage("Could not save settings. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   // Auto-save with debounce — saves 800ms after the last change
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const autoSave = useCallback((updatedConfig: Record<string, Record<string, unknown>>) => {
@@ -190,7 +212,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
         await mediaApi.updateConfig(updatedConfig);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Auto-save failed:", err);
         setErrorMessage("Failed to save. Try again.");
         setTimeout(() => setErrorMessage(null), 4000);
@@ -210,24 +232,6 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
       autoSave(updated);
       return updated;
     });
-  };
-
-  // Save button (manual trigger) still works for bulk/initial saves
-  const handleManualSave = async () => {
-    if (!config) return;
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    setSaving(true);
-    setErrorMessage(null);
-    try {
-      await mediaApi.updateConfig(config);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (err: any) {
-      console.error("Save failed:", err);
-      setErrorMessage("Could not save settings. Please try again.");
-    } finally {
-      setSaving(false);
-    }
   };
 
   useEffect(() => {
@@ -261,7 +265,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
     { id: "downloads", label: "Downloads", icon: HardDrive },
     { id: "account", label: "Account", icon: Globe },
     { id: "maintenance", label: "Maintenance", icon: RotateCcw },
-  ];
+  ] as const;
 
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl">
@@ -298,7 +302,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
+            onClick={() => setActiveTab(tab.id)}
             className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap transition-all flex-1 justify-center ${
               activeTab === tab.id
                 ? "bg-accent text-white shadow-lg shadow-accent/20"
@@ -332,22 +336,136 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                 </SettingField>
 
                 <SettingField
-                  label="Color Preset"
-                  description="Choose your preferred accent color."
+                  label="Style"
+                  description="Choose a complete visual skin for the interface."
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {/* Neon Abyss */}
+                    <button
+                      onClick={() => handleStyleChange("neon-abyss")}
+                      className={`relative rounded-2xl overflow-hidden border-2 transition-all text-left ${
+                        uiStyle === "neon-abyss"
+                          ? "border-[#0A84FF] shadow-lg shadow-[#0A84FF]/20"
+                          : "border-white/[0.06] hover:border-white/[0.15]"
+                      }`}
+                    >
+                      {/* Preview swatch */}
+                      <div className="h-20 w-full" style={{ background: "linear-gradient(135deg, #050505 0%, #0d0d1a 60%, #1a1025 100%)" }}>
+                        <div className="flex gap-1 p-2 h-full items-end">
+                          <div className="flex-1 h-8 rounded-lg" style={{ background: "rgba(28,28,30,0.6)", border: "1px solid rgba(255,255,255,0.08)" }} />
+                          <div className="flex-1 h-5 rounded-lg" style={{ background: "rgba(10,132,255,0.3)", border: "1px solid rgba(10,132,255,0.4)" }} />
+                        </div>
+                      </div>
+                      <div className="px-3 py-2 bg-white/[0.02]">
+                        <div className="text-xs font-bold text-white">Neon Abyss</div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">Deep black / Apple glass</div>
+                      </div>
+                      {uiStyle === "neon-abyss" && (
+                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-[#0A84FF] flex items-center justify-center">
+                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Sakura Zen */}
+                    <button
+                      onClick={() => handleStyleChange("sakura-zen")}
+                      className={`relative rounded-2xl overflow-hidden border-2 transition-all text-left ${
+                        uiStyle === "sakura-zen"
+                          ? "border-[#e8a0b4] shadow-lg shadow-[#e8a0b4]/20"
+                          : "border-white/[0.06] hover:border-white/[0.15]"
+                      }`}
+                    >
+                      {/* Preview swatch */}
+                      <div className="h-20 w-full" style={{ background: "linear-gradient(135deg, #0f0b10 0%, #1a1018 60%, #1f1222 100%)" }}>
+                        <div className="flex gap-1 p-2 h-full items-end">
+                          <div className="flex-1 h-8 rounded-xl" style={{ background: "rgba(244,180,196,0.08)", border: "1px solid rgba(232,160,180,0.2)" }} />
+                          <div className="flex-1 h-5 rounded-xl" style={{ background: "rgba(232,160,180,0.25)", border: "1px solid rgba(232,160,180,0.4)" }} />
+                        </div>
+                      </div>
+                      <div className="px-3 py-2" style={{ background: "rgba(244,180,196,0.04)" }}>
+                        <div className="text-xs font-bold" style={{ color: "#f2bfce" }}>Sakura Zen</div>
+                        <div className="text-[10px] mt-0.5" style={{ color: "#9ab89a" }}>Soft pastel / Japanese editorial</div>
+                      </div>
+                      {uiStyle === "sakura-zen" && (
+                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "#e8a0b4" }}>
+                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Retro Manga */}
+                    <button
+                      onClick={() => handleStyleChange("retro-manga")}
+                      className={`relative rounded-2xl overflow-hidden border-2 transition-all text-left ${
+                        uiStyle === "retro-manga"
+                          ? "border-[#e8272c] shadow-lg shadow-[#e8272c]/20"
+                          : "border-white/[0.06] hover:border-white/[0.15]"
+                      }`}
+                    >
+                      {/* Preview swatch */}
+                      <div className="h-20 w-full" style={{ background: "linear-gradient(135deg, #1a1510 0%, #231e18 100%)" }}>
+                        <div className="flex gap-1 p-2 h-full items-end">
+                          <div className="flex-1 h-8 rounded" style={{ background: "#ede8e0", border: "3px solid #1a1a1a" }} />
+                          <div className="flex-1 h-5 rounded" style={{ background: "#e8272c", border: "2px solid #1a1a1a" }} />
+                        </div>
+                      </div>
+                      <div className="px-3 py-2" style={{ background: "rgba(232, 39, 44, 0.04)" }}>
+                        <div className="text-xs font-bold" style={{ color: "#e8272c" }}>Retro Manga</div>
+                        <div className="text-[10px] mt-0.5 text-gray-500">Halftone dot / Manga panel style</div>
+                      </div>
+                      {uiStyle === "retro-manga" && (
+                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "#e8272c" }}>
+                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Forest Moss */}
+                    <button
+                      onClick={() => handleStyleChange("forest-moss")}
+                      className={`relative rounded-2xl overflow-hidden border-2 transition-all text-left ${
+                        uiStyle === "forest-moss"
+                          ? "border-[#10b981] shadow-lg shadow-[#10b981]/20"
+                          : "border-white/[0.06] hover:border-white/[0.15]"
+                      }`}
+                    >
+                      {/* Preview swatch */}
+                      <div className="h-20 w-full" style={{ background: "linear-gradient(135deg, #050f0b 0%, #0a1a12 60%, #123021 100%)" }}>
+                        <div className="flex gap-1 p-2 h-full items-end">
+                          <div className="flex-1 h-8 rounded-lg" style={{ background: "rgba(18,48,33,0.6)", border: "1px solid rgba(52,211,153,0.15)" }} />
+                          <div className="flex-1 h-5 rounded-lg" style={{ background: "rgba(16,185,129,0.3)", border: "1px solid rgba(16,185,129,0.4)" }} />
+                        </div>
+                      </div>
+                      <div className="px-3 py-2" style={{ background: "rgba(16, 185, 129, 0.04)" }}>
+                        <div className="text-xs font-bold" style={{ color: "#10b981" }}>Forest Moss</div>
+                        <div className="text-[10px] mt-0.5 text-gray-500">Organic green / Fresh woodland</div>
+                      </div>
+                      {uiStyle === "forest-moss" && (
+                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "#10b981" }}>
+                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                      )}
+                    </button>
+                  </div>
+                </SettingField>
+
+                <SettingField
+                  label="Falling Leaves/Petals"
+                  description="Toggle the background falling leaves/petals animation for Sakura Zen and Forest Moss themes."
                 >
                   <select
-                    value={colorPreset}
-                    onChange={(e) => handleColorPresetChange(e.target.value)}
+                    value={fallingParticles ? "true" : "false"}
+                    onChange={(e) => {
+                      const val = e.target.value === "true";
+                      setFallingParticles(val);
+                      localStorage.setItem("anicat_falling_particles", String(val));
+                      window.dispatchEvent(new Event("anicat_settings_changed"));
+                    }}
                     className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
                   >
-                    <option value="preset-default">Default (Indigo)</option>
-                    <option value="preset-sakura">Sakura (Pink)</option>
-                    <option value="preset-ocean">Ocean (Blue)</option>
-                    <option value="preset-forest">Forest (Teal)</option>
-                    <option value="preset-sunset">Sunset (Orange)</option>
-                    <option value="preset-amethyst">Amethyst (Purple)</option>
-                    <option value="preset-ruby">Ruby (Red)</option>
-                    <option value="seasonal">Seasonal (Auto-changing)</option>
+                    <option value="true">Enabled</option>
+                    <option value="false">Disabled</option>
                   </select>
                 </SettingField>
 
@@ -760,7 +878,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                       await navigator.clipboard.writeText(report);
                       setErrorMessage("Debug report copied to clipboard!");
                       setTimeout(() => setErrorMessage(null), 4000);
-                    } catch (err) {
+                    } catch {
                       setErrorMessage("Failed to generate report.");
                       setTimeout(() => setErrorMessage(null), 6000);
                     }
@@ -839,7 +957,7 @@ function LogViewer() {
       try {
         const res = await mediaApi.getLogs(50);
         setLogs(res.logs);
-      } catch (err) {
+      } catch {
         setLogs("Could not fetch logs.");
       }
     };

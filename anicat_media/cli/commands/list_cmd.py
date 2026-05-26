@@ -40,9 +40,7 @@ def _display_list(items, label):
         us = getattr(item, "user_status", None)
         prog = str(us.progress or "-") if us else "-"
         total = (
-            getattr(item, "episodes", None)
-            or getattr(item, "chapters", None)
-            or "?"
+            getattr(item, "episodes", None) or getattr(item, "chapters", None) or "?"
         )
         score = str(us.score or "-") if us and us.score is not None else "-"
         table.add_row(str(i), title, f"{prog}/{total}", score)
@@ -76,13 +74,16 @@ def _fetch_user_list(config: AppConfig, status: str, mediatype: str = "ANIME"):
     return result.media if result else []
 
 
-@click.group(short_help="View your AniList (watching, planning, completed, paused, dropped)")
-def list():
+@click.group(
+    name="list",
+    short_help="View your AniList (watching, planning, completed, paused, dropped)",
+)
+def list_group():
     """View your AniList by status."""
     pass
 
 
-@list.command(short_help="Currently watching")
+@list_group.command(short_help="Currently watching")
 @click.option("--type", "-t", default="ANIME", help="ANIME or MANGA")
 @click.pass_obj
 def watching(config: AppConfig, type: str):
@@ -92,7 +93,7 @@ def watching(config: AppConfig, type: str):
         _display_list(items, "Watching")
 
 
-@list.command(short_help="Plan to watch")
+@list_group.command(short_help="Plan to watch")
 @click.option("--type", "-t", default="ANIME", help="ANIME or MANGA")
 @click.pass_obj
 def planning(config: AppConfig, type: str):
@@ -102,7 +103,7 @@ def planning(config: AppConfig, type: str):
         _display_list(items, "Planning")
 
 
-@list.command(short_help="Completed")
+@list_group.command(short_help="Completed")
 @click.option("--type", "-t", default="ANIME", help="ANIME or MANGA")
 @click.pass_obj
 def completed(config: AppConfig, type: str):
@@ -112,7 +113,7 @@ def completed(config: AppConfig, type: str):
         _display_list(items, "Completed")
 
 
-@list.command(short_help="Paused")
+@list_group.command(short_help="Paused")
 @click.option("--type", "-t", default="ANIME", help="ANIME or MANGA")
 @click.pass_obj
 def paused(config: AppConfig, type: str):
@@ -122,7 +123,7 @@ def paused(config: AppConfig, type: str):
         _display_list(items, "Paused")
 
 
-@list.command(short_help="Dropped")
+@list_group.command(short_help="Dropped")
 @click.option("--type", "-t", default="ANIME", help="ANIME or MANGA")
 @click.pass_obj
 def dropped(config: AppConfig, type: str):

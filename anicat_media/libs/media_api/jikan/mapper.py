@@ -65,6 +65,7 @@ def _to_generic_image(jikan_images: dict) -> MediaImage:
 import re
 from ..types import MediaGenre
 
+
 def _parse_duration(duration_str: Optional[str]) -> Optional[int]:
     """Parses a Jikan duration string (e.g. '24 min per ep' or '1 hr 45 min') into minutes (int)."""
     if not duration_str:
@@ -72,21 +73,21 @@ def _parse_duration(duration_str: Optional[str]) -> Optional[int]:
     try:
         s = duration_str.lower().strip()
         total_minutes = 0
-        hr_match = re.search(r'(\d+)\s*(?:hr|hour|h)', s)
-        min_match = re.search(r'(\d+)\s*(?:min|minute|m)', s)
-        
+        hr_match = re.search(r"(\d+)\s*(?:hr|hour|h)", s)
+        min_match = re.search(r"(\d+)\s*(?:min|minute|m)", s)
+
         if hr_match:
             total_minutes += int(hr_match.group(1)) * 60
         if min_match:
             total_minutes += int(min_match.group(1))
-            
+
         if not hr_match and not min_match:
             # Fallback to extracting the first integer sequence if no units match
-            num_match = re.search(r'\d+', s)
+            num_match = re.search(r"\d+", s)
             if num_match:
                 return int(num_match.group(0))
             return None
-            
+
         return total_minutes
     except Exception:
         return None
@@ -136,7 +137,9 @@ def _to_generic_media_item(data: dict) -> MediaItem:
     )
 
 
-def to_generic_search_result(api_response: dict, original_query: Optional[str] = None) -> Optional[MediaSearchResult]:
+def to_generic_search_result(
+    api_response: dict, original_query: Optional[str] = None
+) -> Optional[MediaSearchResult]:
     """Top-level mapper for Jikan search results.
 
     If `original_query` is provided, perform a lightweight fuzzy re-ranking
@@ -182,13 +185,19 @@ def to_generic_search_result(api_response: dict, original_query: Optional[str] =
                 "blu",
                 "ray",
             }
-            tokens = [t for t in q.split() if t and t not in STOPWORDS and not t.isdigit()]
+            tokens = [
+                t for t in q.split() if t and t not in STOPWORDS and not t.isdigit()
+            ]
             q = " ".join(tokens)
             if len(q) >= 3:
                 scores: list[float] = []
                 for mi in media_items:
                     # Build a searchable candidate string from title fields
-                    parts = [mi.title.english or "", mi.title.romaji or "", mi.title.native or ""]
+                    parts = [
+                        mi.title.english or "",
+                        mi.title.romaji or "",
+                        mi.title.native or "",
+                    ]
                     cand = " ".join(parts).lower()
                     cand = re.sub(r"[^a-z0-9 ]+", " ", cand).strip()
                     # Compute similarity ratio

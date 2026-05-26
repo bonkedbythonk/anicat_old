@@ -18,4 +18,5 @@ class BaseConfig(BaseModel):
 
 class OtherConfig(BaseConfig):
     """Marker base for configs that don't need their own path expansion."""
+
     pass

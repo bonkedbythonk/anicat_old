@@ -296,8 +296,6 @@ def _replay(ctx: Context, state: State) -> MenuAction:
     return action
 
 
-
-
 def _episodes_list(ctx: Context, state: State) -> MenuAction:
     def action():
         ctx.switch.force_episodes_menu()

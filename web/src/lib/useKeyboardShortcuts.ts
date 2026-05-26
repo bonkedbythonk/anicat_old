@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 type ViewName = "home" | "manga" | "search" | "lists" | "downloads" | "library" | "settings" | "notifications" | "profile" | "schedule";
 
@@ -22,19 +22,26 @@ export default function useKeyboardShortcuts({
   onCloseDetail,
   onToggleHelp,
 }: UseKeyboardShortcutsOptions) {
+  const callbacksRef = useRef({ onNavigate, onCloseDetail, onToggleHelp });
+
+  // Sync callbacks to ref on every render
+  useEffect(() => {
+    callbacksRef.current = { onNavigate, onCloseDetail, onToggleHelp };
+  });
+
   useEffect(() => {
     // UX-01: Expose navigation to native macOS menu bar via eval bridge
     (window as any).__anicat_navigate__ = (view: ViewName) => {
       _previousView = view;
-      onNavigate(view);
+      callbacksRef.current.onNavigate(view);
     };
-    (window as any).__anicat_toggle_help__ = () => onToggleHelp();
+    (window as any).__anicat_toggle_help__ = () => callbacksRef.current.onToggleHelp();
 
     return () => {
       delete (window as any).__anicat_navigate__;
       delete (window as any).__anicat_toggle_help__;
     };
-  }, [onNavigate, onToggleHelp]);
+  }, []);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -48,51 +55,68 @@ export default function useKeyboardShortcuts({
       if (meta && e.key === "k") {
         e.preventDefault();
         _previousView = "search";
-        onNavigate("search");
+        callbacksRef.current.onNavigate("search");
         return;
       }
       if (meta && e.key === ",") {
         e.preventDefault();
         _previousView = "settings";
-        onNavigate("settings");
+        callbacksRef.current.onNavigate("settings");
         return;
       }
       if (meta && e.shiftKey && e.key === "?") {
         e.preventDefault();
-        onToggleHelp();
+        callbacksRef.current.onToggleHelp();
         return;
       }
       if (meta && e.key >= "1" && e.key <= "9") {
         e.preventDefault();
-        const views: ViewName[] = ["home", "library", "schedule", "manga", "lists", "downloads", "notifications", "profile", "settings"];
+        const views: ViewName[] = ["home", "manga", "search", "lists", "downloads", "library", "schedule", "notifications", "profile", "settings"];
         const idx = parseInt(e.key) - 1;
         if (idx < views.length) {
           _previousView = views[idx];
-          onNavigate(views[idx]);
+          callbacksRef.current.onNavigate(views[idx]);
         }
         return;
       }
 
       if (isInput) return;
 
-      // Single-key fallbacks for power users (no modifier)
+      // Single-key triggers for navigating when not typing
+      if (e.key >= "1" && e.key <= "9") {
+        const views: ViewName[] = ["home", "manga", "search", "lists", "downloads", "library", "schedule", "notifications", "profile", "settings"];
+        const idx = parseInt(e.key) - 1;
+        if (idx < views.length) {
+          _previousView = views[idx];
+          callbacksRef.current.onNavigate(views[idx]);
+        }
+        return;
+      }
+
       switch (e.key) {
         case "/":
+        case "k":
+        case "K":
           e.preventDefault();
           _previousView = "search";
-          onNavigate("search");
+          callbacksRef.current.onNavigate("search");
+          break;
+        case ",":
+          e.preventDefault();
+          _previousView = "settings";
+          callbacksRef.current.onNavigate("settings");
           break;
         case "Escape":
-          onCloseDetail();
+          callbacksRef.current.onCloseDetail();
           break;
         case "?":
           e.preventDefault();
-          onToggleHelp();
+          callbacksRef.current.onToggleHelp();
           break;
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onNavigate, onCloseDetail, onToggleHelp]);
+  }, []);
 }

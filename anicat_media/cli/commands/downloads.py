@@ -26,9 +26,7 @@ def downloads():
 
 @downloads.command(short_help="Add episodes to the download queue")
 @click.argument("media_id", type=int)
-@click.option(
-    "--episodes", "-e", required=True, help="Episode range (e.g., 1-12 or 5)"
-)
+@click.option("--episodes", "-e", required=True, help="Episode range (e.g., 1-12 or 5)")
 @click.pass_obj
 def add(config: AppConfig, media_id: int, episodes: str):
     """Add episodes from a show to the download queue."""
@@ -58,9 +56,9 @@ def add(config: AppConfig, media_id: int, episodes: str):
         click.secho(f"Failed: {e}", fg="red")
 
 
-@downloads.command(short_help="View download queue")
+@downloads.command(name="list", short_help="View download queue")
 @click.pass_obj
-def list(config: AppConfig):
+def list_queue(config: AppConfig):
     """View your download queue."""
     from ..service.registry.models import DownloadStatus
 

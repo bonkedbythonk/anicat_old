@@ -157,8 +157,8 @@ local function check_hover()
   local y = mouse.y or 0
 
   local active_hover = nil
-  if state.skip_button and in_rect(x, y, state.skip_button.x1, state.skip_button.y1, state.skip_button.x2, state.skip_button.y2) then
-    active_hover = 'skip'
+  if state.skip_bar_button and in_rect(x, y, state.skip_bar_button.x1, state.skip_bar_button.y1, state.skip_bar_button.x2, state.skip_bar_button.y2) then
+    active_hover = 'skipbar'
   elseif state.hq_button and in_rect(x, y, state.hq_button.x1, state.hq_button.y1, state.hq_button.x2, state.hq_button.y2) then
     active_hover = 'hq'
   elseif state.auto_button and in_rect(x, y, state.auto_button.x1, state.auto_button.y1, state.auto_button.x2, state.auto_button.y2) then
@@ -240,21 +240,27 @@ local function draw_controls(ass, w, h)
   local y2 = y1 + btn_h
   local gap = 10
 
-  -- Button 4: Prev (Leftmost)
+  -- Button 5: Prev (Leftmost)
   local prev_width = 65
   local prev_x1 = pad
   local prev_x2 = prev_x1 + prev_width
   state.prev_button = { x1 = prev_x1, y1 = y1, x2 = prev_x2, y2 = y2 }
 
-  -- Button 3: Next
+  -- Button 4: Next
   local next_width = 65
   local next_x1 = prev_x2 + gap
   local next_x2 = next_x1 + next_width
   state.next_button = { x1 = next_x1, y1 = y1, x2 = next_x2, y2 = y2 }
 
+  -- Button 3: Skip (always visible, pulsates when a segment is active)
+  local skip_width = 70
+  local skip_x1 = next_x2 + gap
+  local skip_x2 = skip_x1 + skip_width
+  state.skip_bar_button = { x1 = skip_x1, y1 = y1, x2 = skip_x2, y2 = y2 }
+
   -- Button 2: Auto
   local auto_width = 100
-  local auto_x1 = next_x2 + gap
+  local auto_x1 = skip_x2 + gap
   local auto_x2 = auto_x1 + auto_width
   state.auto_button = { x1 = auto_x1, y1 = y1, x2 = auto_x2, y2 = y2 }
 
@@ -284,6 +290,33 @@ local function draw_controls(ass, w, h)
   local next_fill_alpha = next_hovered and '00' or '33'
   local next_border_alpha = next_hovered and '00' or '40'
   draw_button(ass, next_x1, y1, next_x2, y2, next_bg, next_border, 'Next', 12, next_text, next_fill_alpha, next_border_alpha, 16)
+
+  -- Draw Skip Button (highlights when a skip segment is active)
+  local skip_active = state.active_skip ~= nil
+  local skip_hovered = state.hovered_btn == 'skipbar'
+  local skip_label = 'Skip'
+  if skip_active and state.active_skip.type then
+    local t = state.active_skip.type
+    if t == 'op' then skip_label = 'Skip OP'
+    elseif t == 'ed' then skip_label = 'Skip ED'
+    end
+  end
+  local skip_bg, skip_border, skip_text, skip_fill, skip_border_a
+  if skip_active then
+    -- Active skip segment: accent-bright with animated-like glow via lighter border
+    skip_bg = skip_hovered and opts.accent or '0F172A'
+    skip_border = skip_hovered and opts.accent or amber_ass and 'f59e0b' or 'eab308'
+    skip_text = skip_hovered and 'ffffff' or 'fbbf24'
+    skip_fill = skip_hovered and '00' or '33'
+    skip_border_a = skip_hovered and '00' or '50'
+  else
+    skip_bg = skip_hovered and opts.accent or '0F172A'
+    skip_border = skip_hovered and opts.accent or '1e293b'
+    skip_text = skip_hovered and 'ffffff' or '475569'
+    skip_fill = skip_hovered and '00' or '33'
+    skip_border_a = skip_hovered and '00' or '40'
+  end
+  draw_button(ass, skip_x1, y1, skip_x2, y2, skip_bg, skip_border, skip_label, 12, skip_text, skip_fill, skip_border_a, 16)
 
   -- Draw Auto Button
   local auto_enabled = (opts.auto_next == 'yes')
@@ -331,6 +364,7 @@ local function render(force)
   end
 
   state.skip_button = nil
+  state.skip_bar_button = nil
   state.hq_button = nil
   state.auto_button = nil
   state.next_button = nil
@@ -342,52 +376,8 @@ local function render(force)
 
   local ass = assdraw.ass_new()
 
-  -- Draw controls (top-right)
+  -- Draw controls bar (bottom-left)
   draw_controls(ass, w, h)
-
-  -- ======== SKIP BUTTON (bottom-right, only when active skip) ========
-  local pad = 20
-  local btn_h = 36
-  if state.active_skip then
-    local skip_label = 'Skip Intro'
-    if state.active_skip.type == 'ed' then
-      skip_label = 'Skip Outro'
-    elseif state.active_skip.type == 'op' then
-      skip_label = 'Skip Intro'
-    else
-      skip_label = 'Skip Segment'
-    end
-
-    local text_len = #skip_label
-    local btn_width = math.max(130, text_len * 9 + 48)
-    local s_x1 = w - btn_width - pad
-    local s_y1 = h - btn_h - pad - 60
-    local s_x2 = w - pad
-    local s_y2 = s_y1 + btn_h
-    state.skip_button = { x1 = s_x1, y1 = s_y1, x2 = s_x2, y2 = s_y2 }
-
-    -- Re-evaluate hover with the final skip button dimensions
-    check_hover()
-
-    local bg_color, border_color, text_color
-    local fill_alpha, border_alpha
-    local skip_hovered = state.hovered_btn == 'skip'
-    if skip_hovered then
-      bg_color = opts.accent
-      border_color = opts.accent
-      text_color = 'ffffff'
-      fill_alpha = '00'
-      border_alpha = '00'
-    else
-      bg_color = '0F172A'
-      border_color = '334155'
-      text_color = 'E2E8F0'
-      fill_alpha = '33'   -- 80% opacity
-      border_alpha = '40' -- 75% opacity
-    end
-
-    draw_button(ass, s_x1, s_y1, s_x2, s_y2, bg_color, border_color, skip_label, 14, text_color, fill_alpha, border_alpha, 18)
-  end
 
   state.overlay.data = ass.text
   state.overlay.res_x = w
@@ -412,8 +402,8 @@ local function on_left_click()
   local x = mouse.x or 0
   local y = mouse.y or 0
 
-  -- Check skip button
-  if state.skip_button and in_rect(x, y, state.skip_button.x1, state.skip_button.y1, state.skip_button.x2, state.skip_button.y2) then
+  -- Check skip bar button
+  if state.skip_bar_button and in_rect(x, y, state.skip_bar_button.x1, state.skip_bar_button.y1, state.skip_bar_button.x2, state.skip_bar_button.y2) then
     skip_current_segment()
   elseif state.hq_button and in_rect(x, y, state.hq_button.x1, state.hq_button.y1, state.hq_button.x2, state.hq_button.y2) then
     if state.shaders_on then

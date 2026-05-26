@@ -67,13 +67,17 @@ def client_and_ctx(monkeypatch):
     app = create_app(config=AppConfig())
     fake_ctx = FakeCtx(AppConfig())
     runtime_ctx._ctx = fake_ctx
-    monkeypatch.setattr(config_router, "USER_CONFIG", Path("/tmp/anicat-test-config.toml"))
+    monkeypatch.setattr(
+        config_router, "USER_CONFIG", Path("/tmp/anicat-test-config.toml")
+    )
     monkeypatch.setattr("anicat_media.cli.config.ConfigLoader", FakeLoader)
     monkeypatch.setattr(status_router, "ConfigLoader", FakeLoader)
     monkeypatch.setattr(status_router, "LOG_FILE", str(Path("/tmp/anicat-test.log")))
     monkeypatch.setattr(status_router, "_last_update_check", None)
     monkeypatch.setattr(status_router, "_cached_update_available", False)
-    monkeypatch.setattr("anicat_media.utils.subprocess.run_cmd", lambda *args, **kwargs: (0, "", ""))
+    monkeypatch.setattr(
+        "anicat_media.utils.subprocess.run_cmd", lambda *args, **kwargs: (0, "", "")
+    )
     try:
         yield TestClient(app), fake_ctx
     finally:
@@ -96,14 +100,16 @@ def test_patch_config_updates_disk_and_runtime(client_and_ctx, tmp_path, monkeyp
     config_path = tmp_path / "config.toml"
     monkeypatch.setattr(config_router, "USER_CONFIG", config_path)
 
-    response = client.patch("/api/config/", json={"stream": {"player_type": "external"}})
+    response = client.patch(
+        "/api/config/", json={"stream": {"player_type": "external"}}
+    )
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "updated"
     assert payload["config"]["stream"]["player_type"] == "external"
     assert fake_ctx.config.stream.player_type == "external"
-    assert "player_type = \"external\"" in config_path.read_text(encoding="utf-8")
+    assert 'player_type = "external"' in config_path.read_text(encoding="utf-8")
 
 
 def test_health_uses_runtime_ctx_and_loader(client_and_ctx):
@@ -126,7 +132,7 @@ def test_health_release_match_does_not_flag_update(client_and_ctx, monkeypatch):
 
     def fake_exists(path):
         if str(path).endswith(".git"):
-          return False
+            return False
         return original_exists(path)
 
     class FakeResponse:
@@ -196,7 +202,9 @@ def test_trigger_update_clears_cached_update_state(client_and_ctx, monkeypatch):
     monkeypatch.setattr(status_router, "_last_update_check", datetime.now())
     monkeypatch.setattr(platform, "system", lambda: "Darwin")
     # Simulate a release install (no .git) so the Darwin release path runs
-    monkeypatch.setattr(os.path, "exists", lambda p: False if p.endswith("/.git") else True)
+    monkeypatch.setattr(
+        os.path, "exists", lambda p: False if p.endswith("/.git") else True
+    )
     monkeypatch.setattr(status_router.subprocess, "Popen", lambda *args, **kwargs: None)
 
     response = client.post("/api/status/update")
@@ -209,7 +217,7 @@ def test_trigger_update_clears_cached_update_state(client_and_ctx, monkeypatch):
 def test_user_update_marks_planning_and_increments_version(client_and_ctx, monkeypatch):
     client, fake_ctx = client_and_ctx
 
-    async def noop_clear_playback():
+    def noop_clear_playback(*args, **kwargs):
         return None
 
     monkeypatch.setattr(status_router, "clear_playback", noop_clear_playback)
@@ -222,7 +230,7 @@ def test_user_update_marks_planning_and_increments_version(client_and_ctx, monke
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "success"
-    assert payload["synced"] is True
+    assert payload["synced"] == "pending"
     assert fake_ctx.data_version == 8
     assert fake_ctx.media_registry.updated_entries[-1]["media_id"] == 42
     assert fake_ctx.media_registry.updated_entries[-1]["status"].value == "planning"
@@ -230,10 +238,12 @@ def test_user_update_marks_planning_and_increments_version(client_and_ctx, monke
     assert fake_ctx.media_api.last_update_params.status.value == "planning"
 
 
-def test_user_delete_removes_local_entry_and_increments_version(client_and_ctx, monkeypatch):
+def test_user_delete_removes_local_entry_and_increments_version(
+    client_and_ctx, monkeypatch
+):
     client, fake_ctx = client_and_ctx
 
-    async def noop_clear_playback():
+    def noop_clear_playback(*args, **kwargs):
         return None
 
     monkeypatch.setattr(status_router, "clear_playback", noop_clear_playback)
@@ -243,7 +253,7 @@ def test_user_delete_removes_local_entry_and_increments_version(client_and_ctx, 
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "success"
-    assert payload["deleted"] is True
+    assert payload["deleted"] == "pending"
     assert fake_ctx.data_version == 8
     assert fake_ctx.media_registry.deleted_media_ids == [42]
     assert fake_ctx.media_api.last_deleted_media_id == 42
@@ -276,21 +286,26 @@ def test_hls_proxy_returns_content(client_and_ctx, monkeypatch):
             text="#EXTM3U\n#EXT-X-STREAM-INF\nsegment.ts",
             content=b"fake-ts-binary-bytes",
             status_code=200,
-            headers={"content-type": "video/mp2t"}
+            headers={"content-type": "video/mp2t"},
         )
 
     # Monkeypatch the httpx.AsyncClient.get call
     import httpx
+
     monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
 
     # 1. Test m3u8 playlist proxying (should rewrite the content)
-    response = client.get("/api/actions/proxy?url=http://example.com/playlist.m3u8&headers=%7B%7D")
+    response = client.get(
+        "/api/actions/proxy?url=http://example.com/playlist.m3u8&headers=%7B%7D"
+    )
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/x-mpegURL"
     assert "/api/actions/proxy" in response.text
 
     # 2. Test ts segment proxying (should return binary content directly)
-    response = client.get("/api/actions/proxy?url=http://example.com/segment.ts&headers=%7B%7D")
+    response = client.get(
+        "/api/actions/proxy?url=http://example.com/segment.ts&headers=%7B%7D"
+    )
     assert response.status_code == 200
     assert response.headers["content-type"] == "video/mp2t"
     assert response.content == b"fake-ts-binary-bytes"

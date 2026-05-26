@@ -1,5 +1,3 @@
-import json
-from pathlib import Path
 import httpx
 import pytest
 from unittest.mock import MagicMock, patch
@@ -29,7 +27,9 @@ def test_execute_graphql_fallback_to_expired_cache(tmp_path):
     # Patch the global cache used in execute_graphql
     with patch("anicat_media.core.utils.graphql._cache") as mock_cache:
         # get() returns the cached payload when ignoring TTL (ttl=float('inf'))
-        mock_cache.get.side_effect = lambda u, q, v, ttl: cached_payload if ttl == float("inf") else None
+        mock_cache.get.side_effect = (
+            lambda u, q, v, ttl: cached_payload if ttl == float("inf") else None
+        )
 
         response = execute_graphql(
             url=url,
@@ -79,7 +79,9 @@ def test_execute_graphql_400_does_not_use_offline_cache(tmp_path):
     variables = {}
 
     req = httpx.Request("POST", url)
-    res = httpx.Response(400, request=req, json={"errors": [{"message": "Invalid token"}]})
+    res = httpx.Response(
+        400, request=req, json={"errors": [{"message": "Invalid token"}]}
+    )
 
     mock_client = MagicMock(spec=httpx.Client)
     mock_client.post.return_value = res
@@ -116,7 +118,9 @@ def test_authenticate_retains_token_on_network_error():
     api.token = "original_secret_token"
 
     # Make get_viewer_profile raise a connection error
-    with patch.object(api, "get_viewer_profile", side_effect=httpx.ConnectError("Offline")):
+    with patch.object(
+        api, "get_viewer_profile", side_effect=httpx.ConnectError("Offline")
+    ):
         with pytest.raises(httpx.ConnectError):
             api.authenticate("new_token")
 
@@ -134,7 +138,9 @@ def test_authenticate_invalid_token_returns_none_without_raising():
     api = AniListApi(config=config, client=mock_client)
 
     req = httpx.Request("POST", "https://graphql.anilist.co")
-    res = httpx.Response(400, request=req, json={"errors": [{"message": "Invalid token"}]})
+    res = httpx.Response(
+        400, request=req, json={"errors": [{"message": "Invalid token"}]}
+    )
     err = httpx.HTTPStatusError("400 Bad Request", request=req, response=res)
 
     with patch.object(api, "get_viewer_profile", side_effect=err):

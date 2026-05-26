@@ -96,10 +96,12 @@ class MPVIPCClient:
                 if self._supports_unix_sockets() and not self._is_windows_named_pipe(
                     self.socket_path
                 ):
-                    self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) # type: ignore (type error on Windows but this code path won't be used there)
+                    self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)  # type: ignore (type error on Windows but this code path won't be used there)
                     self.socket.connect(self.socket_path)
                 else:
-                    if os.name != "nt" or not self._is_windows_named_pipe(self.socket_path):
+                    if os.name != "nt" or not self._is_windows_named_pipe(
+                        self.socket_path
+                    ):
                         raise MPVIPCError(
                             "MPV IPC requires Unix domain sockets (AF_UNIX) or a Windows named pipe path "
                             "like \\\\.\\pipe\\mpvpipe. Got: "
@@ -261,10 +263,15 @@ class PlayerState:
     def stream_url(self) -> Optional[str]:
         if server := self.server:
             preferred_quality = self.stream_config.quality
-            selected_link = next((link for link in server.links if link.quality == preferred_quality), None)
+            selected_link = next(
+                (link for link in server.links if link.quality == preferred_quality),
+                None,
+            )
             if not selected_link:
                 try:
-                    selected_link = sorted(server.links, key=lambda x: int(x.quality), reverse=True)[0]
+                    selected_link = sorted(
+                        server.links, key=lambda x: int(x.quality), reverse=True
+                    )[0]
                 except Exception:
                     selected_link = server.links[-1]
             return selected_link.link
@@ -361,7 +368,9 @@ class MpvIPCPlayer(BaseIPCPlayer):
             # Explicitly load the initial local file if registry is present (local playback)
             # or if the URL does not start with http/https. This ensures MPV bypasses the
             # idle state (especially on macOS) and plays the local file immediately.
-            is_local = self.registry is not None or not (params.url.startswith("http://") or params.url.startswith("https://"))
+            is_local = self.registry is not None or not (
+                params.url.startswith("http://") or params.url.startswith("https://")
+            )
             if is_local and self.ipc_client:
                 logger.info(f"Explicitly loading local file via IPC: {params.url}")
                 self.ipc_client.send_command(["loadfile", params.url])
@@ -383,7 +392,7 @@ class MpvIPCPlayer(BaseIPCPlayer):
                     "Non-interactive session: automatically falling back to standard playback."
                 )
                 return player.play(params)
-            
+
             if (
                 input("Failed to play with IPC. Continue without it? (Y/n): ").lower()
                 != "n"
@@ -404,14 +413,20 @@ class MpvIPCPlayer(BaseIPCPlayer):
         """
         if hasattr(socket, "AF_UNIX"):
             import secrets
+
             temp_dir = Path(tempfile.gettempdir())
             rand_hex = secrets.token_hex(8)
-            self.socket_path = str(temp_dir / f"mpv_ipc_{int(time.time())}_{rand_hex}.sock")
+            self.socket_path = str(
+                temp_dir / f"mpv_ipc_{int(time.time())}_{rand_hex}.sock"
+            )
         else:
             # Windows MPV IPC uses named pipes.
             import secrets
+
             rand_hex = secrets.token_hex(8)
-            self.socket_path = f"\\\\.\\pipe\\mpv_ipc_{int(time.time() * 1000)}_{rand_hex}"
+            self.socket_path = (
+                f"\\\\.\\pipe\\mpv_ipc_{int(time.time() * 1000)}_{rand_hex}"
+            )
         self.mpv_process = player.play_with_ipc(params, self.socket_path)
         time.sleep(1.0)
 
@@ -729,7 +744,7 @@ class MpvIPCPlayer(BaseIPCPlayer):
         if not self.ipc_client or self.player_first_run:
             self.player_first_run = False
             return
-        
+
         self.auto_next_triggered = False
 
         self.ipc_client.send_command(["seek", 0, "absolute"])
@@ -741,7 +756,9 @@ class MpvIPCPlayer(BaseIPCPlayer):
         # Send initial auto-next status to Lua overlay
         val = "yes" if self.stream_config.auto_next else "no"
         try:
-            self.ipc_client.send_command(["script-message", "anicat-set-auto-next", val])
+            self.ipc_client.send_command(
+                ["script-message", "anicat-set-auto-next", val]
+            )
         except Exception as e:
             logger.debug(f"Failed to send initial auto-next status to MPV: {e}")
 
@@ -759,7 +776,9 @@ class MpvIPCPlayer(BaseIPCPlayer):
         val = "yes" if self.stream_config.auto_next else "no"
         if self.ipc_client:
             try:
-                self.ipc_client.send_command(["script-message", "anicat-set-auto-next", val])
+                self.ipc_client.send_command(
+                    ["script-message", "anicat-set-auto-next", val]
+                )
             except Exception as e:
                 logger.debug(f"Failed to send auto-next update to MPV: {e}")
         self._show_text(

@@ -14,6 +14,7 @@ from ...session import Context, session
 from ...state import InternalDirective, MediaApiState, MenuName, State
 from anicat_media.core.theme import ICONS
 from ....service.feedback.service import console
+from rich.panel import Panel
 
 logger = logging.getLogger(__name__)
 MenuAction = Callable[[], State | InternalDirective]
@@ -33,10 +34,16 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
     # ── Navigation options ─────────────────────────────────────────────
     options: Dict[str, MenuAction] = {
         f"{ICONS.get('RECENT', icons)}Home": _create_recent_anime_action(ctx, state),
-        f"{ICONS.get('SEARCH_MANGA', icons)}Manga": _create_manga_dashboard_action(ctx, state),
+        f"{ICONS.get('SEARCH_MANGA', icons)}Manga": _create_manga_dashboard_action(
+            ctx, state
+        ),
         f"{ICONS.get('SEARCH', icons)}Search": _create_search_media_list(ctx, state),
-        f"{ICONS.get('WATCHING', icons)}My Lists": _create_tabbed_user_list_action(ctx, state),
-        f"{ICONS.get('DOWNLOADS', icons)}Downloads": _create_downloads_action(ctx, state),
+        f"{ICONS.get('WATCHING', icons)}My Lists": _create_tabbed_user_list_action(
+            ctx, state
+        ),
+        f"{ICONS.get('DOWNLOADS', icons)}Downloads": _create_downloads_action(
+            ctx, state
+        ),
         f"{ICONS.get('COMPLETED', icons)}Library": _create_user_list_action(
             ctx, state, UserMediaListStatus.COMPLETED
         ),
@@ -57,7 +64,9 @@ def main(ctx: Context, state: State) -> State | InternalDirective:
         )
         options[notif_label] = lambda: _show_notifications(ctx)
 
-    options[f"{ICONS.get('EDIT', icons)}Settings"] = lambda: InternalDirective.CONFIG_EDIT
+    options[f"{ICONS.get('EDIT', icons)}Settings"] = (
+        lambda: InternalDirective.CONFIG_EDIT
+    )
     options[f"{ICONS.get('EXIT', icons)}Exit"] = lambda: InternalDirective.EXIT
 
     if not ctx.config.anilist.token:
@@ -83,9 +92,7 @@ def _print_dashboard_summary(ctx: Context, state: State) -> None:
     """Print a high-level dashboard summary (best-effort, non-blocking)."""
     from rich.table import Table
 
-    authenticated = (
-        ctx.config.anilist.token and ctx.media_api.is_authenticated()
-    )
+    authenticated = ctx.config.anilist.token and ctx.media_api.is_authenticated()
 
     # ── Quick Stats Row ────────────────────────────────────────────────
     stats_parts = []
@@ -100,9 +107,7 @@ def _print_dashboard_summary(ctx: Context, state: State) -> None:
                 )
             )
             if watching and watching.page_info:
-                stats_parts.append(
-                    f"[cyan]{watching.page_info.total}[/cyan] watching"
-                )
+                stats_parts.append(f"[cyan]{watching.page_info.total}[/cyan] watching")
         except Exception:
             pass
 
@@ -138,8 +143,7 @@ def _print_dashboard_summary(ctx: Context, state: State) -> None:
                 airing_today = [
                     m
                     for m in schedule.media
-                    if m.next_airing
-                    and m.type == MediaType.ANIME
+                    if m.next_airing and m.type == MediaType.ANIME
                 ][:5]
                 if airing_today:
                     table = Table(
@@ -159,11 +163,7 @@ def _print_dashboard_summary(ctx: Context, state: State) -> None:
                             time_str = dt_obj.strftime("%H:%M")
                         except (ValueError, TypeError):
                             time_str = "?"
-                        title = (
-                            m.title.romaji
-                            or m.title.english
-                            or "?"
-                        )
+                        title = m.title.romaji or m.title.english or "?"
                         ep = str(m.next_airing.episode)
                         table.add_row(time_str, title, ep)
                     console.print(table)
@@ -173,9 +173,7 @@ def _print_dashboard_summary(ctx: Context, state: State) -> None:
 
     # ── Continue Watching ──────────────────────────────────────────────
     try:
-        recent = ctx.media_registry.get_recently_watched(
-            limit=5, type=MediaType.ANIME
-        )
+        recent = ctx.media_registry.get_recently_watched(limit=5, type=MediaType.ANIME)
         if recent and recent.media:
             # Filter to only show items with actual progress
             in_progress: list = []
@@ -194,9 +192,7 @@ def _print_dashboard_summary(ctx: Context, state: State) -> None:
                     title = m.title.romaji or m.title.english or "?"
                     progress = m.user_status.progress if m.user_status else 0
                     total = m.episodes or "?"
-                    console.print(
-                        f"  [dim]{progress}/{total}[/dim]  {title}"
-                    )
+                    console.print(f"  [dim]{progress}/{total}[/dim]  {title}")
                 console.print()
     except Exception:
         pass
@@ -266,9 +262,7 @@ def _create_profile_summary_action(ctx: Context) -> MenuAction:
 
                 console.print(f"\n[bold cyan]{name}[/bold cyan]")
                 console.print(f"  Anime: {anime}  |  Manga: {manga}")
-                console.print(
-                    f"  Episodes watched: {eps}  |  Chapters read: {chaps}"
-                )
+                console.print(f"  Episodes watched: {eps}  |  Chapters read: {chaps}")
                 if minutes:
                     hours = minutes // 60
                     console.print(f"  Watch time: {hours}h ({minutes}m)")
@@ -305,9 +299,7 @@ def _create_tabbed_user_list_action(ctx: Context, state: State) -> MenuAction:
             f"{ICONS.get('DROPPED', icons)}Dropped": UserMediaListStatus.DROPPED,
         }
         # Add Back option
-        tab_choices = list(tabs.keys()) + [
-            f"{ICONS.get('BACK', icons)}Back"
-        ]
+        tab_choices = list(tabs.keys()) + [f"{ICONS.get('BACK', icons)}Back"]
 
         choice = ctx.selector.choose("Select List", tab_choices)
         if not choice or "Back" in choice:
@@ -324,8 +316,7 @@ def _create_tabbed_user_list_action(ctx: Context, state: State) -> MenuAction:
                 menu_name=MenuName.RESULTS,
                 media_api=MediaApiState(
                     search_result={
-                        media_item.id: media_item
-                        for media_item in result.media
+                        media_item.id: media_item for media_item in result.media
                     },
                     search_params=search_params,
                     page_info=result.page_info,
@@ -372,11 +363,7 @@ def _create_manga_dashboard_action(ctx: Context, state: State) -> MenuAction:
                     table.add_column("Progress", justify="right")
                     for m in reading.media[:5]:
                         title = m.title.romaji or m.title.english or "?"
-                        prog = (
-                            m.user_status.progress
-                            if m.user_status
-                            else 0
-                        )
+                        prog = m.user_status.progress if m.user_status else 0
                         total = m.chapters or "?"
                         table.add_row(title, f"{prog}/{total}")
                     console.print(table)
@@ -597,8 +584,12 @@ def _create_search_manga_list(ctx: Context, state: State) -> MenuAction:
 
     return action
 
+
 def _create_user_list_action(
-    ctx: Context, state: State, status: UserMediaListStatus, type: MediaType | None = None
+    ctx: Context,
+    state: State,
+    status: UserMediaListStatus,
+    type: MediaType | None = None,
 ) -> MenuAction:
     """A factory to create menu actions for fetching user lists, handling authentication."""
 
@@ -700,14 +691,31 @@ def _manage_categories_action(ctx: Context, state: State) -> MenuAction:
 
         # All categories available in the main menu
         all_categories = [
-            "Trending", "Recent", "Watching", "Reading", "Rewatching", "Paused", 
-            "Planned", "Search", "Search Manga", "Dynamic Search", 
-            "Downloads", "Recently Updated", "Popular", "Top Scored", 
-            "Favourites", "Random", "Upcoming", "Completed", "Dropped"
+            "Trending",
+            "Recent",
+            "Watching",
+            "Reading",
+            "Rewatching",
+            "Paused",
+            "Planned",
+            "Search",
+            "Search Manga",
+            "Dynamic Search",
+            "Downloads",
+            "Recently Updated",
+            "Popular",
+            "Top Scored",
+            "Favourites",
+            "Random",
+            "Upcoming",
+            "Completed",
+            "Dropped",
         ]
-        
-        current_hidden = [h.lower() for h in (ctx.config.general.hidden_categories or [])]
-        
+
+        current_hidden = [
+            h.lower() for h in (ctx.config.general.hidden_categories or [])
+        ]
+
         # Create choices for the checkbox: enabled if NOT in hidden_categories
         choices = [
             {"name": cat, "value": cat, "enabled": cat.lower() not in current_hidden}
@@ -725,17 +733,21 @@ def _manage_categories_action(ctx: Context, state: State) -> MenuAction:
             # Hidden categories are those NOT in the selected list
             new_hidden = [cat for cat in all_categories if cat not in selected]
             ctx.config.general.hidden_categories = new_hidden
-            
+
             # Save the updated configuration
             try:
                 toml_content = generate_config_toml_from_app_model(ctx.config)
                 USER_CONFIG.write_text(toml_content, encoding="utf-8")
-                ctx.feedback.success(f"Categories updated. {len(new_hidden)} items hidden.")
+                ctx.feedback.success(
+                    f"Categories updated. {len(new_hidden)} items hidden."
+                )
             except Exception as e:
                 ctx.feedback.error(f"Failed to save categories: {e}")
-            
+
         return InternalDirective.RELOAD
+
     return action
+
 
 def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
     """Action to manually check for updates."""
@@ -745,9 +757,14 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
         feedback.clear_console()
         with feedback.progress("Checking for updates..."):
             is_available = ctx.updater.check_version(force=True)
-        
+
         from rich.table import Table
-        from anicat_media.core.constants import VERSION, LAST_COMMIT_FILE, UPDATE_STATUS_FILE, APP_DIR
+        from anicat_media.core.constants import (
+            VERSION,
+            LAST_COMMIT_FILE,
+            UPDATE_STATUS_FILE,
+            APP_DIR,
+        )
 
         # Get values from updater service
         remote_version = ctx.updater.remote_version or "Unknown"
@@ -756,14 +773,22 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
         local_hash = ctx.updater.local_hash or "Unknown"
 
         # Create detailed table
-        table = Table(title="Update Comparison", show_header=True, header_style="bold magenta", expand=True)
+        table = Table(
+            title="Update Comparison",
+            show_header=True,
+            header_style="bold magenta",
+            expand=True,
+        )
         table.add_column("Property", style="dim")
         table.add_column("Local", justify="right")
         table.add_column("Remote", justify="right")
-        
+
         table.add_row("Version", local_version, remote_version)
-        table.add_row("Commit Hash", local_hash[:8] if local_hash != "Unknown" else local_hash, 
-                      remote_hash[:8] if remote_hash != "Unknown" else remote_hash)
+        table.add_row(
+            "Commit Hash",
+            local_hash[:8] if local_hash != "Unknown" else local_hash,
+            remote_hash[:8] if remote_hash != "Unknown" else remote_hash,
+        )
 
         if is_available:
             panel = Panel(
@@ -771,29 +796,45 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
                 title="[bold green]✨ New Update Available![/bold green]",
                 subtitle="A newer version or commit is available on GitHub.",
                 border_style="yellow",
-                expand=False
+                expand=False,
             )
             console.print(panel)
-            
+
             # Check for Dev Mode
             is_dev_mode = (APP_DIR.parent / ".git").exists()
             if is_dev_mode:
-                console.print("\n[bold yellow]Dev Mode Detected:[/bold yellow] New changes are available on GitHub.")
-                console.print("Please run [bold cyan]git pull[/bold cyan] to update your local development environment.")
+                console.print(
+                    "\n[bold yellow]Dev Mode Detected:[/bold yellow] New changes are available on GitHub."
+                )
+                console.print(
+                    "Please run [bold cyan]git pull[/bold cyan] to update your local development environment."
+                )
                 feedback.pause_for_user("return to menu")
                 return state.model_copy(update={"update_available": True})
 
             from InquirerPy import inquirer
-            if inquirer.confirm(message="Would you like to update Anicat now?", default=True).execute():  # type: ignore
+
+            if inquirer.confirm(
+                message="Would you like to update Anicat now?", default=True
+            ).execute():  # type: ignore
                 console.print("\n[bold cyan]Updating Anicat...[/]")
                 import subprocess
                 import sys
                 from datetime import datetime
+
                 try:
                     start = datetime.now()
-                    with console.status("[bold cyan]Downloading and installing latest version...[/]") as status:
+                    with console.status(
+                        "[bold cyan]Downloading and installing latest version...[/]"
+                    ) as status:
                         proc = subprocess.Popen(
-                            ["uv", "tool", "install", "--force", "git+https://github.com/bonkedbythonk/anicat.git"],
+                            [
+                                "uv",
+                                "tool",
+                                "install",
+                                "--force",
+                                "git+https://github.com/bonkedbythonk/anicat.git",
+                            ],
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT,
                             text=True,
@@ -812,30 +853,42 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
                     elapsed = int((datetime.now() - start).total_seconds())
 
                     if proc.returncode != 0:
-                        raise RuntimeError(f"uv tool install failed with exit code {proc.returncode}")
+                        raise RuntimeError(
+                            f"uv tool install failed with exit code {proc.returncode}"
+                        )
 
                     # Update local hash and clear status to prevent update loop
                     if ctx.updater.remote_hash:
-                        LAST_COMMIT_FILE.write_text(ctx.updater.remote_hash, encoding="utf-8")
+                        LAST_COMMIT_FILE.write_text(
+                            ctx.updater.remote_hash, encoding="utf-8"
+                        )
                         UPDATE_STATUS_FILE.write_text("0", encoding="utf-8")
                         logger.info(f"Updated local hash to {ctx.updater.remote_hash}")
 
-                    console.print(f"\n[bold green]Anicat has been updated in {elapsed}s! Please restart the app to apply changes.[/]")
+                    console.print(
+                        f"\n[bold green]Anicat has been updated in {elapsed}s! Please restart the app to apply changes.[/]"
+                    )
                     sys.exit(0)
                 except subprocess.TimeoutExpired:
-                    console.print("\n[bold red]Update timed out after 5 minutes.[/bold red]")
-                    console.print("The download or build may be taking longer than expected.")
-                    console.print("Try upgrading manually with:\n[bold yellow]uv tool install --force git+https://github.com/bonkedbythonk/anicat.git[/bold yellow]")
+                    console.print(
+                        "\n[bold red]Update timed out after 5 minutes.[/bold red]"
+                    )
+                    console.print(
+                        "The download or build may be taking longer than expected."
+                    )
+                    console.print(
+                        "Try upgrading manually with:\n[bold yellow]uv tool install --force git+https://github.com/bonkedbythonk/anicat.git[/bold yellow]"
+                    )
                     feedback.pause_for_user("return to menu")
                 except Exception as e:
                     error_panel = Panel(
                         f"[bold red]Update Failed![/bold red]\n\n{e}\n\nPlease try running the command manually:\n[bold yellow]uv tool install --force git+https://github.com/bonkedbythonk/anicat.git[/bold yellow]",
                         title="Error",
-                        border_style="red"
+                        border_style="red",
                     )
                     console.print(error_panel)
                     feedback.pause_for_user("return to menu")
-            
+
             # Return updated state so the ✨ appears immediately
             return state.model_copy(update={"update_available": True})
         else:
@@ -844,12 +897,12 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
                 title="[bold blue]Up to Date[/bold blue]",
                 subtitle="Everything is current.",
                 border_style="green",
-                expand=False
+                expand=False,
             )
             console.print(panel)
             feedback.pause_for_user("return to menu")
             return state.model_copy(update={"update_available": False})
-            
+
     return action
 
 

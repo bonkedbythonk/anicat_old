@@ -10,14 +10,16 @@ router = APIRouter()
 
 from ..deps import get_ctx
 
+
 @router.get("/")
-async def get_config():
+def get_config():
     """Get the current application configuration."""
     ctx = get_ctx()
     return ctx.config.model_dump(mode="json")
 
+
 @router.patch("/")
-async def update_config(updates: dict):
+def update_config(updates: dict):
     """Update specific configuration fields."""
     try:
         logger.info("Received config update: %s", updates)
@@ -30,10 +32,11 @@ async def update_config(updates: dict):
             config_dict = ctx.config.model_dump()
         else:
             from ...cli.config import ConfigLoader as _ConfigLoader
+
             loader = _ConfigLoader()
             current = loader.load(allow_setup=False)
             config_dict = current.model_dump()
-        
+
         # Merge updates
         for section, fields in updates.items():
             if section in config_dict and isinstance(fields, dict):
@@ -41,23 +44,27 @@ async def update_config(updates: dict):
             else:
                 # If it's a top-level field or new section
                 config_dict[section] = fields
-        
+
         # Validate new config
         new_config = AppConfig.model_validate(config_dict)
-        
+
         # Generate TOML and save to disk
         toml_content = generate_config_toml_from_app_model(new_config)
         USER_CONFIG.write_text(toml_content, encoding="utf-8")
-        
+
         # Attempt to update the in-memory context if available
         if ctx is not None:
             try:
                 ctx.config = new_config
                 ctx.data_version += 1
             except Exception:
-                logger.info("Active context exists but failed to refresh in-memory config.")
+                logger.info(
+                    "Active context exists but failed to refresh in-memory config."
+                )
         else:
-            logger.info("No active context to refresh; updated config written to disk only.")
+            logger.info(
+                "No active context to refresh; updated config written to disk only."
+            )
 
         # If the token or the media search api was updated, reset the media_api instance and force online status
         if ctx is not None:
@@ -66,17 +73,18 @@ async def update_config(updates: dict):
                 should_reset = True
             if "general" in updates and "media_api" in updates["general"]:
                 should_reset = True
-            
+
             if should_reset:
                 ctx._media_api = None
                 ctx.is_offline = False
                 logger.info("Resetting media_api instance following config update.")
-        
+
         logger.info("Config updated successfully")
         # Return the new config so frontend can refresh state immediately
         return {"status": "updated", "config": new_config.model_dump(mode="json")}
     except Exception as e:
         import traceback
+
         tb = traceback.format_exc()
         logger.error("Failed to update config: %s\n%s", e, tb)
         # Return structured error to help frontend show messages
@@ -84,7 +92,7 @@ async def update_config(updates: dict):
 
 
 @router.get("/options")
-async def get_config_options():
+def get_config_options():
     """Return allowed option values for UI dropdowns.
 
     This keeps frontend option lists in sync with server-supported values.

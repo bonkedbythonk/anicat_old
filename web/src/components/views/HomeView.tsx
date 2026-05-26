@@ -111,16 +111,22 @@ export default function HomeView({ onSelect }: HomeViewProps) {
   const trendingQuery = useQuery({
     queryKey: ["home-trending"],
     queryFn: () => mediaApi.getTrending("ANIME"),
+    staleTime: 300_000,   // 5 min — trending doesn't change fast
+    refetchInterval: 600_000,
   });
 
   const seasonalQuery = useQuery({
     queryKey: ["home-seasonal"],
     queryFn: () => mediaApi.getSeasonal("ANIME"),
+    staleTime: 300_000,
+    refetchInterval: 600_000,
   });
 
   const newlyReleasingQuery = useQuery({
     queryKey: ["home-newly-releasing"],
     queryFn: () => mediaApi.search('', 'ANIME', 1, { status: 'RELEASING' }),
+    staleTime: 300_000,
+    refetchInterval: 600_000,
   });
 
   // 5. Smart Playlist — personalized recommendations (cached, non-blocking)
@@ -254,18 +260,8 @@ export default function HomeView({ onSelect }: HomeViewProps) {
     return null;
   }, [continueWatchingList, watchingMedia, trendingQuery.data]);
 
-  // Stable hero reference to prevent flicker on re-fetch
-  const stableHeroRef = useRef<MediaItem | null>(candidateHeroItem);
-  const heroItem = useMemo(() => {
-    const prev = stableHeroRef.current;
-    const next = candidateHeroItem;
-    if (prev && next && prev.id === next.id) return prev;
-    if (!next && prev) return prev;
-    stableHeroRef.current = next;
-    return next;
-  }, [candidateHeroItem]);
-
-  const ambientColor = useAmbientColor(heroItem?.banner_image || heroItem?.cover_image?.large);
+  const [activeHeroItem, setActiveHeroItem] = useState<MediaItem | null>(null);
+  const ambientColor = useAmbientColor(activeHeroItem?.banner_image || activeHeroItem?.cover_image?.large);
 
   // Global loading only until critical data is loaded
   if (recentlyWatchedQuery.isLoading && watchingQuery.isLoading) {
@@ -285,7 +281,14 @@ export default function HomeView({ onSelect }: HomeViewProps) {
           background: `radial-gradient(circle, ${ambientColor} 0%, transparent 70%)`
         }}
       />
-      {heroItem && <Hero item={heroItem} onSelect={onSelect} />}
+      <Hero 
+        onSelect={onSelect}
+        continueList={continueWatchingList}
+        recentReleases={recentReleasesQuery.data || []}
+        airingToday={airingTodayQuery.data?.media || []}
+        fallbackList={trendingQuery.data?.media || []}
+        onFocusChange={setActiveHeroItem}
+      />
 
       {/* UX-15: Genre mood chips */}
       <div className="flex items-center space-x-2 overflow-x-auto scrollbar-hide px-1 pt-6 lg:pt-8">

@@ -2,19 +2,57 @@
 
 import { useEffect } from "react";
 
-// Map month to preset for seasonal option
-function getSeasonPreset(): string {
-  const month = new Date().getMonth(); // 0-11
-  if (month >= 11 || month <= 1) return "preset-ocean";
-  if (month >= 2 && month <= 4) return "preset-sakura";
-  if (month >= 5 && month <= 7) return "preset-forest";
-  return "preset-sunset";
+export type UiStyle = "neon-abyss" | "sakura-zen" | "retro-manga" | "forest-moss";
+
+const SAKURA_ZEN_FONT_URL =
+  "https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&display=swap";
+
+const RETRO_MANGA_FONT_URL =
+  "https://fonts.googleapis.com/css2?family=Bangers&family=Noto+Sans+JP:wght@400;700&display=swap";
+
+/**
+ * Dynamically injects the Noto Serif JP font link when Sakura Zen is active.
+ * No-op if the link tag is already present.
+ */
+function loadSakuraFont() {
+  if (document.getElementById("font-noto-serif-jp")) return;
+  const link = document.createElement("link");
+  link.id = "font-noto-serif-jp";
+  link.rel = "stylesheet";
+  link.href = SAKURA_ZEN_FONT_URL;
+  document.head.appendChild(link);
+}
+
+/**
+ * Dynamically injects the Bangers and Noto Sans JP fonts link when Retro Manga is active.
+ */
+function loadRetroMangaFont() {
+  if (document.getElementById("font-retro-manga")) return;
+  const link = document.createElement("link");
+  link.id = "font-retro-manga";
+  link.rel = "stylesheet";
+  link.href = RETRO_MANGA_FONT_URL;
+  document.head.appendChild(link);
+}
+
+/**
+ * Applies the UI style (skin) by setting `data-style` on <html>.
+ * Reads `anicat_ui_style` from localStorage; defaults to "neon-abyss".
+ */
+function applyStyle() {
+  const style = (localStorage.getItem("anicat_ui_style") as UiStyle) || "neon-abyss";
+  document.documentElement.setAttribute("data-style", style);
+  if (style === "sakura-zen") {
+    loadSakuraFont();
+  } else if (style === "retro-manga") {
+    loadRetroMangaFont();
+  }
 }
 
 /**
  * Listens to system-level `prefers-color-scheme` changes and
  * localStorage `anicat_theme` overrides to keep `<html>` class
- * attributes in sync. Also applies color presets.
+ * attributes in sync. Also applies the active UI style (skin).
  */
 export function useTheme() {
   useEffect(() => {
@@ -36,23 +74,8 @@ export function useTheme() {
       }
     };
 
-    const applyPreset = () => {
-      const preset = localStorage.getItem("anicat_color_preset") || "preset-default";
-      
-      document.documentElement.classList.remove(
-        "preset-sakura", "preset-ocean", "preset-forest", 
-        "preset-sunset", "preset-amethyst", "preset-ruby", "preset-default"
-      );
-
-      if (preset === "seasonal") {
-        document.documentElement.classList.add(getSeasonPreset());
-      } else if (preset !== "preset-default") {
-        document.documentElement.classList.add(preset);
-      }
-    };
-
     applyTheme();
-    applyPreset();
+    applyStyle();
 
     const listener = () => {
       const theme = localStorage.getItem("anicat_theme") || "system";
@@ -75,9 +98,9 @@ export function useTheme() {
           document.documentElement.classList.remove("theme-transition");
         }, 300);
       }
-      if (e.key === "anicat_color_preset") {
+      if (e.key === "anicat_ui_style") {
         document.documentElement.classList.add("theme-transition");
-        applyPreset();
+        applyStyle();
         setTimeout(() => {
           document.documentElement.classList.remove("theme-transition");
         }, 300);

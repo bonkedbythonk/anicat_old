@@ -27,7 +27,7 @@ GRAPHQL_CACHE_DIR = APP_CACHE_DIR / "network" / "graphql"
 
 _DOMAIN_LOCKS: dict[str, threading.Lock] = {}
 _DOMAIN_LAST_REQUEST: dict[str, float] = {}
-_MIN_INTERVAL = 0.7  # seconds between requests (≈ 85 req/min)
+_MIN_INTERVAL = 0.75  # seconds between requests (80 req/min, safely under 90 limit)
 _BACKOFF_SECONDS = 1.0  # initial backoff on 429
 _MAX_BACKOFF = 8.0  # cap backoff growth
 _RETRIES_ON_429 = 2  # how many times to retry a 429 with backoff
@@ -76,7 +76,9 @@ class GraphQLCache:
         key_data = f"{url}:{query}:{json.dumps(variables, sort_keys=True)}"
         return hashlib.sha256(key_data.encode()).hexdigest()
 
-    def get(self, url: str, query: str, variables: dict, ttl: int) -> Optional[dict]:
+    def get(
+        self, url: str, query: str, variables: dict, ttl: int | float
+    ) -> Optional[dict]:
         """Retrieve a cached response if it exists and is not expired."""
         key = self._get_cache_key(url, query, variables)
         cache_file = self.cache_dir / f"{key}.json"
@@ -274,6 +276,10 @@ def execute_graphql(
             f"GraphQL request failed with status code {response.status_code}: {response.text}"
         )
         response.raise_for_status()
+
+    raise RuntimeError(
+        "Unreachable: GraphQL query execution loop ended without returning or raising."
+    )
 
 
 def invalidate_graphql_cache(url: str, graphql_file: Path, variables: dict):

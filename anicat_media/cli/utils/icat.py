@@ -20,6 +20,7 @@ from rich.text import Text
 
 console = Console()
 
+
 class PrefetchManager:
     def __init__(self, links, term_height):
         self.links = links
@@ -52,17 +53,21 @@ class PrefetchManager:
             # fetch up to 15 images ahead
             start = current_idx
             end = min(current_idx + 15, len(self.links))
-            
+
             for i in range(start, end):
                 if self.stop_event.is_set():
                     break
                 with self.lock:
                     if i not in self.cache and i not in self.futures:
-                        self.futures[i] = self.executor.submit(self._fetch_and_process, i)
-            
+                        self.futures[i] = self.executor.submit(
+                            self._fetch_and_process, i
+                        )
+
             # purge old images > 5 behind
             with self.lock:
-                purge_indices = [idx for idx in self.cache.keys() if idx < current_idx - 5]
+                purge_indices = [
+                    idx for idx in self.cache.keys() if idx < current_idx - 5
+                ]
                 for idx in purge_indices:
                     try:
                         filepath = self.cache.pop(idx)
@@ -70,8 +75,10 @@ class PrefetchManager:
                             os.remove(filepath)
                     except Exception:
                         pass
-                
-                purge_futures = [idx for idx in list(self.futures.keys()) if idx < current_idx - 5]
+
+                purge_futures = [
+                    idx for idx in list(self.futures.keys()) if idx < current_idx - 5
+                ]
                 for idx in purge_futures:
                     future = self.futures.pop(idx)
                     future.cancel()
@@ -95,7 +102,7 @@ class PrefetchManager:
 
             out_path = os.path.join(self.temp_dir, f"page_{idx}.jpg")
             img.save(out_path, format="JPEG", quality=85)
-            
+
             os.remove(raw_path)
 
             with self.lock:
@@ -112,6 +119,7 @@ class PrefetchManager:
         self.executor.shutdown(wait=False, cancel_futures=True)
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+
 def get_key():
     """Read a single keypress (including arrows)."""
     fd = sys.stdin.fileno()
@@ -126,6 +134,7 @@ def get_key():
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
+
 def draw_banner_at(msg: str, row: int):
     """Move cursor to `row`, then render a centered, cyan-bordered panel."""
     sys.stdout.write(f"\x1b[{row};1H")
@@ -133,22 +142,27 @@ def draw_banner_at(msg: str, row: int):
     panel = Panel(Align(text, align="center"), border_style="cyan", padding=(1, 2))
     console.print(panel)
 
+
 def _prepare_spread(path1, path2):
     # Stitch horizontally. We assume path1 and path2 are already resized to the same height.
     img1 = Image.open(path1).convert("RGB")
     img2 = Image.open(path2).convert("RGB")
-    
+
     target_height = img1.height
     total_width = img1.width + img2.width
-    
+
     spread = Image.new("RGB", (total_width, target_height))
     spread.paste(img1, (0, 0))
     spread.paste(img2, (img1.width, 0))
-    
-    out_path = os.path.join(os.path.dirname(path1), f"spread_{os.path.basename(path1)}_{os.path.basename(path2)}.jpg")
+
+    out_path = os.path.join(
+        os.path.dirname(path1),
+        f"spread_{os.path.basename(path1)}_{os.path.basename(path2)}.jpg",
+    )
     if not os.path.exists(out_path):
         spread.save(out_path, format="JPEG", quality=85)
     return out_path
+
 
 def icat_manga_viewer(image_links: list[str], window_title: str):
     ICAT = shutil.which("kitty")
@@ -162,7 +176,7 @@ def icat_manga_viewer(image_links: list[str], window_title: str):
     title = f"{window_title}  ({total} images)"
     show_banner = True
     show_spread = False
-    
+
     prefetcher = PrefetchManager(image_links, term_height)
 
     try:
@@ -180,7 +194,7 @@ def icat_manga_viewer(image_links: list[str], window_title: str):
                 image_height = term_height
 
             prefetcher.set_target(idx)
-            
+
             # Wait for main image
             path1 = None
             while not path1:
@@ -189,22 +203,24 @@ def icat_manga_viewer(image_links: list[str], window_title: str):
                     console.clear()
                     draw_banner_at(f"Turbo Loading page {idx + 1}...", term_height // 2)
                     time.sleep(0.1)
-                    
+
             path2 = None
             if show_spread and idx + 1 < total:
                 while not path2:
                     path2 = prefetcher.get_image(idx + 1)
                     if not path2:
                         console.clear()
-                        draw_banner_at(f"Turbo Loading spread {idx + 2}...", term_height // 2)
+                        draw_banner_at(
+                            f"Turbo Loading spread {idx + 2}...", term_height // 2
+                        )
                         time.sleep(0.1)
-            
+
             # Use Pillow to dynamically spread the images for fast ICAT draw
             if path2:
                 final_img_path = _prepare_spread(path1, path2)
             else:
                 final_img_path = path1
-            
+
             console.clear()
 
             subprocess.run(
@@ -225,7 +241,11 @@ def icat_manga_viewer(image_links: list[str], window_title: str):
 
             if show_banner:
                 spread_status = "ON" if show_spread else "OFF"
-                idx_display = f"{idx + 1}-{idx + 2}" if show_spread and idx + 1 < total else f"{idx + 1}"
+                idx_display = (
+                    f"{idx + 1}-{idx + 2}"
+                    if show_spread and idx + 1 < total
+                    else f"{idx + 1}"
+                )
                 controls = (
                     f"[{idx_display}/{total}]  Prev: [h/←]   Next: [l/→]   "
                     f"Toggle Banner: [b]   Spread: [s] ({spread_status})   Quit: [q/Ctrl-C]"

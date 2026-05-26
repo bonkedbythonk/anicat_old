@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Play, Loader2, Star, Users, Calendar, Clock, Building2, Monitor, CheckCircle2, Bookmark, Pause, XCircle, Download, BookOpen, RotateCcw, ChevronDown, ChevronUp, MoreHorizontal, Trash2, Edit2, Check } from "lucide-react";
@@ -31,22 +31,12 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPlayingNext, setIsPlayingNext] = useState(false);
   const [isTrailerVisible, setIsTrailerVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<"episodes" | "characters" | "reviews" | "recommendations">("episodes");
+  const [activeTab, setActiveTab] = useState<"episodes" | "characters" | "reviews" | "recommendations" | "seasons">("episodes");
+  // Two-step delete confirm (replaces window.confirm which is broken in Tauri WebView)
+  const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
 
-  const [isMouseOver, setIsMouseOver] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const hasTriggeredInitial = useRef(false);
-
-  const [prevId, setPrevId] = useState(item.id);
-  if (item.id !== prevId) {
-    setPrevId(item.id);
-    setIsTrailerVisible(false);
-    setIsMouseOver(false);
-  }
-
-  useEffect(() => {
-    hasTriggeredInitial.current = false;
-  }, [item.id]);
 
   const { data: config = null } = useQuery<DetailConfig | null>({
     queryKey: ["media-config", item.id],
@@ -56,6 +46,11 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
     },
     staleTime: 60_000,
   });
+
+  useEffect(() => {
+    setIsTrailerVisible(false);
+    setIsHovered(false);
+  }, [item.id]);
 
   // Initial detail load via React Query
   const {
@@ -72,23 +67,26 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
 
   // Derived values (computed from state/props, must precede hooks that consume them)
   const isManga = item.type === "MANGA" || !!(item.format && ["MANGA", "ONE_SHOT", "NOVEL"].includes(item.format));
-  const banner = fullItem.banner_image || fullItem.cover_image?.large || item.banner_image || item.cover_image?.large;
+  const banner = fullItem?.banner_image || fullItem?.cover_image?.large || item?.banner_image || item?.cover_image?.large;
   const trailer = item.trailer || fullItem?.trailer;
-  const isHovered = isMouseOver && !!(trailer?.id && trailer.site?.toLowerCase() === "youtube");
 
   // Extracted hooks
   const ambientColor = useAmbientColor(banner);
   const progressEditor = useProgressEditor();
 
-  // Tab data loaded via React Query — cached, deduped, refetched on tab switch
+  // Tab data loaded via React Query — cached, deduped, refetched on tab switch.
+  // Secondary tabs (characters, reviews, recommendations) are lazy-loaded
+  // only when the user switches to them, avoiding 4 simultaneous GraphQL
+  // requests on mount that can trigger AniList rate limits.
   const {
-    data: episodes = [],
-    isLoading: loadingEps,
+    data: episodesRaw,
+    isFetching: loadingEps,
   } = useQuery({
     queryKey: ["media-episodes", item.id],
     queryFn: () => mediaApi.getEpisodes(item.id),
-    staleTime: 60_000,
+    staleTime: 120_000,  // 2 min — episodes don't change mid-session
   });
+  const episodes: Episode[] = Array.isArray(episodesRaw) ? episodesRaw : [];
 
   const {
     data: characters = [],
@@ -99,7 +97,8 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
       const res = await mediaApi.getCharacters(item.id);
       return res.characters ?? [];
     },
-    staleTime: 60_000,
+    staleTime: 600_000,  // 10 min — cast doesn't change
+    enabled: activeTab === "characters",
   });
 
   const {
@@ -107,7 +106,8 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   } = useQuery({
     queryKey: ["media-reviews", item.id],
     queryFn: () => mediaApi.getReviews(item.id),
-    staleTime: 60_000,
+    staleTime: 600_000,  // 10 min
+    enabled: activeTab === "reviews",
   });
 
   const {
@@ -115,12 +115,32 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   } = useQuery({
     queryKey: ["media-recommendations", item.id],
     queryFn: () => mediaApi.getRecommendations(item.id),
-    staleTime: 60_000,
+    staleTime: 600_000,  // 10 min
+    enabled: activeTab === "recommendations",
   });
+
+  const {
+    data: relations = [],
+  } = useQuery({
+    queryKey: ["media-relations", item.id],
+    queryFn: () => mediaApi.getRelations(item.id),
+    staleTime: 600_000,  // 10 min — relations are static
+    enabled: activeTab === "seasons",
+  });
+
+  const [hasTriggeredInitial, setHasTriggeredInitial] = useState(false);
+
+  // Handle initial action (e.g. from Hero "Play Now" button)
+  useEffect(() => {
+    if (initialAction === "play" && !loading && config && !hasTriggeredInitial) {
+      setHasTriggeredInitial(true);
+      handlePlayNext();
+    }
+  }, [initialAction, loading, config, hasTriggeredInitial]);
 
   const isProcessingAction = useRef(false);
 
-  const handlePlayNext = useCallback(async () => {
+  const handlePlayNext = async () => {
     if (isPlayingNext || isProcessingAction.current) return;
     
     isProcessingAction.current = true;
@@ -151,30 +171,63 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
         isProcessingAction.current = false;
       }, 500);
     }
-  }, [isPlayingNext, isManga, fullItem.user_status, onRead, config, onPlayEpisode, onClose, item.id]);
-
-  // Handle initial action (e.g. from Hero "Play Now" button)
-  useEffect(() => {
-    if (initialAction === "play" && !loading && config && !hasTriggeredInitial.current) {
-      hasTriggeredInitial.current = true;
-      handlePlayNext();
-    }
-  }, [initialAction, loading, config, handlePlayNext]);
-
-  const handleUpdateProgress = async (newProgress: number) => {
-    await progressEditor.commitProgress(item.id, newProgress);
   };
 
-  const handleRemoveFromList = async () => {
-    if (confirm(`Are you sure you want to remove ${item.title.english || item.title.romaji} from your list?`)) {
-      try {
-        await mediaApi.deleteFromList(item.id);
-        dispatchRefresh();
-        onClose();
-      } catch (error) {
-        console.error("Failed to remove from list:", error);
-      }
+  const handleUpdateProgress = (newProgress: number) => {
+    progressEditor.commitProgress(item.id, newProgress);
+  };
+
+  const handleRemoveFromList = async (bypassConfirm: boolean | React.MouseEvent = false) => {
+    const shouldBypass = bypassConfirm === true;
+    if (!shouldBypass && !deleteConfirmPending) {
+      // First click: ask for confirmation inline
+      setDeleteConfirmPending(true);
+      // Auto-reset after 3s if user does nothing
+      setTimeout(() => setDeleteConfirmPending(false), 3000);
+      return;
     }
+    // Second click: confirmed — fire immediately
+    setDeleteConfirmPending(false);
+    onClose();
+
+    // Optimistic: remove from all list caches immediately
+    const qc = queryClient;
+    const listQueryKeys = [
+      ["lists"],
+      ["home-recently-watched"],
+      ["home-watching"],
+      ["library"],
+    ];
+    // Snapshot each list cache for rollback
+    interface ListPage { media?: MediaItem[]; page_info?: unknown; }
+    const snapshots: Map<string, ListPage | undefined> = new Map();
+    for (const key of listQueryKeys) {
+      snapshots.set(JSON.stringify(key), qc.getQueryData<ListPage>(key as unknown[]));
+      qc.setQueryData(key as unknown[], (old: ListPage | undefined) => {
+        if (!old?.media) return old;
+        return { ...old, media: old.media.filter((m: MediaItem) => m.id !== item.id) };
+      });
+    }
+    // Mark the media-detail cache as stale so it refetches fresh data
+    // if the user re-opens the detail (don't removeQueries — the component
+    // may still be mounted during exit animation and would crash on null data).
+    qc.invalidateQueries({ queryKey: ["media-detail", item.id] });
+
+    mediaApi.deleteFromList(item.id)
+      .then(() => {
+        // Invalidate to ensure consistency with server
+        for (const key of listQueryKeys) {
+          qc.invalidateQueries({ queryKey: key as unknown[] });
+        }
+        qc.invalidateQueries({ queryKey: ["playback-status"] });
+      })
+      .catch((error) => {
+        console.error("Failed to remove from list:", error);
+        // Rollback: restore snapshots
+        for (const [keyStr, snapshot] of snapshots) {
+          qc.setQueryData(JSON.parse(keyStr) as unknown[], snapshot);
+        }
+      });
   };
 
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -182,7 +235,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
   const appState = useAppState();
 
 
-  const title = fullItem.title.english || fullItem.title.romaji;
+  const title = fullItem?.title?.english || fullItem?.title?.romaji || item?.title?.english || item?.title?.romaji || '';
 
   return (
     <div className="fixed inset-0 z-[150] flex justify-end overflow-hidden">
@@ -202,7 +255,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
         exit={{ x: "100%" }}
         transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
         style={{ willChange: "transform" }}
-        className="relative w-full max-w-2xl h-full bg-[#050505]/95 border-l border-border shadow-[-20px_0_50px_rgba(0,0,0,0.15)] dark:shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col transform-gpu overflow-hidden"
+        className="relative w-full max-w-2xl h-full bg-[#050505]/95 border-l border-border shadow-[-20px_0_50px_rgba(0,0,0,0.15)] dark:shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col transform-gpu overflow-hidden media-detail-drawer"
       >
         {/* Ambient Glow Backdrop Lighting */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -236,25 +289,30 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
         <div className="flex-1 overflow-y-auto scrollbar-hide z-10 relative bg-transparent transform-gpu translate-z-0 will-change-scroll">
           {/* Header Banner with optional muted trailer */}
           <div 
-            className="relative h-72 w-full flex-shrink-0 cursor-pointer"
-            onMouseEnter={() => setIsMouseOver(true)}
-            onMouseMove={() => {
-              if (!isMouseOver) setIsMouseOver(true);
+            className="relative h-72 w-full flex-shrink-0 cursor-pointer forced-dark-container"
+            onMouseEnter={() => {
+              const hasTrailer = !!(trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers);
+              if (hasTrailer) {
+                setIsHovered(true);
+              }
             }}
             onMouseLeave={() => {
-              setIsMouseOver(false);
-              setIsTrailerVisible(false);
+              const hasTrailer = !!(trailer?.id && trailer.site === "youtube" && config?.stream?.autoplay_trailers);
+              if (hasTrailer) {
+                setIsHovered(false);
+                setIsTrailerVisible(false);
+              }
             }}
           >
-             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent z-[1]" />
+             <div className="absolute inset-0 z-[1] detail-banner-gradient" />
              {/* Banner image — fades out when trailer starts */}
              <img
                src={banner}
                alt={title}
-               className={`w-full h-full object-cover transition-opacity duration-1000 ${isTrailerVisible && (trailer?.id && trailer.site?.toLowerCase() === "youtube" && config?.stream?.autoplay_trailers) ? "opacity-0" : "opacity-100"}`}
+               className={`w-full h-full object-cover transition-opacity duration-1000 ${isTrailerVisible && (trailer?.id && trailer.site?.toLowerCase() === "youtube") ? "opacity-0" : "opacity-100"}`}
              />
              {/* Muted trailer iframe — mounted only on hover to prevent mixed content / API errors */}
-             {isHovered && trailer?.id && trailer.site?.toLowerCase() === "youtube" && config?.stream?.autoplay_trailers && (
+             {isHovered && trailer?.id && trailer.site?.toLowerCase() === "youtube" && (
                <>
                  <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                    <iframe
@@ -264,7 +322,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                          setIsTrailerVisible(true);
                        }, 600);
                      }}
-                     src={`https://www.youtube-nocookie.com/embed/${trailer.id}?autoplay=1&mute=1&loop=1&playlist=${trailer.id}&controls=0&showinfo=0&rel=0&iv_load_policy=3&playsinline=1&modestbranding=1&disablekb=1&fs=0`}
+                     src={`${API_BASE_ORIGIN}/api/actions/trailer/${trailer.id}`}
                      className={`absolute inset-[-15%] w-[130%] h-[130%] brightness-[0.45] pointer-events-none transition-opacity duration-1000 ${isTrailerVisible ? "opacity-100" : "opacity-0"}`}
                      allow="autoplay; encrypted-media"
                      title="Anime Trailer"
@@ -329,32 +387,31 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                 <div className="relative w-44">
                   <select
                     value={fullItem.user_status?.status?.toLowerCase() || "none"}
-                    onChange={async (e) => {
+                    onChange={(e) => {
                       const newStatus = e.target.value;
                       if (newStatus === "none") {
-                        await handleRemoveFromList();
+                        handleRemoveFromList(true);
                       } else {
                         setIsUpdatingStatus(true);
-                        try {
-                          await mediaApi.updateStatus(item.id, newStatus);
-                          queryClient.invalidateQueries({ queryKey: ["media-detail", item.id] });
-                          dispatchRefresh();
-                        } catch (err) {
-                          console.error("Failed to update status:", err);
-                        } finally {
-                          setIsUpdatingStatus(false);
-                        }
+                        // Fire-and-forget: don't block the UI on the network call
+                        mediaApi.updateStatus(item.id, newStatus)
+                          .then(() => {
+                            queryClient.invalidateQueries({ queryKey: ["media-detail", item.id] });
+                            queryClient.invalidateQueries({ queryKey: ["lists"] });
+                          })
+                          .catch((err) => console.error("Failed to update status:", err))
+                          .finally(() => setIsUpdatingStatus(false));
                       }
                     }}
                     disabled={isUpdatingStatus}
                     className="w-full bg-foreground/5 border border-border text-foreground hover:bg-foreground/10 rounded-2xl pl-4 pr-10 py-3.5 text-sm font-bold focus:outline-none focus:border-accent active:scale-95 transition-all cursor-pointer appearance-none"
                   >
-                    <option value="none" className="bg-[#050505] text-muted-foreground">-- Add to List --</option>
-                    <option value="planning" className="bg-[#050505] text-white">Planning</option>
-                    <option value="watching" className="bg-[#050505] text-white">{isManga ? "Reading" : "Watching"}</option>
-                    <option value="completed" className="bg-[#050505] text-white">Completed</option>
-                    <option value="paused" className="bg-[#050505] text-white">Paused</option>
-                    <option value="dropped" className="bg-[#050505] text-white">Dropped</option>
+                    <option value="none" className="text-muted-foreground">-- Add to List --</option>
+                    <option value="planning" className="text-foreground">Planning</option>
+                    <option value="watching" className="text-foreground">{isManga ? "Reading" : "Watching"}</option>
+                    <option value="completed" className="text-foreground">Completed</option>
+                    <option value="paused" className="text-foreground">Paused</option>
+                    <option value="dropped" className="text-foreground">Dropped</option>
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
                     <ChevronDown size={16} />
@@ -363,8 +420,12 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
 
                 <button 
                   onClick={handleRemoveFromList}
-                  title="Remove from List"
-                  className="p-3.5 bg-red-500/10 hover:bg-red-500/20 text-red-500/70 hover:text-red-500 rounded-2xl transition-all border border-red-500/20 active:scale-95"
+                  title={deleteConfirmPending ? "Click again to confirm removal" : "Remove from List"}
+                  className={`p-3.5 rounded-2xl transition-all border active:scale-95 ${
+                    deleteConfirmPending
+                      ? "bg-red-500/80 text-white border-red-500 scale-105 animate-pulse"
+                      : "bg-red-500/10 hover:bg-red-500/20 text-red-500/70 hover:text-red-500 border-red-500/20"
+                  }`}
                 >
                   <Trash2 size={22} />
                 </button>
@@ -446,14 +507,14 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
             {fullItem.genres && (
               <div className="flex flex-wrap gap-2">
                 {fullItem.genres.map(g => (
-                  <span key={g} className="px-3 py-1 bg-foreground/5 border border-border rounded-lg text-[11px] font-bold text-muted-foreground">{g}</span>
+                  <span key={g} className="px-3 py-1 bg-foreground/5 border border-border rounded-lg text-[11px] font-bold text-muted-foreground genre-chip">{g}</span>
                 ))}
               </div>
             )}
 
             {/* Synopsis with Read More */}
             {fullItem.description && (
-              <div className="space-y-3 p-6 rounded-2xl bg-foreground/[0.02] border border-border">
+              <div className="space-y-3 p-6 rounded-2xl bg-foreground/[0.02] border border-border synopsis-container">
                 <h3 className="text-[10px] font-black text-accent uppercase tracking-[0.2em]">Synopsis</h3>
                 <div className="relative">
                   <p 
@@ -461,7 +522,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                     dangerouslySetInnerHTML={{ __html: fullItem.description }} 
                   />
                   {!isExpanded && fullItem.description.length > 200 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none synopsis-fade" />
                   )}
                 </div>
                 {fullItem.description.length > 200 && (
@@ -478,7 +539,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
 
             {/* Next Episode Banner */}
             {!isManga && fullItem.next_airing && (
-              <div className="bg-accent/5 border border-accent/10 rounded-2xl p-5 flex items-center space-x-4">
+              <div className="bg-accent/5 border border-accent/10 rounded-2xl p-5 flex items-center space-x-4 next-episode-banner">
                 <div className="p-3 bg-accent/10 rounded-xl text-accent shadow-inner"><Calendar size={20} /></div>
                 <div>
                   <div className="text-[10px] font-bold text-accent uppercase tracking-widest">Next Episode</div>
@@ -492,7 +553,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
             {/* Tabs */}
             <div className="space-y-6">
               <div className="flex space-x-1 p-1 bg-foreground/5 border border-border rounded-2xl">
-                {(["episodes", "characters", "reviews", "recommendations"] as const).map((tab) => (
+                {(["episodes", "characters", "reviews", "recommendations", "seasons"] as const).map((tab) => (
                   <button 
                     key={tab} 
                     onClick={() => setActiveTab(tab)} 
@@ -519,6 +580,15 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                     playerType={config?.stream?.player_type}
                     onUnwatch={(num) => handleUpdateProgress(Number(num) - 1)} 
                     nextAiringEpisode={fullItem.next_airing?.episode}
+                    onRetry={async () => {
+                      // Clear the backend provider cache first, THEN invalidate
+                      // the React Query cache so the refetch hits a fresh search.
+                      await mediaApi.clearProviderCache(item.id).catch(() => {});
+                      queryClient.invalidateQueries({
+                        queryKey: ["media-episodes", item.id],
+                        refetchType: "all",
+                      });
+                    }}
                   />
                 )}
                 {activeTab === "characters" && (
@@ -529,7 +599,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                       </div>
                     ) : characters.length > 0 ? (
                       characters.map(char => (
-                        <div key={char.id || char.name.full} className="flex items-center space-x-3 p-3 bg-foreground/[0.02] border border-border rounded-2xl hover:bg-foreground/[0.04] transition-colors group">
+                        <div key={char.id || char.name.full} className="flex items-center space-x-3 p-3 bg-foreground/[0.02] border border-border rounded-2xl hover:bg-foreground/[0.04] transition-colors group character-card">
                           {char.image?.large && <img src={char.image.large} alt={char.name.full} className="w-14 h-14 rounded-xl object-cover shadow-lg" />}
                           <div className="min-w-0">
                             <div className="text-[13px] font-bold text-foreground group-hover:text-accent transition-colors truncate">{char.name.full}</div>
@@ -546,8 +616,8 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                   <div className="space-y-4">
                     {reviews.length > 0 ? (
                       reviews.map((rev, idx) => (
-                        <div key={idx} className="p-5 bg-foreground/[0.02] border border-border rounded-2xl space-y-3">
-                           {rev.summary && <div className="text-xs font-black text-foreground/90 tracking-wide uppercase italic leading-snug">&quot;{rev.summary}&quot;</div>}
+                        <div key={idx} className="p-5 bg-foreground/[0.02] border border-border rounded-2xl space-y-3 review-card">
+                           {rev.summary && <div className="text-xs font-black text-foreground/90 tracking-wide uppercase italic leading-snug">"{rev.summary}"</div>}
                            <div className="text-xs text-muted-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: rev.body.substring(0, 300) + '...' }} />
                         </div>
                       ))
@@ -566,6 +636,63 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                         <div className="text-[11px] font-bold text-muted-foreground line-clamp-1 group-hover:text-foreground transition-colors">{rec.title.english || rec.title.romaji}</div>
                       </button>
                     ))}
+                  </div>
+                )}
+                {activeTab === "seasons" && (
+                  <div className="space-y-3">
+                    {relations.length > 0 ? (
+                      relations.map(rel => {
+                        const relLabel = rel.relation_type
+                          ? rel.relation_type.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+                          : "Related";
+                        const isSequel = rel.relation_type === "SEQUEL";
+                        const isPrequel = rel.relation_type === "PREQUEL";
+                        const isMainSeason = isSequel || isPrequel;
+                        return (
+                          <button
+                            key={rel.id}
+                            onClick={() => appState.selectItem(rel)}
+                            className={`w-full flex items-center space-x-4 p-3 rounded-2xl border transition-all text-left group ${
+                              isMainSeason
+                                ? "bg-accent/[0.04] border-accent/20 hover:bg-accent/[0.08]"
+                                : "bg-foreground/[0.02] border-border hover:bg-foreground/[0.04]"
+                            }`}
+                          >
+                            <div className={`w-12 h-16 rounded-lg overflow-hidden flex-shrink-0 border ${isMainSeason ? "border-accent/30" : "border-border"}`}>
+                              {rel.cover_image?.large ? (
+                                <img src={rel.cover_image.large} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-foreground/5 flex items-center justify-center text-muted-foreground text-[8px] font-bold">N/A</div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center space-x-2">
+                                <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                                  isMainSeason ? "bg-accent/15 text-accent" : "bg-foreground/10 text-muted-foreground"
+                                }`}>
+                                  {relLabel}
+                                </span>
+                                {rel.format && (
+                                  <span className="text-[9px] font-medium text-muted-foreground/60">{rel.format.replace(/_/g, " ")}</span>
+                                )}
+                              </div>
+                              <div className="text-[12px] font-bold text-foreground group-hover:text-accent transition-colors truncate mt-1">
+                                {rel.title.english || rel.title.romaji}
+                              </div>
+                              <div className="flex items-center space-x-3 mt-1 text-[10px] text-muted-foreground">
+                                {rel.episodes && <span>{rel.episodes} episodes</span>}
+                                {rel.status && <span className="capitalize">{rel.status.toLowerCase().replace(/_/g, " ")}</span>}
+                              </div>
+                            </div>
+                            <div className="text-muted-foreground/30 flex-shrink-0">
+                              <ChevronDown size={16} className="rotate-[-90deg]" />
+                            </div>
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="py-20 text-center text-muted-foreground text-xs font-bold">No related seasons found.</div>
+                    )}
                   </div>
                 )}
               </div>

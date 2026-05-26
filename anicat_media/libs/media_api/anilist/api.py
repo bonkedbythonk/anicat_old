@@ -526,7 +526,8 @@ class AniListApi(BaseApiClient):
 
         try:
             response = execute_graphql(
-                ANILIST_ENDPOINT, self.http_client, gql.GET_NOTIFICATIONS, {}
+                ANILIST_ENDPOINT, self.http_client, gql.GET_NOTIFICATIONS, {},
+                use_cache=True, ttl=60,  # 1-minute cache to avoid re-fetching on tab switches
             )
             if response and "errors" not in response.json():
                 return mapper.to_generic_notifications(response.json())

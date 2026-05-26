@@ -145,19 +145,19 @@ class Context:
         if old_provider and old_provider != new_provider and self._media_registry:
             try:
                 count = 0
-                for record in self._media_registry.iter_all():
+                for record in self._media_registry.get_all_media_records():
                     if (
                         record.provider_mapping
                         and new_provider in record.provider_mapping
                     ):
                         del record.provider_mapping[new_provider]
+                        self._media_registry.save_media_record(record)
                         count += 1
                 if count > 0:
                     logger.info(
                         f"Cleared {count} stale cached provider IDs for provider "
                         f"'{new_provider}' — media will re-search on next access."
                     )
-                    self._media_registry.save_all()
             except Exception as e:
                 logger.warning(f"Failed to clear stale provider cache: {e}")
 
@@ -230,7 +230,9 @@ class Context:
                             f"Authentication request failed (HTTP {status_code}): {e}"
                         )
             else:
-                logger.warning("You are not logged in. Please run 'anicat login' to continue.")
+                logger.warning(
+                    "You are not logged in. Please run 'anicat login' to continue."
+                )
             self._media_api = media_api
 
         return self._media_api
@@ -298,7 +300,6 @@ class Context:
 
             self._auth = AuthService(self.config.general.media_api)
         return self._auth
-
 
     @property
     def updater(self) -> "UpdaterService":
@@ -491,9 +492,7 @@ class Session:
             # Show a clean error message, not a traceback
             console = __import__("rich.console", fromlist=["Console"]).Console()
             console.print()
-            console.print(
-                f"[bold red]An unexpected error occurred:[/bold red] {e}"
-            )
+            console.print(f"[bold red]An unexpected error occurred:[/bold red] {e}")
             console.print(
                 "[dim]Your session state has been saved. Restart with"
                 " [bold]anicat anilist --resume[/bold] to recover.[/dim]"

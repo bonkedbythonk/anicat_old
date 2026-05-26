@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 console = Console()
 
 
-
 class InquirerSelector(BaseSelector):
     def __init__(self, config: Optional["AppConfig"] = None):
         self.config = config
@@ -25,11 +24,11 @@ class InquirerSelector(BaseSelector):
             header_color = self.config.fzf.header_color.split(",")
             color_str = f"rgb({header_color[0]},{header_color[1]},{header_color[2]})"
             lines.append(f"[{color_str}]{self.config.fzf.header_ascii_art}[/]")
-            lines.append("") # Spacing
+            lines.append("")  # Spacing
 
         if header:
             lines.append(f"[bold cyan]{header}[/bold cyan]")
-            
+
         return "\n".join(lines)
 
     def _render_header(self, header: Optional[str] = None):
@@ -51,7 +50,7 @@ class InquirerSelector(BaseSelector):
     def choose(self, prompt, choices, *, preview=None, header=None):
         self._render_header(header)
         prompt = self._get_clean_prompt(prompt)
-        
+
         return inquirer.fuzzy(  # type: ignore
             message=prompt,
             choices=choices,
@@ -111,7 +110,7 @@ class InquirerSelector(BaseSelector):
         initial_results: list[str] | None = None,
     ) -> str | None:
         self._render_header(header)
-        
+
         return inquirer.fuzzy(  # type: ignore
             message=prompt,
             choices=initial_results or [],
@@ -124,6 +123,7 @@ class InquirerSelector(BaseSelector):
 
 if __name__ == "__main__":
     import sys
+
     try:
         selector = InquirerSelector()
         choice = selector.choose("Test", ["a", "b"])

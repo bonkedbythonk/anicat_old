@@ -14,14 +14,20 @@ def system():
 def worker(config):
     """Start the background worker for notifications and downloads."""
     from .worker import worker as _worker
-    _worker.invoke(click.get_current_context().parent)
+
+    parent_ctx = click.get_current_context().parent
+    assert parent_ctx is not None, "Parent click context is required"
+    _worker.invoke(parent_ctx)
 
 
 @system.command(short_help="Stop the dashboard server")
 def stop():
     """Stop the running Anicat Dashboard server."""
     from .stop import stop as _stop
-    _stop.invoke(click.get_current_context().parent)
+
+    parent_ctx = click.get_current_context().parent
+    assert parent_ctx is not None, "Parent click context is required"
+    _stop.invoke(parent_ctx)
 
 
 @system.command(short_help="Generate shell completions")
@@ -31,10 +37,14 @@ def stop():
 def completions(bash=False, zsh=False, fish=False):
     """Generate shell completion scripts for your terminal."""
     from .completions import completions as _completions
+
     ctx = click.get_current_context()
     # Build args
     args = []
-    if bash: args.append("--bash")
-    if zsh: args.append("--zsh")
-    if fish: args.append("--fish")
+    if bash:
+        args.append("--bash")
+    if zsh:
+        args.append("--zsh")
+    if fish:
+        args.append("--fish")
     ctx.invoke(_completions)

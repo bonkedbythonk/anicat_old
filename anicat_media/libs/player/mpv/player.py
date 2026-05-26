@@ -304,7 +304,7 @@ class MpvPlayer(BasePlayer):
         Returns:
             list[str]: List of MPV CLI arguments.
         """
-        mpv_args = []
+        mpv_args = ["--no-resume-playback"]
 
         if sys.platform == "darwin":
             mpv_args.append("--vo=gpu")
@@ -423,6 +423,11 @@ class MpvPlayer(BasePlayer):
         auto_next = getattr(params, "auto_next", False)
         val = "yes" if auto_next else "no"
         mpv_args.append(f"--script-opts-append=anicat_ui-auto_next={val}")
+
+        # Pass the UI accent color to the MPV skin so buttons match the theme.
+        # Default matches the CSS --accent-color from globals.css (neon-abyss).
+        accent = getattr(params, "accent", None) or "0A84FF"
+        mpv_args.append(f"--script-opts-append=anicat_ui-accent={accent}")
 
         if params.headers:
             # mpv prefers no spaces after commas and colons in http-header-fields

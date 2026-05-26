@@ -85,7 +85,9 @@ def options_from_model(model: type[BaseModel], parent_name: str = "") -> Callabl
                 kwargs["default"] = field_info.default
                 kwargs["show_default"] = True
             if parent_name:
-                cli_name = f"{cli_name}/--no-{parent_name}-{field_name.replace('_', '-')}"
+                cli_name = (
+                    f"{cli_name}/--no-{parent_name}-{field_name.replace('_', '-')}"
+                )
             elif is_external_tool:
                 cli_name = (
                     f"{cli_name}/--no-{model_name}-{field_name.replace('_', '-')}"

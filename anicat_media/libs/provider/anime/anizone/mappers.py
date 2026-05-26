@@ -109,7 +109,7 @@ def map_to_search_results(raw_html: str) -> Optional[SearchResults]:
                     sub=[str(i) for i in range(1, card["ep_count"] + 1)]
                 )
                 if card["ep_count"]
-                else AnimeEpisodes(),
+                else AnimeEpisodes(sub=[]),
                 year=card["year"],
                 status=card["status"],
             )

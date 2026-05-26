@@ -17,9 +17,14 @@ import {
   PlayCircle,
   RotateCcw,
   Calendar,
-  Bell
+  Bell,
+  Sun,
+  Moon,
+  Palette,
+  Leaf
 } from "lucide-react";
 import { mediaApi } from "@/lib/api";
+import type { UiStyle } from "@/lib/useTheme";
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -31,6 +36,20 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
   const [token, setToken] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Theme/style state
+  const [selectedTheme, setSelectedTheme] = useState<"system" | "dark" | "light">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("anicat_theme") as any) || "system";
+    }
+    return "system";
+  });
+  const [selectedStyle, setSelectedStyle] = useState<UiStyle>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("anicat_ui_style") as UiStyle) || "neon-abyss";
+    }
+    return "neon-abyss";
+  });
 
   // Playback customization states
   const [config, setConfig] = useState<any>(null);
@@ -64,6 +83,49 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
     }
   }, []);
 
+  // Actively apply theme/style as selections are made
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    localStorage.setItem("anicat_theme", selectedTheme);
+    localStorage.setItem("anicat_ui_style", selectedStyle);
+
+    // Apply theme class
+    document.documentElement.classList.remove("light", "dark", "system");
+    document.documentElement.classList.add(selectedTheme);
+    if (selectedTheme === "light" || (selectedTheme === "system" && window.matchMedia("(prefers-color-scheme: light)").matches)) {
+      document.documentElement.classList.add("light");
+    } else {
+      document.documentElement.classList.add("dark");
+    }
+
+    // Apply style
+    document.documentElement.setAttribute("data-style", selectedStyle);
+    
+    // Load fonts if needed
+    if (selectedStyle === "sakura-zen") {
+      if (!document.getElementById("font-noto-serif-jp")) {
+        const link = document.createElement("link");
+        link.id = "font-noto-serif-jp";
+        link.rel = "stylesheet";
+        link.href = "https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&display=swap";
+        document.head.appendChild(link);
+      }
+    } else if (selectedStyle === "retro-manga") {
+      if (!document.getElementById("font-retro-manga")) {
+        const link = document.createElement("link");
+        link.id = "font-retro-manga";
+        link.rel = "stylesheet";
+        link.href = "https://fonts.googleapis.com/css2?family=Bangers&family=Noto+Sans+JP:wght@400;700&display=swap";
+        document.head.appendChild(link);
+      }
+    }
+  }, [selectedTheme, selectedStyle]);
+
+  const handleApplyTheme = () => {
+    setStep(3);
+  };
+
   const handleSavePlaybackSettings = async () => {
     setSaving(true);
     setError(null);
@@ -76,7 +138,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
         }
       });
       localStorage.setItem("anicat_auto_skip", String(localAutoSkip));
-      setStep(3); // Advance to AniList connection step
+      setStep(4); // Advance to AniList connection step
     } catch (err: any) {
       setError("Failed to save playback preferences.");
     } finally {
@@ -129,7 +191,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
             <img
               src="/anicat_logo.png"
               alt="Anicat"
-              className="w-32 h-auto dark:[filter:brightness(0)_invert(1)] [filter:invert(1)]"
+              className="w-32 h-auto anicat-logo"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -176,6 +238,168 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
     },
     {
       id: 2,
+      title: "Choose Your Look",
+      subtitle: "Pick a theme and style that suits you",
+      content: (
+        <div className="space-y-6 animate-fade-in">
+          {/* Theme selection */}
+          <div className="space-y-3">
+            <label className="text-xs font-bold text-gray-400 uppercase tracking-wider text-left block">Theme</label>
+            <div className="grid grid-cols-3 gap-3">
+              <button
+                onClick={() => setSelectedTheme("system")}
+                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${
+                  selectedTheme === "system"
+                    ? "border-accent bg-accent/10 shadow-lg shadow-accent/10"
+                    : "border-white/[0.06] hover:border-white/[0.15] bg-white/[0.02]"
+                }`}
+              >
+                <Monitor size={24} className={selectedTheme === "system" ? "text-accent" : "text-gray-400"} />
+                <span className={`text-xs font-bold ${selectedTheme === "system" ? "text-accent" : "text-gray-400"}`}>System</span>
+              </button>
+              <button
+                onClick={() => setSelectedTheme("dark")}
+                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${
+                  selectedTheme === "dark"
+                    ? "border-accent bg-accent/10 shadow-lg shadow-accent/10"
+                    : "border-white/[0.06] hover:border-white/[0.15] bg-white/[0.02]"
+                }`}
+              >
+                <Moon size={24} className={selectedTheme === "dark" ? "text-accent" : "text-gray-400"} />
+                <span className={`text-xs font-bold ${selectedTheme === "dark" ? "text-accent" : "text-gray-400"}`}>Dark</span>
+              </button>
+              <button
+                onClick={() => setSelectedTheme("light")}
+                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${
+                  selectedTheme === "light"
+                    ? "border-accent bg-accent/10 shadow-lg shadow-accent/10"
+                    : "border-white/[0.06] hover:border-white/[0.15] bg-white/[0.02]"
+                }`}
+              >
+                <Sun size={24} className={selectedTheme === "light" ? "text-accent" : "text-gray-400"} />
+                <span className={`text-xs font-bold ${selectedTheme === "light" ? "text-accent" : "text-gray-400"}`}>Light</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Style selection */}
+          <div className="space-y-3">
+            <label className="text-xs font-bold text-gray-400 uppercase tracking-wider text-left block">Style</label>
+            <div className="grid grid-cols-1 gap-2">
+              {/* Neon Abyss */}
+              <button
+                onClick={() => setSelectedStyle("neon-abyss")}
+                className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${
+                  selectedStyle === "neon-abyss"
+                    ? "border-[#0A84FF] bg-[#0A84FF]/10 shadow-lg shadow-[#0A84FF]/10"
+                    : "border-white/[0.06] hover:border-white/[0.15] bg-white/[0.02]"
+                }`}
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #050505, #0d0d1a)" }}>
+                  <Sparkles size={18} className="text-[#0A84FF]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-white">Neon Abyss</div>
+                  <div className="text-[11px] text-gray-500">Deep black / Apple glass — the classic Anicat look</div>
+                </div>
+                {selectedStyle === "neon-abyss" && (
+                  <div className="w-5 h-5 rounded-full bg-[#0A84FF] flex items-center justify-center shrink-0">
+                    <svg width="10" height="10" viewBox="0 0 8 8" fill="none"><path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                )}
+              </button>
+
+              {/* Sakura Zen */}
+              <button
+                onClick={() => setSelectedStyle("sakura-zen")}
+                className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${
+                  selectedStyle === "sakura-zen"
+                    ? "border-[#e8a0b4] bg-[#e8a0b4]/10 shadow-lg shadow-[#e8a0b4]/10"
+                    : "border-white/[0.06] hover:border-white/[0.15] bg-white/[0.02]"
+                }`}
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #130910, #1f1222)" }}>
+                  <Palette size={18} className="text-[#e8a0b4]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-white">Sakura Zen</div>
+                  <div className="text-[11px] text-gray-500">Soft pastel / Japanese editorial — calm and elegant</div>
+                </div>
+                {selectedStyle === "sakura-zen" && (
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: "#e8a0b4" }}>
+                    <svg width="10" height="10" viewBox="0 0 8 8" fill="none"><path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                )}
+              </button>
+
+              {/* Retro Manga */}
+              <button
+                onClick={() => setSelectedStyle("retro-manga")}
+                className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${
+                  selectedStyle === "retro-manga"
+                    ? "border-[#e8272c] bg-[#e8272c]/10 shadow-lg shadow-[#e8272c]/10"
+                    : "border-white/[0.06] hover:border-white/[0.15] bg-white/[0.02]"
+                }`}
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #191410, #2a221c)" }}>
+                  <BookOpen size={18} className="text-[#e8272c]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-white">Retro Manga</div>
+                  <div className="text-[11px] text-gray-500">Aged paper / halftone dots — vintage comic aesthetic</div>
+                </div>
+                {selectedStyle === "retro-manga" && (
+                  <div className="w-5 h-5 rounded-full bg-[#e8272c] flex items-center justify-center shrink-0">
+                    <svg width="10" height="10" viewBox="0 0 8 8" fill="none"><path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                )}
+              </button>
+
+              {/* Forest Moss */}
+              <button
+                onClick={() => setSelectedStyle("forest-moss")}
+                className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${
+                  selectedStyle === "forest-moss"
+                    ? "border-[#10b981] bg-[#10b981]/10 shadow-lg shadow-[#10b981]/10"
+                    : "border-white/[0.06] hover:border-white/[0.15] bg-white/[0.02]"
+                }`}
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #050f0b, #0a1a12)" }}>
+                  <Leaf size={18} className="text-[#10b981]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-white">Forest Moss</div>
+                  <div className="text-[11px] text-gray-500">Organic green / Fresh woodland — immersive and clean</div>
+                </div>
+                {selectedStyle === "forest-moss" && (
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: "#10b981" }}>
+                    <svg width="10" height="10" viewBox="0 0 8 8" fill="none"><path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setStep(1)}
+              className="flex-1 bg-white/[0.04] hover:bg-white/[0.08] text-white font-bold py-4 rounded-2xl transition-all active:scale-95 border border-white/[0.08]"
+            >
+              Back
+            </button>
+            <button
+              onClick={handleApplyTheme}
+              className="flex-[2] bg-accent hover:bg-accent-light text-white font-bold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-accent/20 active:scale-95"
+            >
+              <span>Continue</span>
+              <ArrowRight size={20} />
+            </button>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 3,
       title: "Set Up Playback",
       subtitle: "Choose how you want to watch",
       content: (
@@ -247,11 +471,18 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
             <p className="text-red-400 text-xs font-semibold animate-shake">{error}</p>
           )}
 
-          <div className="flex flex-col space-y-3 pt-2">
+          <div className="flex gap-3 pt-2">
+            <button 
+              onClick={() => setStep(2)}
+              disabled={saving}
+              className="flex-1 bg-white/[0.04] hover:bg-white/[0.08] text-white font-bold py-4 rounded-2xl transition-all active:scale-95 border border-white/[0.08] disabled:opacity-50"
+            >
+              Back
+            </button>
             <button 
               onClick={handleSavePlaybackSettings}
               disabled={saving}
-              className="w-full bg-accent hover:bg-accent-light text-white font-bold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-accent/20 active:scale-95 disabled:opacity-50"
+              className="flex-[2] bg-accent hover:bg-accent-light text-white font-bold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-accent/20 active:scale-95 disabled:opacity-50"
             >
               {saving ? <Loader2 size={20} className="animate-spin" /> : (
                 <>
@@ -265,7 +496,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
       )
     },
     {
-      id: 3,
+      id: 4,
       title: "Connect AniList",
       subtitle: "Sync your watch history and lists",
       content: (
@@ -342,15 +573,24 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
           </div>
 
           <div className="flex flex-col space-y-3 pt-2">
-            <button 
-              onClick={handleConnectAnilist}
-              disabled={saving}
-              className="w-full bg-accent hover:bg-accent-light text-white font-bold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-accent/20 active:scale-95 disabled:opacity-50"
-            >
-              {saving ? <Loader2 size={20} className="animate-spin" /> : (
-                <span>Connect Account</span>
-              )}
-            </button>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setStep(3)}
+                disabled={saving}
+                className="flex-1 bg-white/[0.04] hover:bg-white/[0.08] text-white font-bold py-4 rounded-2xl transition-all active:scale-95 border border-white/[0.08] disabled:opacity-50"
+              >
+                Back
+              </button>
+              <button 
+                onClick={handleConnectAnilist}
+                disabled={saving}
+                className="flex-[2] bg-accent hover:bg-accent-light text-white font-bold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-accent/20 active:scale-95 disabled:opacity-50"
+              >
+                {saving ? <Loader2 size={20} className="animate-spin" /> : (
+                  <span>Connect Account</span>
+                )}
+              </button>
+            </div>
             <button 
               onClick={onSkip}
               className="w-full py-3 text-gray-500 hover:text-white font-semibold text-sm transition-colors"
@@ -366,8 +606,11 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
   const currentStep = steps.find(s => s.id === step)!;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-background/80 backdrop-blur-md animate-fade-in">
-      <div className="max-w-xl w-full max-h-[90vh] bg-surface border border-white/[0.08] rounded-2xl overflow-y-auto scrollbar-hide shadow-2xl relative">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/90 animate-fade-in">
+      <div 
+        className="max-w-xl w-full max-h-[90vh] border border-border rounded-2xl overflow-y-auto scrollbar-hide shadow-2xl relative"
+        style={{ backgroundColor: "var(--background)" }}
+      >
         {/* Background glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-accent/10 blur-[100px] -z-10" />
         
@@ -386,9 +629,12 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
         {/* Progress dots */}
         <div className="pb-8 flex justify-center space-x-2">
           {steps.map((s) => (
-            <div 
+            <button 
               key={s.id} 
-              className={`h-1.5 rounded-full transition-all duration-300 ${s.id === step ? "w-8 bg-accent" : "w-1.5 bg-white/10"}`} 
+              onClick={() => setStep(s.id)}
+              className={`h-1.5 rounded-full transition-all duration-300 focus:outline-none ${s.id === step ? "w-8 bg-accent" : "w-1.5 bg-white/10 hover:bg-white/30"}`}
+              title={`Go to step ${s.id}`}
+              aria-label={`Go to step ${s.id}`}
             />
           ))}
         </div>

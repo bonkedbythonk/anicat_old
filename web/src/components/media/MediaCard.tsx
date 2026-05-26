@@ -73,22 +73,22 @@ const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
       onClick={() => onSelect?.(item)} 
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="group cursor-pointer flex flex-col space-y-2.5 w-full text-left relative transition-all duration-300 group-hover/card:translate-y-[-2px]"
+      className="group cursor-pointer flex flex-col space-y-2.5 w-full text-left relative"
     >
-      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-surface card-glow border border-white/[0.04] group-hover:border-accent/25 group-hover:shadow-[0_12px_36px_rgba(0,0,0,0.7)] transition-all duration-300">
+      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-surface card-glow border border-white/[0.04] group-hover:border-accent/25 group-hover:shadow-[0_12px_36px_rgba(0,0,0,0.7)]">
         <img 
           src={item.cover_image.large} 
           alt={title} 
           loading="lazy"
           decoding="async"
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-[400ms] group-hover:scale-105"
         />
         
         {/* Play overlay */}
-        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10">
+        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-[400ms] flex items-center justify-center z-10">
           <button 
             onClick={handlePlay}
-            className="glass-button p-3.5 rounded-full hover:scale-110 active:scale-95 transition-all duration-200"
+            className="glass-button p-3.5 rounded-full hover:scale-110 active:scale-95 transition-transform duration-200"
           >
             {isManga ? (
               <BookOpen size={20} />

@@ -42,6 +42,9 @@ class DownloadService:
         self.downloader = create_downloader(config)
         # Track in-flight downloads to avoid duplicate queueing
         self._inflight: set[tuple[int, str]] = set()
+        # Cooldown to prevent resume_unfinished_downloads from thrashing
+        # when start() is called multiple times in quick succession.
+        self._last_resume_time: float = 0.0
 
         self._worker = ManagedBackgroundWorker(
             max_workers=config.downloads.max_concurrent_downloads,
@@ -53,7 +56,7 @@ class DownloadService:
         """Starts the download worker for background tasks."""
         if not self._worker.is_running():
             self._worker.start()
-        # We can still resume background tasks on startup if any exist
+        # Resume unfinished downloads (with cooldown to avoid thrashing)
         self.resume_unfinished_downloads()
 
     def stop(self):
@@ -61,7 +64,29 @@ class DownloadService:
         self._worker.shutdown(wait=False)
 
     def add_to_queue(self, media_item: MediaItem, episode_number: str) -> bool:
-        """Mark an episode as queued in the registry (no immediate download)."""
+        """Mark an episode as queued in the registry (no immediate download).
+
+        Refuses to re-queue episodes that have already exceeded the
+        maximum retry limit, preventing infinite retry loops when a
+        provider consistently returns unplayable streams.
+        """
+        # Check whether this episode has already been retried too many times
+        record = self.registry.get_media_record(media_item.id)
+        if record:
+            for ep in record.media_episodes:
+                if ep.episode_number == episode_number:
+                    if (
+                        ep.download_status == DownloadStatus.FAILED
+                        and ep.download_attempts > self.app_config.downloads.max_retry_attempts
+                    ):
+                        logger.warning(
+                            f"Episode '{episode_number}' of '{media_item.title.english}' "
+                            f"has exceeded max retry attempts ({self.app_config.downloads.max_retry_attempts}). "
+                            f"Not re-queueing."
+                        )
+                        return False
+                    break
+
         logger.info(
             f"Queueing episode '{episode_number}' for '{media_item.title.english}' (registry only)"
         )
@@ -92,7 +117,7 @@ class DownloadService:
         """
         success_count = 0
         failed_episodes = []
-        
+
         for episode_number in episodes:
             title = (
                 media_item.title.english
@@ -110,7 +135,20 @@ class DownloadService:
         return success_count, failed_episodes
 
     def resume_unfinished_downloads(self):
-        """Finds and re-queues any downloads that were left in an unfinished state."""
+        """Finds and re-queues any downloads that were left in an unfinished state.
+
+        Includes a short cooldown to prevent redundant re-scans when start()
+        is called multiple times in quick succession (e.g. user clicks download
+        on several episodes rapidly).
+        """
+        import time
+
+        now = time.time()
+        if now - self._last_resume_time < 3.0:
+            logger.debug("Skipping resume scan — within cooldown window")
+            return
+        self._last_resume_time = now
+
         logger.info("Checking for unfinished downloads to resume...")
         # TODO: make the checking of unfinished downloads more efficient probably by modifying the registry to be aware of what actually changed and load that instead
         queued_jobs = self.registry.get_episodes_by_download_status(
@@ -183,144 +221,196 @@ class DownloadService:
                 )
 
     def _execute_download_job(self, media_item: MediaItem, episode_number: str):
-        """The core download logic, can be called by worker or synchronously."""
+        """The core download logic, can be called by worker or synchronously.
+
+        Tries the primary provider first. If the yt-dlp download fails
+        (stream links are returned but won't play), automatically retries
+        with each fallback provider in sequence.
+        """
         self.registry.get_or_create_record(media_item)
+
+        # Collect providers to try: primary first, then fallbacks
+        from ....libs.provider.anime.fallback import FallbackAnimeProvider
+
+        if isinstance(self.provider, FallbackAnimeProvider):
+            providers_to_try = list(self.provider.providers)
+        else:
+            providers_to_try = [self.provider]
+
+        media_title = media_item.title.romaji or media_item.title.english
+        last_error: str | None = None
+
         try:
-            self.registry.update_episode_download_status(
-                media_id=media_item.id,
-                episode_number=episode_number,
-                status=DownloadStatus.DOWNLOADING,
-            )
-
-            media_title = media_item.title.romaji or media_item.title.english
-
-            # 1. Search the provider to get the provider-specific ID
-            provider_search_results = self.provider.search(
-                SearchParams(
-                    query=normalize_title(
-                        media_title, self.app_config.general.provider.value, True
-                    ),
-                    translation_type=self.app_config.stream.translation_type,
-                )
-            )
-
-            if not provider_search_results or not provider_search_results.results:
-                raise ValueError(
-                    f"Could not find '{media_title}' on provider '{self.app_config.general.provider.value}'"
-                )
-
-            # 2. Find the best match using fuzzy logic (like auto-select)
-            provider_results_map = {
-                result.title: result for result in provider_search_results.results
-            }
-            best_match_title = find_best_match_title(
-                provider_results_map, self.app_config.general.provider, media_item
-            )
-            provider_anime_ref = provider_results_map[best_match_title]
-
-            # 3. Get full provider anime details (contains the correct episode list)
-            provider_anime = self.provider.get(
-                AnimeParams(id=provider_anime_ref.id, query=media_title)
-            )
-            if not provider_anime:
-                raise ValueError(
-                    f"Failed to get full details for '{best_match_title}' from provider."
-                )
-
-            # 4. Get stream links using the now-validated provider_anime ID
-            streams_iterator = self.provider.episode_streams(
-                EpisodeStreamsParams(
-                    anime_id=provider_anime.id,
-                    query=media_title,
-                    episode=episode_number,
-                    translation_type=self.app_config.stream.translation_type,
-                )
-            )
-            if not streams_iterator:
-                raise ValueError("Provider returned no stream iterator.")
-
-            server = next(streams_iterator, None)
-            if not server or not server.links:
-                raise ValueError(f"No stream links found for Episode {episode_number}")
-
-            if server.name != self.app_config.downloads.server.value:
-                while True:
-                    try:
-                        _server = next(streams_iterator)
-                        if _server.name == self.app_config.downloads.server.value:
-                            server = _server
-                            break
-                    except StopIteration:
-                        break
-
-            preferred_quality = self.app_config.stream.quality
-            stream_link = next((link for link in server.links if link.quality == preferred_quality), None)
-            if not stream_link:
-                try:
-                    stream_link = sorted(server.links, key=lambda x: int(x.quality), reverse=True)[0]
-                except Exception:
-                    stream_link = server.links[-1]
-            episode_title = f"{media_item.title.english}; Episode {episode_number}"
-            if media_item.streaming_episodes and media_item.streaming_episodes.get(
-                episode_number
-            ):
-                episode_title = media_item.streaming_episodes[episode_number].title
-            # 5. Perform the download
-            download_params = DownloadParams(
-                url=stream_link.link,
-                anime_title=media_item.title.english,
-                episode_title=episode_title,
-                silent=False,
-                headers=server.headers,
-                subtitles=[sub.url for sub in server.subtitles],
-                merge=self.app_config.downloads.merge_subtitles,
-                clean=self.app_config.downloads.cleanup_after_merge,
-                no_check_certificate=self.app_config.downloads.no_check_certificate,
-            )
-
-            result = self.downloader.download(download_params)
-
-            # 6. Update registry based on result
-            if result.success and result.video_path:
-                file_size = (
-                    result.video_path.stat().st_size
-                    if result.video_path.exists()
-                    else None
-                )
-                self.registry.update_episode_download_status(
-                    media_id=media_item.id,
-                    episode_number=episode_number,
-                    status=DownloadStatus.COMPLETED,
-                    file_path=result.merged_path or result.video_path,
-                    file_size=file_size,
-                    quality=stream_link.quality,
-                    provider_name=self.app_config.general.provider.value,
-                    server_name=server.name,
-                    subtitle_paths=result.subtitle_paths,
-                )
-                message = f"Successfully downloaded Episode {episode_number} of '{media_title}'"
-                try:
-                    from plyer import notification
-
-                    icon_path = self._get_or_fetch_icon(media_item)
-                    app_icon = str(icon_path) if icon_path else None
-
-                    notification.notify(  # type: ignore
-                        title="Anicat: New Episode",
-                        message=message,
-                        app_name="Anicat",
-                        app_icon=app_icon,
-                        timeout=self.app_config.general.desktop_notification_duration,
+            for idx, provider in enumerate(providers_to_try):
+                provider_name = getattr(provider, "NAME", provider.__class__.__name__)
+                if idx > 0:
+                    logger.info(
+                        f"Fallback: retrying download of Ep {episode_number} "
+                        f"of '{media_title}' with provider '{provider_name}' "
+                        f"(previous error: {last_error})"
                     )
-                except:  # noqa: E722
-                    pass
-                logger.info(message)
-                return True
-            else:
-                raise ValueError(result.error_message or "Unknown download error")
 
-        except Exception as e:
-            message = f"Download failed for '{media_item.title.english}' Ep {episode_number}: {e}"
+                try:
+                    self.registry.update_episode_download_status(
+                        media_id=media_item.id,
+                        episode_number=episode_number,
+                        status=DownloadStatus.DOWNLOADING,
+                    )
+
+                    # 1. Search the provider
+                    provider_search_results = provider.search(
+                        SearchParams(
+                            query=normalize_title(
+                                media_title, self.app_config.general.provider.value, True
+                            ),
+                            translation_type=self.app_config.stream.translation_type,
+                        )
+                    )
+                    if not provider_search_results or not provider_search_results.results:
+                        last_error = (
+                            f"Could not find '{media_title}' on provider '{provider_name}'"
+                        )
+                        continue
+
+                    # 2. Find best match
+                    provider_results_map = {
+                        result.title: result for result in provider_search_results.results
+                    }
+                    best_match_title = find_best_match_title(
+                        provider_results_map, self.app_config.general.provider, media_item
+                    )
+                    provider_anime_ref = provider_results_map[best_match_title]
+
+                    # 3. Get full provider anime details
+                    provider_anime = provider.get(
+                        AnimeParams(id=provider_anime_ref.id, query=media_title)
+                    )
+                    if not provider_anime:
+                        last_error = (
+                            f"Failed to get full details for '{best_match_title}' "
+                            f"from provider '{provider_name}'."
+                        )
+                        continue
+
+                    # 4. Get stream links
+                    streams_iterator = provider.episode_streams(
+                        EpisodeStreamsParams(
+                            anime_id=provider_anime.id,
+                            query=media_title,
+                            episode=episode_number,
+                            translation_type=self.app_config.stream.translation_type,
+                        )
+                    )
+                    if not streams_iterator:
+                        last_error = f"Provider '{provider_name}' returned no stream iterator."
+                        continue
+
+                    server = next(streams_iterator, None)
+                    if not server or not server.links:
+                        last_error = (
+                            f"No stream links found for Episode {episode_number} "
+                            f"on provider '{provider_name}'"
+                        )
+                        continue
+
+                    if server.name != self.app_config.downloads.server.value:
+                        while True:
+                            try:
+                                _server = next(streams_iterator)
+                                if _server.name == self.app_config.downloads.server.value:
+                                    server = _server
+                                    break
+                            except StopIteration:
+                                break
+
+                    preferred_quality = self.app_config.stream.quality
+                    stream_link = next(
+                        (link for link in server.links if link.quality == preferred_quality),
+                        None,
+                    )
+                    if not stream_link:
+                        try:
+                            stream_link = sorted(
+                                server.links, key=lambda x: int(x.quality), reverse=True
+                            )[0]
+                        except Exception:
+                            stream_link = server.links[-1]
+
+                    episode_title = f"{media_item.title.english}; Episode {episode_number}"
+                    if media_item.streaming_episodes and media_item.streaming_episodes.get(
+                        episode_number
+                    ):
+                        episode_title = media_item.streaming_episodes[episode_number].title
+
+                    # 5. Perform the download
+                    download_params = DownloadParams(
+                        url=stream_link.link,
+                        anime_title=media_item.title.english,
+                        episode_title=episode_title,
+                        silent=False,
+                        headers=server.headers,
+                        subtitles=[sub.url for sub in server.subtitles],
+                        merge=self.app_config.downloads.merge_subtitles,
+                        clean=self.app_config.downloads.cleanup_after_merge,
+                        no_check_certificate=self.app_config.downloads.no_check_certificate,
+                    )
+
+                    result = self.downloader.download(download_params)
+
+                    # 6. Update registry on success
+                    if result.success and result.video_path:
+                        file_size = (
+                            result.video_path.stat().st_size
+                            if result.video_path.exists()
+                            else None
+                        )
+                        self.registry.update_episode_download_status(
+                            media_id=media_item.id,
+                            episode_number=episode_number,
+                            status=DownloadStatus.COMPLETED,
+                            file_path=result.merged_path or result.video_path,
+                            file_size=file_size,
+                            quality=stream_link.quality,
+                            provider_name=provider_name,
+                            server_name=server.name,
+                            subtitle_paths=result.subtitle_paths,
+                        )
+                        message = (
+                            f"Successfully downloaded Episode {episode_number} of '{media_title}'"
+                            + (f" via {provider_name}" if idx > 0 else "")
+                        )
+                        try:
+                            from plyer import notification
+
+                            icon_path = self._get_or_fetch_icon(media_item)
+                            app_icon = str(icon_path) if icon_path else None
+
+                            notification.notify(  # type: ignore
+                                title="Anicat: New Episode",
+                                message=message,
+                                app_name="Anicat",
+                                app_icon=app_icon,
+                                timeout=self.app_config.general.desktop_notification_duration,
+                            )
+                        except:  # noqa: E722
+                            pass
+                        logger.info(message)
+                        return True
+                    else:
+                        last_error = result.error_message or "Unknown download error"
+                        # Don't raise — try the next fallback provider
+                        continue
+
+                except Exception as e:
+                    last_error = str(e)
+                    # Non-download errors (network, provider down, etc.) —
+                    # also try the next fallback provider
+                    continue
+
+            # All providers exhausted — mark as failed
+            final_message = (
+                f"Download failed for '{media_title}' Ep {episode_number}: {last_error}"
+            )
             try:
                 from plyer import notification
 
@@ -328,23 +418,20 @@ class DownloadService:
                 app_icon = str(icon_path) if icon_path else None
 
                 notification.notify(  # type: ignore
-                    title="Anicat: New Episode",
-                    message=message,
+                    title="Anicat: Download Failed",
+                    message=final_message,
                     app_name="Anicat",
                     app_icon=app_icon,
                     timeout=self.app_config.general.desktop_notification_duration,
                 )
             except:  # noqa: E722
                 pass
-            logger.error(
-                message,
-                exc_info=True,
-            )
+            logger.error(final_message)
             self.registry.update_episode_download_status(
                 media_id=media_item.id,
                 episode_number=episode_number,
                 status=DownloadStatus.FAILED,
-                error_message=str(e),
+                error_message=last_error or "All providers failed",
             )
             return False
         finally:

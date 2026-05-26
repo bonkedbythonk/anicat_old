@@ -31,7 +31,9 @@ class AnilistConfig(BaseConfig):
         default=defaults.ANILIST_PREFERRED_LANGUAGE,
         description=desc.ANILIST_PREFERRED_LANGUAGE,
     )
-    token: str = Field(default=defaults.ANILIST_TOKEN, description="Your AniList OAuth token.")
+    token: str = Field(
+        default=defaults.ANILIST_TOKEN, description="Your AniList OAuth token."
+    )
 
 
 class JikanConfig(BaseConfig):

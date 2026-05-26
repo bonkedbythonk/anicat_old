@@ -4,9 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { mediaApi, type HealthStatus } from "@/lib/api";
 import { getQueryClient } from "@/components/Providers";
 
-// Frontend version from package.json — used to detect stale backend
-const FRONTEND_VERSION = "4.32.0";
-let _versionMismatchWarned = false;
+// Pulled from package.json at build time — never needs manual updates
+import { version as FRONTEND_VERSION } from "../../package.json";
 
 async function showNativeNotification(title: string, body: string) {
   try {
@@ -92,9 +91,19 @@ export function useHealthPolling(): HealthPollingState {
   });
   const [notificationCount, setNotificationCount] = useState(0);
 
+  const versionMismatchWarned = useRef(false);
   const lastDataVersion = useRef<number | null>(null);
   const lastNotificationCount = useRef<number>(0);
   const lastSeenNotificationId = useRef<number | null>(null);
+  // Debounce invalidateQueries so rapid version bumps only trigger one refetch wave
+  const invalidateDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function debouncedInvalidate() {
+    if (invalidateDebounceTimer.current) clearTimeout(invalidateDebounceTimer.current);
+    invalidateDebounceTimer.current = setTimeout(() => {
+      getQueryClient()?.invalidateQueries();
+    }, 500);
+  }
 
   const dismissOffline = useCallback(() => {
     setDismissedOffline(true);
@@ -122,9 +131,9 @@ export function useHealthPolling(): HealthPollingState {
           status.current_version &&
           status.current_version !== "unknown" &&
           status.current_version !== FRONTEND_VERSION &&
-          !_versionMismatchWarned
+          !versionMismatchWarned.current
         ) {
-          _versionMismatchWarned = true;
+          versionMismatchWarned.current = true;
           console.warn(
             `Version mismatch: frontend ${FRONTEND_VERSION}, backend ${status.current_version}. ` +
             "The backend may need to be rebuilt or restarted."
@@ -140,7 +149,7 @@ export function useHealthPolling(): HealthPollingState {
             console.log(
               `Live Sync: Data changed (version ${lastDataVersion.current} -> ${status.data_version}). Refreshing views...`
             );
-            getQueryClient()?.invalidateQueries();
+            debouncedInvalidate();
           }
           lastDataVersion.current = status.data_version;
         }
@@ -225,12 +234,13 @@ export function useHealthPolling(): HealthPollingState {
       }
     }
 
-    // Start initial fast polling (every 1s)
+    // Start initial polling (every 3s — backend boot takes ~2s, no need to hammer at 1s)
     checkSystem();
-    checkInterval = setInterval(checkSystem, 1000);
+    checkInterval = setInterval(checkSystem, 3000);
 
     return () => {
       clearInterval(checkInterval);
+      if (invalidateDebounceTimer.current) clearTimeout(invalidateDebounceTimer.current);
     };
     // Run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps

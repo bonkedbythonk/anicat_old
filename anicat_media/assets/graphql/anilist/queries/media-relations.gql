@@ -1,59 +1,62 @@
 query ($id: Int, $format_not_in: [MediaFormat]) {
   Media(id: $id, format_not_in: $format_not_in) {
     relations {
-      nodes {
-        id
-        idMal
-        type
-        format
-        title {
-          english
-          romaji
-          native
-        }
-        coverImage {
-          medium
-          large
-        }
-        mediaListEntry {
+      edges {
+        relationType
+        node {
+          id
+          idMal
+          type
+          format
+          title {
+            english
+            romaji
+            native
+          }
+          coverImage {
+            medium
+            large
+          }
+          mediaListEntry {
+            status
+            id
+            progress
+          }
+          description
+          episodes
+          duration
+          trailer {
+            site
+            id
+          }
+          genres
+          synonyms
+          averageScore
+          popularity
+          streamingEpisodes {
+            title
+            thumbnail
+          }
+          favourites
+          tags {
+            name
+          }
+          startDate {
+            year
+            month
+            day
+          }
+          endDate {
+            year
+            month
+            day
+          }
           status
-          id
-          progress
-        }
-        description
-        episodes
-        duration
-        trailer {
-          site
-          id
-        }
-        genres
-        synonyms
-        averageScore
-        popularity
-        streamingEpisodes {
-          title
-          thumbnail
-        }
-        favourites
-        tags {
-          name
-        }
-        startDate {
-          year
-          month
-          day
-        }
-        endDate {
-          year
-          month
-          day
-        }
-        status
-        nextAiringEpisode {
-          timeUntilAiring
-          airingAt
-          episode
+          nextAiringEpisode {
+            timeUntilAiring
+            airingAt
+            episode
+          }
         }
       }
     }

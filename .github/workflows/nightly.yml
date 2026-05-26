@@ -130,13 +130,45 @@ jobs:
           else
             echo "tag=nightly" >> $GITHUB_OUTPUT
             echo "name=Anicat Nightly Build" >> $GITHUB_OUTPUT
-            echo "body=Automated rolling pre-release built from nightly branch. Last updated: ${{ github.event.head_commit.timestamp || 'Manual Trigger' }} (commit ${{ github.sha }})." >> $GITHUB_OUTPUT
+            {
+              echo "body<<EOF"
+              echo "Automated rolling pre-release built from nightly branch. Last updated: ${{ github.event.head_commit.timestamp || 'Manual Trigger' }} (commit ${{ github.sha }})."
+              echo ""
+              echo "### Installation"
+              echo ""
+              echo "**macOS App (Recommended):**"
+              echo "\`\`\`bash"
+              echo "curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/nightly/scripts/install_macos.sh | bash"
+              echo "\`\`\`"
+              echo ""
+              echo "**Terminal CLI Only:**"
+              echo "\`\`\`bash"
+              echo "curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/nightly/scripts/install_cli.sh | bash"
+              echo "\`\`\`"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
             echo "draft=false" >> $GITHUB_OUTPUT
             echo "prerelease=true" >> $GITHUB_OUTPUT
             # Also export as env vars for downstream shell steps
             echo "RELEASE_TAG=nightly" >> $GITHUB_ENV
             echo "RELEASE_NAME=Anicat Nightly Build" >> $GITHUB_ENV
-            echo "RELEASE_BODY=Automated rolling pre-release built from nightly branch. Last updated: ${{ github.event.head_commit.timestamp || 'Manual Trigger' }} (commit ${{ github.sha }})." >> $GITHUB_ENV
+            {
+              echo "RELEASE_BODY<<EOF"
+              echo "Automated rolling pre-release built from nightly branch. Last updated: ${{ github.event.head_commit.timestamp || 'Manual Trigger' }} (commit ${{ github.sha }})."
+              echo ""
+              echo "### Installation"
+              echo ""
+              echo "**macOS App (Recommended):**"
+              echo "\`\`\`bash"
+              echo "curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/nightly/scripts/install_macos.sh | bash"
+              echo "\`\`\`"
+              echo ""
+              echo "**Terminal CLI Only:**"
+              echo "\`\`\`bash"
+              echo "curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/nightly/scripts/install_cli.sh | bash"
+              echo "\`\`\`"
+              echo "EOF"
+            } >> $GITHUB_ENV
             echo "RELEASE_DRAFT=false" >> $GITHUB_ENV
             echo "RELEASE_PRERELEASE=true" >> $GITHUB_ENV
           fi

@@ -58,15 +58,18 @@ commands = {
     invoke_without_command=True,
     lazy_subcommands=commands,
     hidden_commands=[
-        "dashboard", "download", "list", "status",
+        "dashboard",
+        "download",
+        "list",
+        "status",
     ],
     context_settings=dict(auto_envvar_prefix=CLI_NAME),
 )
 @click.version_option(__version__, "--version")
-@click.option("--no-config", is_flag=True, help="Don't load the user config file.", hidden=True)
 @click.option(
-    "--trace", is_flag=True, help="Display tracebacks on errors", hidden=True
+    "--no-config", is_flag=True, help="Don't load the user config file.", hidden=True
 )
+@click.option("--trace", is_flag=True, help="Display tracebacks on errors", hidden=True)
 @click.option("--dev", is_flag=True, help="Development mode", hidden=True)
 @click.option("--log", is_flag=True, help="Enable logging", hidden=True)
 @click.option(
@@ -97,7 +100,7 @@ def cli(ctx: click.Context, **options: "Unpack[Options]"):
         options["rich_traceback"],
         options["rich_traceback_theme"],
     )
-    
+
     logger.info(f"Current Command: {' '.join(sys.argv)}")
     cli_overrides = {}
     param_lookup = {p.name: p for p in ctx.command.params}
@@ -126,7 +129,6 @@ def cli(ctx: click.Context, **options: "Unpack[Options]"):
         else loader.load(cli_overrides)
     )
     ctx.obj = config
-
 
     if ctx.invoked_subcommand is None:
         from .commands.anilist import cmd

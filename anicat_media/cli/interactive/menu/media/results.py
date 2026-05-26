@@ -69,7 +69,11 @@ def results(ctx: Context, state: State) -> State | InternalDirective:
             prompt = "Select Anime"
             if state.media_api.search_params:
                 from .....libs.media_api.types import MediaType
-                if getattr(state.media_api.search_params, "type", None) == MediaType.MANGA:
+
+                if (
+                    getattr(state.media_api.search_params, "type", None)
+                    == MediaType.MANGA
+                ):
                     prompt = "Select Manga"
 
             choice = ctx.selector.choose(
@@ -84,6 +88,7 @@ def results(ctx: Context, state: State) -> State | InternalDirective:
         prompt = "Select Anime"
         if state.media_api.search_params:
             from .....libs.media_api.types import MediaType
+
             if getattr(state.media_api.search_params, "type", None) == MediaType.MANGA:
                 prompt = "Select Manga"
 
@@ -132,7 +137,9 @@ def _format_title(ctx: Context, media_item: MediaItem) -> str:
         last_aired = media_item.next_airing.episode - 1
         unwatched = last_aired - (media_item.user_status.progress or 0)
         if unwatched > 0:
-            icon = ICONS.get('NEW', config.general.icons) if config.general.icons else "!"
+            icon = (
+                ICONS.get("NEW", config.general.icons) if config.general.icons else "!"
+            )
             display_title += f" {icon}{unwatched} new{icon}"
 
     return display_title

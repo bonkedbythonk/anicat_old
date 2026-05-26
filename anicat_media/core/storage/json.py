@@ -8,15 +8,16 @@ from ..utils.file import AtomicWriter
 
 logger = logging.getLogger(__name__)
 
+
 def load_json(path: Union[str, Path], default: Any = None) -> Any:
     """
-    Safely load a JSON file. If the file is missing or corrupted, 
-    moves the corrupted file to '.old' (if it exists) and returns 
+    Safely load a JSON file. If the file is missing or corrupted,
+    moves the corrupted file to '.old' (if it exists) and returns
     the `default` structure (or an empty dict `{}`).
     """
     if default is None:
         default = {}
-        
+
     path = Path(path)
     if not path.exists():
         return default
@@ -34,6 +35,7 @@ def load_json(path: Union[str, Path], default: Any = None) -> Any:
     except Exception as e:
         logger.error(f"Failed to read {path} ({e}). Returning default.")
         return default
+
 
 def save_json(path: Union[str, Path], data: Any, indent: int = 2) -> None:
     """

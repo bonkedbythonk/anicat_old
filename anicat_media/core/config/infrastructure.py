@@ -1,12 +1,11 @@
 """Selector, player, and background service configuration."""
 
 from pathlib import Path
-from typing import Literal
 
 from pydantic import Field
 
 from ..constants import APP_ASCII_ART
-from .base import BaseConfig, OtherConfig
+from .base import OtherConfig
 from . import defaults
 from . import descriptions as desc
 
@@ -88,15 +87,18 @@ class WorkerConfig(OtherConfig):
         description="Enable the background worker for notifications and queued downloads.",
     )
     notification_check_interval: int = Field(
-        default=15, ge=1,
+        default=15,
+        ge=1,
         description="How often to check for new AniList notifications (in minutes).",
     )
     download_check_interval: int = Field(
-        default=5, ge=1,
+        default=5,
+        ge=1,
         description="How often to process the download queue (in minutes).",
     )
     download_check_failed_interval: int = Field(
-        default=60, ge=1,
+        default=60,
+        ge=1,
         description="How often to process the failed download queue (in minutes).",
     )
     auto_download_new_episode: bool = Field(

@@ -242,6 +242,9 @@ class MediaItem(BaseMediaApiModel):
     # Smart Playlist metadata — set by the smart-playlist endpoint
     playlist_reason: Optional[str] = None
 
+    # Relation metadata — set when returned from relations endpoints
+    relation_type: Optional[str] = None
+
 
 class Notification(BaseMediaApiModel):
     """A generic representation of a user notification."""
@@ -375,8 +378,6 @@ class UserMediaListSort(Enum):
     MEDIA_TITLE_NATIVE_DESC = "MEDIA_TITLE_NATIVE_DESC"
     MEDIA_POPULARITY = "MEDIA_POPULARITY"
     MEDIA_POPULARITY_DESC = "MEDIA_POPULARITY_DESC"
-    MEDIA_SCORE = "MEDIA_SCORE"
-    MEDIA_SCORE_DESC = "MEDIA_SCORE_DESC"
     MEDIA_START_DATE = "MEDIA_START_DATE"
     MEDIA_START_DATE_DESC = "MEDIA_START_DATE_DESC"
     MEDIA_RATING = "MEDIA_RATING"
@@ -425,4 +426,3 @@ class MediaYear(Enum):
     _2024 = "2024"
     _2025 = "2025"
     _2026 = "2026"
-    

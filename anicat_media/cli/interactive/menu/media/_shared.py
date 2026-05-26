@@ -4,6 +4,7 @@ from ...session import Context
 
 MenuAction = Callable[[], Union[State, InternalDirective]]
 
+
 def toggle_config_state(
     ctx: Context,
     state: State,

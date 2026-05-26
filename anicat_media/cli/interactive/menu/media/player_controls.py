@@ -62,7 +62,9 @@ def player_controls(ctx: Context, state: State) -> Union[State, InternalDirectiv
         {
             f"{ICONS.get('REPLAY', icons)}Replay": _replay(ctx, state),
             f"{ICONS.get('PROVIDER', icons)}Change Server": _change_server(ctx, state),
-            f"{ICONS.get('PROVIDER', icons)}Change Quality": _change_quality(ctx, state),
+            f"{ICONS.get('PROVIDER', icons)}Change Quality": _change_quality(
+                ctx, state
+            ),
             f"{ICONS.get('EPISODES', icons)}Episode List": _episodes_list(ctx, state),
             f"{ICONS.get('TOGGLE', icons)}Toggle Auto Next Episode (Current: {ctx.config.stream.auto_next})": toggle_config_state(
                 ctx, state, "AUTO_EPISODE"
@@ -165,8 +167,6 @@ def _replay(ctx: Context, state: State) -> MenuAction:
         return InternalDirective.BACK
 
     return action
-
-
 
 
 def _change_server(ctx: Context, state: State) -> MenuAction:

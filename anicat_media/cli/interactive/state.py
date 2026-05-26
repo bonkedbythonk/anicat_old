@@ -50,7 +50,7 @@ class InternalDirective(Enum):
     CONFIG_EDIT = "CONFIG_EDIT"
 
     RELOAD = "RELOAD"
-    
+
     LOGIN = "LOGIN"
 
 
@@ -73,7 +73,9 @@ class MediaApiState(StateModel):
         return self.search_result_
 
     @property
-    def search_params(self) -> Optional[Union[MediaSearchParams, UserMediaListSearchParams]]:
+    def search_params(
+        self,
+    ) -> Optional[Union[MediaSearchParams, UserMediaListSearchParams]]:
         return self.search_params_
 
     @property

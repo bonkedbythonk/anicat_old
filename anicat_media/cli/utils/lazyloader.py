@@ -7,14 +7,26 @@ class LazyGroup(click.Group):
     """Click Group that lazily imports subcommands only when needed."""
 
     _nav_order = [
-        "home", "manga", "search", "lists", "downloads",
-        "library", "schedule",
-        "notifications", "profile", "settings",
-        "watching", "planning", "completed",
-        "discover", "login",
+        "home",
+        "manga",
+        "search",
+        "lists",
+        "downloads",
+        "library",
+        "schedule",
+        "notifications",
+        "profile",
+        "settings",
+        "watching",
+        "planning",
+        "completed",
+        "discover",
+        "login",
     ]
 
-    def __init__(self, root: str, *args, lazy_subcommands=None, hidden_commands=None, **kwargs):
+    def __init__(
+        self, root: str, *args, lazy_subcommands=None, hidden_commands=None, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self.root = root
         self.lazy_subcommands = lazy_subcommands or {}
@@ -24,12 +36,14 @@ class LazyGroup(click.Group):
         base = super().list_commands(ctx)
         lazy = list(self.lazy_subcommands.keys())
         all_cmds = [c for c in base + lazy if c not in self._hidden_commands]
+
         # Order by app nav, then alphabetically for any extras
         def sort_key(cmd):
             try:
                 return (0, self._nav_order.index(cmd))
             except ValueError:
                 return (1, cmd)
+
         return sorted(all_cmds, key=sort_key)
 
     def get_command(self, ctx, cmd_name):

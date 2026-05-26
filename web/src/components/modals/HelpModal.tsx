@@ -8,25 +8,20 @@ interface HelpModalProps {
 
 export default function HelpModal({ onClose }: HelpModalProps) {
   const shortcuts = [
-    { key: "⌘K  or  /", desc: "Search" },
-    { key: "Esc", desc: "Close detail panel / player" },
-    { key: "⌘1", desc: "Home" },
-    { key: "⌘2", desc: "Library" },
-    { key: "⌘3", desc: "Schedule" },
-    { key: "⌘,", desc: "Settings" },
-    { key: "⌘⇧Space", desc: "Quick Pane (global)" },
-    { key: "⌘⇧?", desc: "Toggle this help menu" },
-    { key: "Ctrl ⌘F", desc: "Toggle Fullscreen" },
-    { key: "Space", desc: "Play / Pause" },
-    { key: "← →", desc: "Seek 10s" },
-    { key: "↑ ↓", desc: "Volume" },
-    { key: "F", desc: "Fullscreen" },
-    { key: "M", desc: "Mute" },
+    { key: "1 - 9", desc: "Switch views (Home, Library, Schedule, ...)" },
+    { key: "K  or  /", desc: "Search" },
+    { key: "Esc", desc: "Close detail drawer" },
+    { key: ",", desc: "Settings" },
+    { key: "?", desc: "Toggle this help menu" },
   ];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in" onClick={onClose}>
-      <div className="bg-surface border border-white/[0.08] rounded-3xl p-8 max-w-md w-full shadow-2xl relative" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/85 animate-fade-in" onClick={onClose}>
+      <div 
+        className="border border-border rounded-3xl p-8 max-w-md w-full shadow-2xl relative" 
+        style={{ backgroundColor: "var(--background)" }}
+        onClick={e => e.stopPropagation()}
+      >
         <button onClick={onClose} className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors">
           <X size={20} />
         </button>

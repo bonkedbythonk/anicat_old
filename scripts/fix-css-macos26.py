@@ -7,6 +7,7 @@ backface-visibility) that crash WKWebView on macOS 26.
 This script strips the offending rules from the compiled CSS output.
 Run AFTER `next build`.
 """
+
 import re
 import sys
 from pathlib import Path
@@ -30,27 +31,27 @@ def strip_css(css: str) -> str:
             idx = css.find("@supports(color:color-mix")
             if idx == -1:
                 break
-        
+
         # Find the opening brace of this @supports block
         open_idx = css.find("{", idx)
         if open_idx == -1:
             break
-            
+
         # Find the matching closing brace
         depth = 1
         close_idx = -1
         for i in range(open_idx + 1, len(css)):
-            if css[i] == '{':
+            if css[i] == "{":
                 depth += 1
-            elif css[i] == '}':
+            elif css[i] == "}":
                 depth -= 1
                 if depth == 0:
                     close_idx = i
                     break
-                    
+
         if close_idx != -1:
             # Remove the entire block
-            css = css[:idx] + css[close_idx + 1:]
+            css = css[:idx] + css[close_idx + 1 :]
         else:
             break
 

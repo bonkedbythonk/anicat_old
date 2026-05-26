@@ -254,7 +254,7 @@ export default function MangaReader({ mediaId, chapterNumber, initialPage = 0, o
     <div 
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      className="fixed inset-0 z-[200] bg-[#050505] flex flex-col items-center select-none overflow-hidden transform-gpu will-change-[transform,opacity]"
+      className="fixed inset-0 z-[200] bg-[#050505] flex flex-col items-center select-none overflow-hidden transform-gpu will-change-[transform,opacity] forced-dark-container"
     >
       {/* Header Controls */}
       <div className={`fixed top-0 inset-x-0 z-50 bg-gradient-to-b from-black/95 to-transparent p-6 transition-opacity duration-300 ${showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
