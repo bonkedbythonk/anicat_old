@@ -279,20 +279,87 @@ export default function AmbientBackground() {
         ctx.translate(p.x, p.y);
         ctx.rotate(p.tiltAngle);
 
-        ctx.beginPath();
-        // Elongated slender shape for forest leaves, more rounded shape for sakura petals
-        const aspect = isSakura ? 1.7 : 2.4;
-        ctx.ellipse(0, 0, p.r, p.r / aspect, 0, 0, 2 * Math.PI);
-        ctx.fillStyle = p.color;
-        ctx.fill();
+        if (isSakura) {
+          // Sakura Petal: organic shape with wabi-sabi cleft/notch at the tip
+          ctx.beginPath();
+          ctx.moveTo(0, p.r); // Base
+          ctx.bezierCurveTo(-p.r * 1.4, p.r * 0.5, -p.r * 1.2, -p.r * 0.5, -p.r * 0.4, -p.r);
+          ctx.lineTo(-p.r * 0.25, -p.r * 0.95);
+          ctx.lineTo(0, -p.r * 0.68); // Notch dip
+          ctx.lineTo(p.r * 0.25, -p.r * 0.95);
+          ctx.lineTo(p.r * 0.4, -p.r);
+          ctx.bezierCurveTo(p.r * 1.2, -p.r * 0.5, p.r * 1.4, p.r * 0.5, 0, p.r);
+          ctx.closePath();
 
-        // Draw organic crease lines
-        ctx.beginPath();
-        ctx.moveTo(-p.r, 0);
-        ctx.lineTo(p.r, 0);
-        ctx.strokeStyle = isSakura ? "rgba(255, 255, 255, 0.18)" : "rgba(255, 255, 255, 0.22)";
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
+          // Smooth gradient for premium depth
+          const grad = ctx.createLinearGradient(0, p.r, 0, -p.r);
+          grad.addColorStop(0, p.color);
+          grad.addColorStop(1, "rgba(255, 240, 244, 0.85)"); // bright tip
+          ctx.fillStyle = grad;
+          ctx.fill();
+
+          // Organic veins (midrib)
+          ctx.beginPath();
+          ctx.moveTo(0, p.r * 0.8);
+          ctx.lineTo(0, -p.r * 0.35);
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.30)";
+          ctx.lineWidth = 0.6;
+          ctx.stroke();
+
+          // Subtle lateral veins
+          ctx.beginPath();
+          ctx.moveTo(0, p.r * 0.4);
+          ctx.quadraticCurveTo(-p.r * 0.25, p.r * 0.2, -p.r * 0.45, -p.r * 0.05);
+          ctx.moveTo(0, p.r * 0.2);
+          ctx.quadraticCurveTo(p.r * 0.25, 0, p.r * 0.45, -p.r * 0.25);
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+          ctx.lineWidth = 0.4;
+          ctx.stroke();
+        } else {
+          // Forest Leaf: slender pointed shape
+          ctx.beginPath();
+          ctx.moveTo(0, p.r); // Base
+          ctx.quadraticCurveTo(-p.r * 0.80, 0, 0, -p.r); // Tip
+          ctx.quadraticCurveTo(p.r * 0.80, 0, 0, p.r); // Right side
+          ctx.closePath();
+
+          // Linear gradient for light reflection
+          const grad = ctx.createLinearGradient(0, p.r, 0, -p.r);
+          grad.addColorStop(0, p.color);
+          grad.addColorStop(1, "rgba(52, 211, 153, 0.85)"); // soft emerald green tip
+          ctx.fillStyle = grad;
+          ctx.fill();
+
+          // Midrib
+          ctx.beginPath();
+          ctx.moveTo(0, p.r * 0.95);
+          ctx.lineTo(0, -p.r * 0.95);
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+          ctx.lineWidth = 0.7;
+          ctx.stroke();
+
+          // Side branching veins
+          ctx.beginPath();
+          // Left side
+          ctx.moveTo(0, p.r * 0.5);
+          ctx.lineTo(-p.r * 0.35, p.r * 0.1);
+          ctx.moveTo(0, p.r * 0.15);
+          ctx.lineTo(-p.r * 0.45, -p.r * 0.2);
+          ctx.moveTo(0, -p.r * 0.2);
+          ctx.lineTo(-p.r * 0.35, -p.r * 0.5);
+          
+          // Right side
+          ctx.moveTo(0, p.r * 0.5);
+          ctx.lineTo(p.r * 0.35, p.r * 0.1);
+          ctx.moveTo(0, p.r * 0.15);
+          ctx.lineTo(p.r * 0.45, -p.r * 0.2);
+          ctx.moveTo(0, -p.r * 0.2);
+          ctx.lineTo(p.r * 0.35, -p.r * 0.5);
+
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.20)";
+          ctx.lineWidth = 0.4;
+          ctx.stroke();
+        }
 
         ctx.restore();
       }
