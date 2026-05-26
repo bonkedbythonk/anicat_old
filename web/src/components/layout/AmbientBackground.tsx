@@ -171,6 +171,17 @@ export default function AmbientBackground() {
     let animationFrameId: number;
     let isActive = true;
 
+    // Pre-load the petal image
+    const isSakura = skin === "sakura-zen";
+    const petalImg = new Image();
+    let isPetalLoaded = false;
+    if (isSakura) {
+      petalImg.src = "/sakura_petal.png";
+      petalImg.onload = () => {
+        isPetalLoaded = true;
+      };
+    }
+
     // Resize handler
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
@@ -196,7 +207,6 @@ export default function AmbientBackground() {
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     // Set up lightweight particles (petals for sakura, leaves for forest)
-    const isSakura = skin === "sakura-zen";
     const particleCount = 28;
     const colors = isSakura
       ? [
@@ -280,41 +290,45 @@ export default function AmbientBackground() {
         ctx.rotate(p.tiltAngle);
 
         if (isSakura) {
-          // Sakura Petal: organic shape with wabi-sabi cleft/notch at the tip
-          ctx.beginPath();
-          ctx.moveTo(0, p.r); // Base
-          ctx.bezierCurveTo(-p.r * 1.4, p.r * 0.5, -p.r * 1.2, -p.r * 0.5, -p.r * 0.4, -p.r);
-          ctx.lineTo(-p.r * 0.25, -p.r * 0.95);
-          ctx.lineTo(0, -p.r * 0.68); // Notch dip
-          ctx.lineTo(p.r * 0.25, -p.r * 0.95);
-          ctx.lineTo(p.r * 0.4, -p.r);
-          ctx.bezierCurveTo(p.r * 1.2, -p.r * 0.5, p.r * 1.4, p.r * 0.5, 0, p.r);
-          ctx.closePath();
+          if (isPetalLoaded) {
+            // Render user's high-res PNG sakura petal centered
+            ctx.drawImage(petalImg, -p.r * 1.5, -p.r * 1.5, p.r * 3, p.r * 3);
+          } else {
+            // Fallback: Sakura Petal organic Bezier shape
+            ctx.beginPath();
+            ctx.moveTo(0, p.r); // Base
+            ctx.bezierCurveTo(-p.r * 1.4, p.r * 0.5, -p.r * 1.2, -p.r * 0.5, -p.r * 0.4, -p.r);
+            ctx.lineTo(-p.r * 0.25, -p.r * 0.95);
+            ctx.lineTo(0, -p.r * 0.68); // Notch dip
+            ctx.lineTo(p.r * 0.25, -p.r * 0.95);
+            ctx.lineTo(p.r * 0.4, -p.r);
+            ctx.bezierCurveTo(p.r * 1.2, -p.r * 0.5, p.r * 1.4, p.r * 0.5, 0, p.r);
+            ctx.closePath();
 
-          // Smooth gradient for premium depth
-          const grad = ctx.createLinearGradient(0, p.r, 0, -p.r);
-          grad.addColorStop(0, p.color);
-          grad.addColorStop(1, "rgba(255, 240, 244, 0.85)"); // bright tip
-          ctx.fillStyle = grad;
-          ctx.fill();
+            const grad = ctx.createLinearGradient(0, p.r, 0, -p.r);
+            grad.addColorStop(0, p.color);
+            grad.addColorStop(1, "rgba(255, 240, 244, 0.85)");
+            ctx.fillStyle = grad;
+            ctx.fill();
 
-          // Organic veins (midrib)
-          ctx.beginPath();
-          ctx.moveTo(0, p.r * 0.8);
-          ctx.lineTo(0, -p.r * 0.35);
-          ctx.strokeStyle = "rgba(255, 255, 255, 0.30)";
-          ctx.lineWidth = 0.6;
-          ctx.stroke();
+            // Midrib vein
+            ctx.beginPath();
+            ctx.moveTo(0, p.r * 0.8);
+            ctx.lineTo(0, -p.r * 0.35);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.30)";
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
 
-          // Subtle lateral veins
-          ctx.beginPath();
-          ctx.moveTo(0, p.r * 0.4);
-          ctx.quadraticCurveTo(-p.r * 0.25, p.r * 0.2, -p.r * 0.45, -p.r * 0.05);
-          ctx.moveTo(0, p.r * 0.2);
-          ctx.quadraticCurveTo(p.r * 0.25, 0, p.r * 0.45, -p.r * 0.25);
-          ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
-          ctx.lineWidth = 0.4;
-          ctx.stroke();
+            // Lateral veins
+            ctx.beginPath();
+            ctx.moveTo(0, p.r * 0.4);
+            ctx.quadraticCurveTo(-p.r * 0.25, p.r * 0.2, -p.r * 0.45, -p.r * 0.05);
+            ctx.moveTo(0, p.r * 0.2);
+            ctx.quadraticCurveTo(p.r * 0.25, 0, p.r * 0.45, -p.r * 0.25);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+            ctx.lineWidth = 0.4;
+            ctx.stroke();
+          }
         } else {
           // Forest Leaf: slender pointed shape
           ctx.beginPath();
