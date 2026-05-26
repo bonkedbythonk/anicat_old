@@ -229,39 +229,40 @@ local function draw_button(ass, x1, y1, x2, y2, bg_color, border_color, label, f
 end
 
 local function draw_controls(ass, w, h)
-  local pad = 8
-  local btn_h = 28
-  -- Align inside the ModernZ OSC bar area (bar bottom ~70px)
-  local y1 = h - btn_h - pad - 66
+  local pad = 12
+  local btn_h = 38
+  -- Center vertically inside ModernZ OSC bar (bar is ~70px from bottom)
+  local y_center = h - 34
+  local y1 = y_center - btn_h / 2
   local y2 = y1 + btn_h
-  local gap = 6
+  local gap = 8
 
   -- Button 5: Prev (Leftmost)
-  local prev_width = 65
-  local prev_x1 = pad
+  local prev_width = 72
+  local prev_x1 = pad + 8
   local prev_x2 = prev_x1 + prev_width
   state.prev_button = { x1 = prev_x1, y1 = y1, x2 = prev_x2, y2 = y2 }
 
   -- Button 4: Next
-  local next_width = 65
+  local next_width = 72
   local next_x1 = prev_x2 + gap
   local next_x2 = next_x1 + next_width
   state.next_button = { x1 = next_x1, y1 = y1, x2 = next_x2, y2 = y2 }
 
   -- Button 3: Skip (always visible, pulsates when a segment is active)
-  local skip_width = 70
+  local skip_width = 80
   local skip_x1 = next_x2 + gap
   local skip_x2 = skip_x1 + skip_width
   state.skip_bar_button = { x1 = skip_x1, y1 = y1, x2 = skip_x2, y2 = y2 }
 
   -- Button 2: Auto
-  local auto_width = 100
+  local auto_width = 110
   local auto_x1 = skip_x2 + gap
   local auto_x2 = auto_x1 + auto_width
   state.auto_button = { x1 = auto_x1, y1 = y1, x2 = auto_x2, y2 = y2 }
 
-  -- Button 1: HQ (Rightmost)
-  local hq_width = 85
+  -- Button 1: HQ (Rightmost of this group)
+  local hq_width = 95
   local hq_x1 = auto_x2 + gap
   local hq_x2 = hq_x1 + hq_width
   state.hq_button = { x1 = hq_x1, y1 = y1, x2 = hq_x2, y2 = y2 }
