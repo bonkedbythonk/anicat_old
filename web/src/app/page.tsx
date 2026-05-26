@@ -478,6 +478,17 @@ export default function App() {
         health={healthStatus}
       />
 
+      {/* Titlebar drag region for macOS */}
+      <div
+        data-tauri-drag-region
+        className="fixed top-0 left-[72px] lg:left-[248px] right-0 h-8 z-40 pointer-events-none select-none"
+      >
+        <div
+          data-tauri-drag-region
+          className="w-full h-full pointer-events-auto cursor-default"
+        />
+      </div>
+
       {/* Liquid Glass — Native visionOS style doesn't use artificial cursor lights */}
 
       {/* Main content */}
