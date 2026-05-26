@@ -994,17 +994,6 @@ export default function AnimePlayer({
                 <span>Auto-Skip</span>
               </button>
             </div>
-            {/* GPU Upscaling — launch external MPV with Anime4K shaders */}
-            <div className="flex items-center">
-              <button
-                onClick={handleOpenExternalMpv}
-                className="px-2.5 py-1 rounded-lg text-[9px] uppercase tracking-wider font-black transition-all border flex items-center space-x-1.5 active:scale-95 duration-200 bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20"
-                title="Open in external MPV player with GPU-accelerated Anime4K upscaling shaders"
-              >
-                <Video size={11} />
-                <span>MPV Upscale</span>
-              </button>
-            </div>
             {/* UX-23: Subtitle Customization */}
             <div className="relative">
               <button
@@ -1097,12 +1086,12 @@ export default function AnimePlayer({
         </div>
       </div>
 
-      {/* UX-08: AniSkip button — always visible, state varies */}
-      <div className="absolute bottom-24 right-8 z-[240]">
-        {activeSkip ? (
+      {/* UX-08: AniSkip button — appears during intros/outros */}
+      {activeSkip && (
+        <div className="absolute bottom-24 right-8 z-[240] animate-slide-in-right">
           <button
             onClick={() => handleSeekAndPlay(activeSkip.end)}
-            className="flex items-center space-x-3 px-5 py-3 bg-black/70 backdrop-blur-xl border border-white/15 hover:border-white/25 text-white font-extrabold rounded-2xl shadow-2xl transition-all active:scale-95 group cursor-pointer animate-slide-in-right"
+            className="flex items-center space-x-3 px-5 py-3 bg-black/70 backdrop-blur-xl border border-white/15 hover:border-white/25 text-white font-extrabold rounded-2xl shadow-2xl transition-all active:scale-95 group cursor-pointer"
           >
             <span className="text-xs uppercase tracking-[0.15em] text-white/90">
               Skip {activeSkip.type === 'op' ? 'Intro' : 'Outro'}
@@ -1123,25 +1112,8 @@ export default function AnimePlayer({
               />
             </div>
           </button>
-        ) : skipTimes.length > 0 ? (
-          <button
-            onClick={() => {
-              const nextSkip = skipTimes[0];
-              if (nextSkip) handleSeekAndPlay(nextSkip.start);
-            }}
-            className="flex items-center space-x-2 px-4 py-2.5 bg-black/40 backdrop-blur-md border border-white/[0.06] hover:border-white/15 text-white/50 hover:text-white/80 font-semibold rounded-xl transition-all active:scale-95 cursor-pointer text-xs"
-            title="Skip to next intro/outro"
-          >
-            <ArrowRight size={12} />
-            <span>Skip Intro</span>
-          </button>
-        ) : (
-          <div className="flex items-center space-x-2 px-4 py-2.5 bg-black/20 backdrop-blur-md border border-white/[0.04] text-white/20 font-semibold rounded-xl text-xs select-none pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-            <ArrowRight size={12} />
-            <span>No skip data</span>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* End-of-Series Rating Modal */}
       {showRatingModal && (

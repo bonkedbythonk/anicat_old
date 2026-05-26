@@ -354,13 +354,13 @@ class MpvPlayer(BasePlayer):
                     f"Using isolated premium MPV configuration from: {bundled_config}"
                 )
                 # If we ship a custom AniCat UI script, prefer loading it explicitly
-                ani_ui = os.path.abspath(
-                    os.path.join(bundled_config, "scripts", "anicat_ui", "main.lua")
-                )
-                if os.path.exists(ani_ui):
-                    # Pass script explicitly in case MPV's auto-loading is affected by user settings
-                    mpv_args.append(f"--script={ani_ui}")
-                    logger.info(f"Injecting AniCat custom UI script: {ani_ui}")
+                # DISABLED: AniCat UI overlay doesn't render correctly across MPV builds
+                # ani_ui = os.path.abspath(
+                #     os.path.join(bundled_config, "scripts", "anicat_ui", "main.lua")
+                # )
+                # if os.path.exists(ani_ui):
+                #     mpv_args.append(f"--script={ani_ui}")
+                #     logger.info(f"Injecting AniCat custom UI script: {ani_ui}")
 
             # Dynamically map and inject real-time upscaling shaders based on user's performance preference
             shader_profile = getattr(params, "shader_profile", "balanced") or "balanced"
@@ -401,33 +401,28 @@ class MpvPlayer(BasePlayer):
                     "GPU upscaling shaders are disabled (Battery Saver / Low-End profile)."
                 )
 
-        skip_times = getattr(params, "skip_times", None)
-        if skip_times:
-            try:
-                parts = []
-                for s in skip_times:
-                    t = s.get("type")
-                    start = int(s.get("start") or 0)
-                    end = int(s.get("end") or 0)
-                    parts.append(f"{t},{start},{end}")
-                encoded = ";".join(parts)
-                # MPV's --script-opts uses commas to separate key=value pairs.
-                # If a value contains a comma, we must wrap it in bracket quotes [value]
-                # to prevent the MPV suboption parser from splitting it.
-                encoded_escaped = f"[{encoded}]"
-                mpv_args.append(f"--script-opts=anicat_ui-skip_times={encoded_escaped}")
-                logger.debug(f"Injected AniCat skip_times script-opts: {encoded}")
-            except Exception:
-                logger.debug("Failed to append AniCat skip_times to MPV args")
-
-        auto_next = getattr(params, "auto_next", False)
-        val = "yes" if auto_next else "no"
-        mpv_args.append(f"--script-opts-append=anicat_ui-auto_next={val}")
-
-        # Pass the UI accent color to the MPV skin so buttons match the theme.
-        # Default matches the CSS --accent-color from globals.css (neon-abyss).
-        accent = getattr(params, "accent", None) or "0A84FF"
-        mpv_args.append(f"--script-opts-append=anicat_ui-accent={accent}")
+        # DISABLED: AniCat UI overlay script is not loaded
+        # if skip_times:
+        #     try:
+        #         parts = []
+        #         for s in skip_times:
+        #             t = s.get("type")
+        #             start = int(s.get("start") or 0)
+        #             end = int(s.get("end") or 0)
+        #             parts.append(f"{t},{start},{end}")
+        #         encoded = ";".join(parts)
+        #         encoded_escaped = f"[{encoded}]"
+        #         mpv_args.append(f"--script-opts=anicat_ui-skip_times={encoded_escaped}")
+        #         logger.debug(f"Injected AniCat skip_times script-opts: {encoded}")
+        #     except Exception:
+        #         logger.debug("Failed to append AniCat skip_times to MPV args")
+        # 
+        # auto_next = getattr(params, "auto_next", False)
+        # val = "yes" if auto_next else "no"
+        # mpv_args.append(f"--script-opts-append=anicat_ui-auto_next={val}")
+        # 
+        # accent = getattr(params, "accent", None) or "0A84FF"
+        # mpv_args.append(f"--script-opts-append=anicat_ui-accent={accent}")
 
         if params.headers:
             # mpv prefers no spaces after commas and colons in http-header-fields
