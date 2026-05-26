@@ -5,8 +5,9 @@ from ..deps import get_media_api
 
 router = APIRouter()
 
+
 @router.get("/", response_model=List[Notification])
-async def get_notifications(api = Depends(get_media_api)):
+def get_notifications(api=Depends(get_media_api)):
     """Get the authenticated user's unread notifications."""
     try:
         if not api.is_authenticated():
@@ -18,8 +19,9 @@ async def get_notifications(api = Depends(get_media_api)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/read")
-async def mark_notifications_as_read(api = Depends(get_media_api)):
+def mark_notifications_as_read(api=Depends(get_media_api)):
     """Mark all notifications as read."""
     try:
         if not api.is_authenticated():

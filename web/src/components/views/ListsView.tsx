@@ -40,7 +40,6 @@ function ListSkeletonGrid() {
 export default function ListsView({ onSelect }: ListsViewProps) {
   const [activeTab, setActiveTab] = useState<WatchStatus>("watching");
   const [type, setType] = useState<"ANIME" | "MANGA">("ANIME");
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const { items, loading, loadingMore, hasMore, loadMore } =
     usePaginatedList<MediaItem>({
@@ -53,13 +52,6 @@ export default function ListsView({ onSelect }: ListsViewProps) {
       },
       queryKey: ["lists", activeTab, type],
     });
-
-  // Track first successful load so we can show skeleton instead of spinner on tab switches
-  useEffect(() => {
-    if (!loading && items.length > 0) {
-      setHasLoadedOnce(true);
-    }
-  }, [loading, items.length]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -88,7 +80,7 @@ export default function ListsView({ onSelect }: ListsViewProps) {
 
       {/* Grid */}
       <div className="relative">
-        {loading && hasLoadedOnce && (
+        {loading && items.length > 0 && (
           <div className="absolute top-0 left-0 right-0 z-10 flex justify-center mt-12 animate-fade-in">
             <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10 flex items-center space-x-3 shadow-2xl">
               <Loader2 className="animate-spin text-accent" size={20} />
@@ -103,7 +95,7 @@ export default function ListsView({ onSelect }: ListsViewProps) {
               <LazyCard key={item.id} item={item} onSelect={onSelect} />
             ))}
           </div>
-        ) : loading && !hasLoadedOnce ? (
+        ) : loading ? (
           <ListSkeletonGrid />
         ) : (
           <div className="text-center py-24 border-2 border-dashed border-white/[0.04] rounded-2xl">

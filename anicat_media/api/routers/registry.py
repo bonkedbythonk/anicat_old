@@ -5,8 +5,9 @@ router = APIRouter()
 
 from ..deps import get_ctx
 
+
 @router.get("/stats")
-async def get_registry_stats():
+def get_registry_stats():
     """Get comprehensive registry and download statistics."""
     try:
         ctx = get_ctx()
@@ -19,8 +20,9 @@ async def get_registry_stats():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/backup")
-async def create_backup():
+def create_backup():
     """Create a registry backup archive."""
     try:
         import shutil
@@ -38,7 +40,7 @@ async def create_backup():
         # Create zip archive
         archive_path = shutil.make_archive(
             str(backup_path),
-            'zip',
+            "zip",
             root_dir=str(registry_dir.parent),
             base_dir=registry_dir.name,
         )
@@ -51,11 +53,11 @@ async def create_backup():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/backup/download")
-async def download_latest_backup():
+def download_latest_backup():
     """Download the most recent backup archive."""
     try:
-
         ctx = get_ctx()
         backup_dir = ctx.media_registry.media_registry_dir.parent / "backups"
 
@@ -63,7 +65,9 @@ async def download_latest_backup():
             raise HTTPException(status_code=404, detail="No backups found")
 
         # Find the latest .zip
-        backups = sorted(backup_dir.glob("*.zip"), key=lambda p: p.stat().st_mtime, reverse=True)
+        backups = sorted(
+            backup_dir.glob("*.zip"), key=lambda p: p.stat().st_mtime, reverse=True
+        )
         if not backups:
             raise HTTPException(status_code=404, detail="No backups found")
 
@@ -78,11 +82,13 @@ async def download_latest_backup():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/wipe")
-async def wipe_registry():
+def wipe_registry():
     """Wipe the entire local registry and index."""
     try:
         import shutil
+
         ctx = get_ctx()
         registry_dir = ctx.media_registry.media_registry_dir
         if registry_dir.exists():

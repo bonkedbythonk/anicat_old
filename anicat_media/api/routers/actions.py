@@ -76,6 +76,7 @@ def _validate_proxy_url(raw_url: str) -> str:
         # Not an IP literal — resolve and validate
         try:
             import socket
+
             resolved = socket.getaddrinfo(parsed.hostname, None)
             for _, _, _, _, sockaddr in resolved:
                 addr = ipaddress.ip_address(sockaddr[0])
@@ -123,7 +124,9 @@ def _to_hhmmss(sec) -> str | None:
         return None
 
 
-async def _fetch_aniskip_times(media_id: int, mal_id: int | None, episode: str) -> list[dict]:
+async def _fetch_aniskip_times(
+    media_id: int, mal_id: int | None, episode: str
+) -> list[dict]:
     """Fetch AniSkip skip times asynchronously for a given media/episode."""
     try:
         query_id = mal_id if mal_id not in (None, 0) else media_id
@@ -150,11 +153,18 @@ async def _fetch_aniskip_times(media_id: int, mal_id: int | None, episode: str) 
 def _play_and_track(ctx, params, anime, media_item, local: bool = False):
     """Background task to play media and then track watch history."""
     try:
-        from ...libs.provider.anime.types import SearchResult as AnimeSearchResult, Anime as AnimeObj
+        from ...libs.provider.anime.types import (
+            SearchResult as AnimeSearchResult,
+            Anime as AnimeObj,
+        )
         from ...libs.provider.anime.params import AnimeParams
 
         # M3: Only re-fetch if we received a SearchResult (not already a full Anime)
-        if anime and isinstance(anime, AnimeSearchResult) and not isinstance(anime, AnimeObj):
+        if (
+            anime
+            and isinstance(anime, AnimeSearchResult)
+            and not isinstance(anime, AnimeObj)
+        ):
             try:
                 full_anime = ctx.provider.get(
                     AnimeParams(
@@ -206,7 +216,7 @@ async def _resolve_episode_stream(media_id: int, episode: Optional[str] = None):
     title = media_item.title.romaji or media_item.title.english
     from .media import get_anime_ref
 
-    anime_id, record = await get_anime_ref(ctx, media_item, media_id)
+    anime_id, record = get_anime_ref(ctx, media_item, media_id)
     if not anime_id:
         raise HTTPException(status_code=404, detail=f"No results found for {title}")
 
@@ -233,7 +243,7 @@ async def _resolve_episode_stream(media_id: int, episode: Optional[str] = None):
         raise HTTPException(
             status_code=502,
             detail="The streaming provider could not find any servers for this episode. "
-                   "The site may be restructuring or the episode may have been removed.",
+            "The site may be restructuring or the episode may have been removed.",
         )
 
     # Get first server
@@ -255,10 +265,14 @@ async def _resolve_episode_stream(media_id: int, episode: Optional[str] = None):
         quality_order = ["1080", "720", "480", "360"]
         try:
             pref_idx = quality_order.index(preferred_quality)
-            for fallback_q in quality_order[pref_idx + 1:]:
-                fallback = next((link for link in server.links if link.quality == fallback_q), None)
+            for fallback_q in quality_order[pref_idx + 1 :]:
+                fallback = next(
+                    (link for link in server.links if link.quality == fallback_q), None
+                )
                 if fallback:
-                    logger.info(f"Quality fallback: {preferred_quality}p not available, using {fallback_q}p")
+                    logger.info(
+                        f"Quality fallback: {preferred_quality}p not available, using {fallback_q}p"
+                    )
                     selected_link = fallback
                     break
         except (ValueError, IndexError):
@@ -287,6 +301,7 @@ async def _resolve_episode_stream(media_id: int, episode: Optional[str] = None):
 
 
 # ── Shared playback preparation (L3: deduplicates play_media / resolve_media_stream) ──
+
 
 async def _prepare_playback(
     ctx,
@@ -340,7 +355,10 @@ async def _prepare_playback(
         current_progress = (
             str(media_item.user_status.progress) if media_item.user_status else "0"
         )
-        if resolved_episode == str(int(current_progress) + 1) or resolved_episode == current_progress:
+        if (
+            resolved_episode == str(int(current_progress) + 1)
+            or resolved_episode == current_progress
+        ):
             start_time = resume_time
 
     # Check local downloads
@@ -358,8 +376,13 @@ async def _prepare_playback(
 
     is_local = False
     file_path = None
-    if ep_record and ep_record.download_status == DownloadStatus.COMPLETED and ep_record.file_path:
+    if (
+        ep_record
+        and ep_record.download_status == DownloadStatus.COMPLETED
+        and ep_record.file_path
+    ):
         from pathlib import Path
+
         path_obj = Path(ep_record.file_path)
         if path_obj.exists():
             is_local = True
@@ -391,7 +414,9 @@ async def play_media(
         if media_id in _active_requests:
             last_request_time = _active_requests[media_id]
             if now - last_request_time < 2.0:
-                raise HTTPException(status_code=429, detail="Playback request already in progress")
+                raise HTTPException(
+                    status_code=429, detail="Playback request already in progress"
+                )
 
         _active_requests[media_id] = now
         try:
@@ -420,11 +445,15 @@ async def play_media(
                 from ...libs.provider.manga.params import MangaParams
                 from .media import get_manga_ref
 
-                manga_id, record = await get_manga_ref(ctx, media_item, media_id)
+                manga_id, record = get_manga_ref(ctx, media_item, media_id)
                 if not manga_id:
-                    raise HTTPException(status_code=404, detail=f"No manga results found for {title}")
+                    raise HTTPException(
+                        status_code=404, detail=f"No manga results found for {title}"
+                    )
 
-                full_manga = ctx.manga_provider.get(MangaParams(id=manga_id, query=title))
+                full_manga = ctx.manga_provider.get(
+                    MangaParams(id=manga_id, query=title)
+                )
                 if not full_manga or not full_manga.chapters:
                     raise HTTPException(status_code=404, detail="No chapters found")
 
@@ -439,7 +468,9 @@ async def play_media(
                     full_manga.id, chapter.url or chapter.number
                 )
                 if not chapter_data or not chapter_data.get("thumbnails"):
-                    raise HTTPException(status_code=404, detail="Failed to load chapter pages")
+                    raise HTTPException(
+                        status_code=404, detail="Failed to load chapter pages"
+                    )
 
                 ctx.watch_history.track(
                     media_item,
@@ -458,7 +489,9 @@ async def play_media(
             # Local file playback
             if is_local and file_path is not None:
                 local_title = f"{media_item.title.english or media_item.title.romaji}; Episode {resolved_episode}"
-                if media_item.streaming_episodes and media_item.streaming_episodes.get(resolved_episode):
+                if media_item.streaming_episodes and media_item.streaming_episodes.get(
+                    resolved_episode
+                ):
                     local_title = media_item.streaming_episodes[resolved_episode].title
 
                 params = PlayerParams(
@@ -472,12 +505,21 @@ async def play_media(
                 )
 
                 # M5: Async AniSkip fetch
-                skip_times = await _fetch_aniskip_times(media_id, media_item.id_mal, resolved_episode)
+                skip_times = await _fetch_aniskip_times(
+                    media_id, media_item.id_mal, resolved_episode
+                )
                 if skip_times:
-                    params = params.__class__(**{**params.__dict__, "skip_times": skip_times})
+                    params = params.__class__(
+                        **{**params.__dict__, "skip_times": skip_times}
+                    )
 
                 background_tasks.add_task(
-                    _play_and_track, ctx, params, anime=None, media_item=media_item, local=True
+                    _play_and_track,
+                    ctx,
+                    params,
+                    anime=None,
+                    media_item=media_item,
+                    local=True,
                 )
 
                 set_playback(
@@ -507,16 +549,26 @@ async def play_media(
             )
 
             # M5: Async AniSkip fetch
-            skip_times = await _fetch_aniskip_times(media_id, media_item.id_mal, resolved["episode"])
+            skip_times = await _fetch_aniskip_times(
+                media_id, media_item.id_mal, resolved["episode"]
+            )
             if skip_times:
-                params = params.__class__(**{**params.__dict__, "skip_times": skip_times})
+                params = params.__class__(
+                    **{**params.__dict__, "skip_times": skip_times}
+                )
 
             background_tasks.add_task(
-                _play_and_track, ctx, params, anime=resolved["anime_ref"], media_item=resolved["media_item"]
+                _play_and_track,
+                ctx,
+                params,
+                anime=resolved["anime_ref"],
+                media_item=resolved["media_item"],
             )
 
             set_playback(
-                media_id=media_id, media_title=resolved["title"], episode=resolved["episode"]
+                media_id=media_id,
+                media_title=resolved["title"],
+                episode=resolved["episode"],
             )
             return {
                 "status": "playing",
@@ -528,6 +580,7 @@ async def play_media(
             raise
         except Exception as e:
             import traceback
+
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=str(e))
         finally:
@@ -621,6 +674,7 @@ async def resolve_media_stream(media_id: int, episode: str | None = None):
         raise
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -838,6 +892,7 @@ async def renew_stream(media_id: int, episode: str):
         start_time_seconds = 0
         if resolved["start_time"]:
             from ...core.utils.converter import time_to_seconds
+
             if ":" in str(resolved["start_time"]):
                 start_time_seconds = time_to_seconds(resolved["start_time"])
             else:
@@ -859,6 +914,7 @@ async def renew_stream(media_id: int, episode: str):
         raise
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -868,8 +924,6 @@ async def test_actions():
     return {"status": "ok", "message": "Actions router is active"}
 
 
-
-
 class FrontendLogRequest(BaseModel):
     level: str
     message: str
@@ -877,7 +931,7 @@ class FrontendLogRequest(BaseModel):
 
 
 @router.post("/log")
-async def log_frontend_message(req: FrontendLogRequest):
+def log_frontend_message(req: FrontendLogRequest):
     import logging
 
     logger = logging.getLogger("frontend")
@@ -895,7 +949,7 @@ async def log_frontend_message(req: FrontendLogRequest):
 
 
 @router.get("/open")
-async def open_link(url: str):
+def open_link(url: str):
     """Opens a URL in the user's default browser.
 
     M6: Validates URL scheme to prevent open redirects to dangerous protocols.
@@ -913,7 +967,7 @@ async def open_link(url: str):
 
 
 @router.post("/playback/track")
-async def track_playback(req: PlaybackTrackRequest):
+def track_playback(req: PlaybackTrackRequest):
     """
     Saves current watch progress, stops, and handles auto-increment of AniList progress.
     """
