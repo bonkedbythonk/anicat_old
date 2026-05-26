@@ -401,6 +401,7 @@ class MpvPlayer(BasePlayer):
                     "GPU upscaling shaders are disabled (Battery Saver / Low-End profile)."
                 )
 
+        skip_times = getattr(params, "skip_times", None)
         if skip_times:
             try:
                 parts = []
