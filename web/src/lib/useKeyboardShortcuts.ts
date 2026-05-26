@@ -82,12 +82,29 @@ export default function useKeyboardShortcuts({
 
       if (isInput) return;
 
-      // Single-key fallbacks for power users (no modifier)
+      // Single-key triggers for navigating when not typing
+      if (e.key >= "1" && e.key <= "9") {
+        const views: ViewName[] = ["home", "library", "schedule", "manga", "lists", "downloads", "notifications", "profile", "settings"];
+        const idx = parseInt(e.key) - 1;
+        if (idx < views.length) {
+          _previousView = views[idx];
+          callbacksRef.current.onNavigate(views[idx]);
+        }
+        return;
+      }
+
       switch (e.key) {
         case "/":
+        case "k":
+        case "K":
           e.preventDefault();
           _previousView = "search";
           callbacksRef.current.onNavigate("search");
+          break;
+        case ",":
+          e.preventDefault();
+          _previousView = "settings";
+          callbacksRef.current.onNavigate("settings");
           break;
         case "Escape":
           callbacksRef.current.onCloseDetail();
