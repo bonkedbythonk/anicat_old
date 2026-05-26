@@ -121,6 +121,7 @@ const SKIN_CONFIGS: Record<string, SkinConfig> = {
 export default function AmbientBackground() {
   const [mounted, setMounted] = useState(false);
   const [skin, setSkin] = useState<string>("neon-abyss");
+  const [showParticles, setShowParticles] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mouseRef = useRef<{ x: number | null; y: number | null }>({ x: null, y: null });
 
@@ -158,9 +159,35 @@ export default function AmbientBackground() {
     };
   }, []);
 
+  // Listen to custom settings events to toggle particles dynamically
+  useEffect(() => {
+    const updateParticles = () => {
+      if (typeof window !== "undefined") {
+        const saved = localStorage.getItem("anicat_falling_particles");
+        setShowParticles(saved !== "false");
+      }
+    };
+    updateParticles();
+
+    window.addEventListener("anicat_settings_changed", updateParticles);
+    window.addEventListener("storage", updateParticles);
+    return () => {
+      window.removeEventListener("anicat_settings_changed", updateParticles);
+      window.removeEventListener("storage", updateParticles);
+    };
+  }, []);
+
   // Falling sakura petals / forest leaves canvas effect
   useEffect(() => {
-    if (skin !== "sakura-zen" && skin !== "forest-moss") return;
+    if (!showParticles || (skin !== "sakura-zen" && skin !== "forest-moss")) {
+      // Clear canvas if disabled
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      return;
+    }
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -390,7 +417,7 @@ export default function AmbientBackground() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [skin]);
+  }, [skin, showParticles, mounted]);
 
   const config = SKIN_CONFIGS[skin] ?? SKIN_CONFIGS["neon-abyss"];
 

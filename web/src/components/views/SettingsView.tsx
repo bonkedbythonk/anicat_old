@@ -1,14 +1,32 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Loader2, CheckCircle2, Save, Cpu, PlayCircle, HardDrive, Globe, Activity, RotateCcw, XCircle, AlertCircle, Download } from "lucide-react";
+import { Loader2, CheckCircle2, Save, Cpu, PlayCircle, HardDrive, Globe, RotateCcw, XCircle, AlertCircle, Download } from "lucide-react";
 import { mediaApi, type HealthStatus, API_BASE_ORIGIN } from "@/lib/api";
-import { useTheme, type UiStyle } from "@/lib/useTheme";
+import type { UiStyle } from "@/lib/useTheme";
 import ErrorBanner from "@/components/ErrorBanner";
 
 interface SettingsViewProps {
   health: HealthStatus | null;
   onUpdateStarted?: (message?: string) => void;
+}
+
+interface RegistryStats {
+  registry?: {
+    total_media_breakdown?: {
+      total?: number;
+    };
+  };
+  downloads?: {
+    downloaded?: number;
+  };
+}
+
+interface ConfigOptions {
+  stream?: {
+    quality?: string[];
+    player_type?: string[];
+  };
 }
 
 export default function SettingsView({ health, onUpdateStarted }: SettingsViewProps) {
@@ -17,7 +35,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<"general" | "player" | "downloads" | "account" | "maintenance">("general");
-  const [registryStats, setRegistryStats] = useState<any>(null);
+  const [registryStats, setRegistryStats] = useState<RegistryStats | null>(null);
   const [backingUp, setBackingUp] = useState(false);
   const [backupUrl, setBackupUrl] = useState<string | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
@@ -25,28 +43,32 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
   const [updateMessage, setUpdateMessage] = useState<{ text: string; type: "success" | "error" | null }>({ text: "", type: null });
   const [releaseNotes, setReleaseNotes] = useState<string>("");
   const [releaseUrl, setReleaseUrl] = useState<string>("");
-  const [options, setOptions] = useState<Record<string, any> | null>(null);
+  const [options, setOptions] = useState<ConfigOptions | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [autoSkip, setAutoSkip] = useState(false);
   const [theme, setTheme] = useState<"system" | "dark" | "light">("system");
   const [uiStyle, setUiStyle] = useState<UiStyle>("neon-abyss");
+  const [fallingParticles, setFallingParticles] = useState(true);
   const hasUpdate = Boolean(health?.update_available || stagedHasUpdate);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedAutoSkip = localStorage.getItem("anicat_auto_skip");
-      setAutoSkip(savedAutoSkip === "true");
-
       const savedTheme = localStorage.getItem("anicat_theme") as "system" | "dark" | "light" | null;
-      if (savedTheme) {
-        setTheme(savedTheme);
-      }
-
       const savedStyle = localStorage.getItem("anicat_ui_style") as UiStyle | null;
-      if (savedStyle) {
-        setUiStyle(savedStyle);
-      }
+      const savedFalling = localStorage.getItem("anicat_falling_particles");
+
+      setTimeout(() => {
+        setAutoSkip(savedAutoSkip === "true");
+        if (savedTheme) {
+          setTheme(savedTheme);
+        }
+        if (savedStyle) {
+          setUiStyle(savedStyle);
+        }
+        setFallingParticles(savedFalling !== "false");
+      }, 0);
     }
   }, []);
 
@@ -180,26 +202,6 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
     }
   };
 
-  const handleSave = async () => {
-    if (!config) return;
-    setSaving(true);
-    setSuccessMessage(null);
-    setErrorMessage(null);
-    try {
-      await mediaApi.updateConfig(config);
-      setSaved(true);
-      setSuccessMessage("Settings saved successfully.");
-      setTimeout(() => setSaved(false), 2000);
-    } catch (err: any) {
-      console.error("Save failed:", err);
-      // Attempt to show structured server errors if present
-      const msg = err?.message || "Unknown error";
-      setErrorMessage("Could not save settings. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   // Auto-save with debounce — saves 800ms after the last change
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const autoSave = useCallback((updatedConfig: Record<string, Record<string, unknown>>) => {
@@ -210,7 +212,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
         await mediaApi.updateConfig(updatedConfig);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Auto-save failed:", err);
         setErrorMessage("Failed to save. Try again.");
         setTimeout(() => setErrorMessage(null), 4000);
@@ -230,24 +232,6 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
       autoSave(updated);
       return updated;
     });
-  };
-
-  // Save button (manual trigger) still works for bulk/initial saves
-  const handleManualSave = async () => {
-    if (!config) return;
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    setSaving(true);
-    setErrorMessage(null);
-    try {
-      await mediaApi.updateConfig(config);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (err: any) {
-      console.error("Save failed:", err);
-      setErrorMessage("Could not save settings. Please try again.");
-    } finally {
-      setSaving(false);
-    }
   };
 
   useEffect(() => {
@@ -281,7 +265,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
     { id: "downloads", label: "Downloads", icon: HardDrive },
     { id: "account", label: "Account", icon: Globe },
     { id: "maintenance", label: "Maintenance", icon: RotateCcw },
-  ];
+  ] as const;
 
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl">
@@ -318,7 +302,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
+            onClick={() => setActiveTab(tab.id)}
             className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap transition-all flex-1 justify-center ${
               activeTab === tab.id
                 ? "bg-accent text-white shadow-lg shadow-accent/20"
@@ -464,6 +448,25 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                       )}
                     </button>
                   </div>
+                </SettingField>
+
+                <SettingField
+                  label="Falling Leaves/Petals"
+                  description="Toggle the background falling leaves/petals animation for Sakura Zen and Forest Moss themes."
+                >
+                  <select
+                    value={fallingParticles ? "true" : "false"}
+                    onChange={(e) => {
+                      const val = e.target.value === "true";
+                      setFallingParticles(val);
+                      localStorage.setItem("anicat_falling_particles", String(val));
+                      window.dispatchEvent(new Event("anicat_settings_changed"));
+                    }}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                  >
+                    <option value="true">Enabled</option>
+                    <option value="false">Disabled</option>
+                  </select>
                 </SettingField>
 
                 <SettingField
@@ -875,7 +878,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                       await navigator.clipboard.writeText(report);
                       setErrorMessage("Debug report copied to clipboard!");
                       setTimeout(() => setErrorMessage(null), 4000);
-                    } catch (err) {
+                    } catch {
                       setErrorMessage("Failed to generate report.");
                       setTimeout(() => setErrorMessage(null), 6000);
                     }
@@ -954,7 +957,7 @@ function LogViewer() {
       try {
         const res = await mediaApi.getLogs(50);
         setLogs(res.logs);
-      } catch (err) {
+      } catch {
         setLogs("Could not fetch logs.");
       }
     };
