@@ -71,7 +71,7 @@ export default function useKeyboardShortcuts({
       }
       if (meta && e.key >= "1" && e.key <= "9") {
         e.preventDefault();
-        const views: ViewName[] = ["home", "library", "schedule", "manga", "lists", "downloads", "notifications", "profile", "settings"];
+        const views: ViewName[] = ["home", "manga", "search", "lists", "downloads", "library", "schedule", "notifications", "profile", "settings"];
         const idx = parseInt(e.key) - 1;
         if (idx < views.length) {
           _previousView = views[idx];
@@ -84,7 +84,7 @@ export default function useKeyboardShortcuts({
 
       // Single-key triggers for navigating when not typing
       if (e.key >= "1" && e.key <= "9") {
-        const views: ViewName[] = ["home", "library", "schedule", "manga", "lists", "downloads", "notifications", "profile", "settings"];
+        const views: ViewName[] = ["home", "manga", "search", "lists", "downloads", "library", "schedule", "notifications", "profile", "settings"];
         const idx = parseInt(e.key) - 1;
         if (idx < views.length) {
           _previousView = views[idx];
