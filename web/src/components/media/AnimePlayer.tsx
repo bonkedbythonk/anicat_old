@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { X, Play, Pause, RotateCcw, Volume2, VolumeX, Maximize, Minimize, Loader2, ArrowRight, Video, PictureInPicture2, Type } from "lucide-react";
+import { X, Play, Pause, RotateCcw, Volume2, VolumeX, Maximize, Minimize, Loader2, ArrowRight, Video, PictureInPicture2 } from "lucide-react";
 import { API_BASE_ORIGIN, mediaApi } from "@/lib/api";
 import { dispatchRefresh } from "@/lib/events";
 
@@ -59,21 +59,6 @@ export default function AnimePlayer({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [isHoveredControls, setIsHoveredControls] = useState(false);
   const [autoSkipEnabled, setAutoSkipEnabled] = useState(false);
-  
-  // UX-23: Subtitle customization
-  const [subtitleSize, setSubtitleSize] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("anicat_subtitle_size") || "medium";
-    }
-    return "medium";
-  });
-  const [subtitleBg, setSubtitleBg] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("anicat_subtitle_bg") || "semi";
-    }
-    return "semi";
-  });
-  const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   
   // Resume position persistence — save/restore playback position per episode
   const resumeKey = `anicat_resume_${mediaId}_${episodeNumber}`;
@@ -994,69 +979,6 @@ export default function AnimePlayer({
                 <span>Auto-Skip</span>
               </button>
             </div>
-            {/* UX-23: Subtitle Customization */}
-            <div className="relative">
-              <button
-                onClick={() => setShowSubtitleMenu(!showSubtitleMenu)}
-                className={`px-2.5 py-1 rounded-lg text-[9px] uppercase tracking-wider font-black transition-all border flex items-center space-x-1.5 active:scale-95 duration-200 ${
-                  showSubtitleMenu
-                    ? "bg-accent/10 border-accent/20 text-accent"
-                    : "bg-white/[0.04] border-white/5 text-white/50 hover:text-white/80 hover:bg-white/[0.08]"
-                }`}
-                title="Subtitle settings"
-              >
-                <Type size={12} />
-                <span>CC</span>
-              </button>
-              {showSubtitleMenu && (
-                <div className="absolute bottom-full mb-2 left-0 bg-surface/95 backdrop-blur-xl border border-white/[0.08] rounded-xl p-4 space-y-3 shadow-2xl min-w-[180px] z-[260]">
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Size</label>
-                    <div className="flex space-x-1">
-                      {["small", "medium", "large"].map(s => (
-                        <button
-                          key={s}
-                          onClick={() => {
-                            setSubtitleSize(s);
-                            localStorage.setItem("anicat_subtitle_size", s);
-                          }}
-                          className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
-                            subtitleSize === s ? "bg-accent text-white" : "bg-white/[0.04] text-white/60 hover:bg-white/[0.08]"
-                          }`}
-                        >
-                          {s === "small" ? "S" : s === "medium" ? "M" : "L"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Background</label>
-                    <div className="flex space-x-1">
-                      {[
-                        { key: "none", label: "None" },
-                        { key: "semi", label: "Semi" },
-                        { key: "solid", label: "Solid" },
-                      ].map(opt => (
-                        <button
-                          key={opt.key}
-                          onClick={() => {
-                            setSubtitleBg(opt.key);
-                            localStorage.setItem("anicat_subtitle_bg", opt.key);
-                          }}
-                          className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
-                            subtitleBg === opt.key ? "bg-accent text-white" : "bg-white/[0.04] text-white/60 hover:bg-white/[0.08]"
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
           <div className="flex items-center space-x-6">
             {hasNextEpisode && onPlayNextEpisode && (
               <button

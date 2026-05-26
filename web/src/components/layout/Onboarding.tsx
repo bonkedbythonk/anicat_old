@@ -59,6 +59,13 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
   const [localAutoSkip, setLocalAutoSkip] = useState(false);
   // UX-27: Auto-detect MPV availability
   const [mpvAvailable, setMpvAvailable] = useState<boolean | null>(null);
+  // Falling petals/leaves ambient effect (Sakura Zen / Forest Moss styles)
+  const [showParticles, setShowParticles] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("anicat_falling_particles") !== "false";
+    }
+    return true;
+  });
 
   useEffect(() => {
     mediaApi.getConfig()
@@ -377,6 +384,30 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                   </div>
                 )}
               </button>
+            </div>
+          </div>
+
+          {/* Ambient Effects */}
+          <div className="space-y-3">
+            <label className="text-xs font-bold text-gray-400 uppercase tracking-wider text-left block">Ambient Effects</label>
+            <div className="flex items-center justify-between p-4 rounded-2xl border-2 border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12] transition-all">
+              <div className="text-left">
+                <div className="text-sm font-bold text-white">Falling Petals / Leaves</div>
+                <div className="text-[11px] text-gray-500">Gentle sakura petals or forest leaves for Sakura Zen &amp; Forest Moss</div>
+              </div>
+              <select
+                value={showParticles ? "true" : "false"}
+                onChange={(e) => {
+                  const val = e.target.value === "true";
+                  setShowParticles(val);
+                  localStorage.setItem("anicat_falling_particles", String(val));
+                  window.dispatchEvent(new Event("anicat_settings_changed"));
+                }}
+                className="bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-xs font-bold focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+              >
+                <option value="true" className="bg-surface">On</option>
+                <option value="false" className="bg-surface">Off</option>
+              </select>
             </div>
           </div>
 
