@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 type SkinConfig = {
   base: string;
@@ -121,16 +121,20 @@ const SKIN_CONFIGS: Record<string, SkinConfig> = {
 export default function AmbientBackground() {
   const [mounted, setMounted] = useState(false);
   const [skin, setSkin] = useState<string>("neon-abyss");
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const mouseRef = useRef<{ x: number | null; y: number | null }>({ x: null, y: null });
 
   useEffect(() => {
-    setMounted(true);
-
     const readSkin = () => {
       const style = document.documentElement.getAttribute("data-style") || "neon-abyss";
       setSkin(style);
     };
 
-    readSkin();
+    // Defer state updates to prevent synchronous render cascade warnings in React 19
+    const frameId = requestAnimationFrame(() => {
+      setMounted(true);
+      readSkin();
+    });
 
     // React to skin changes
     const observer = new MutationObserver((mutations) => {
@@ -148,10 +152,155 @@ export default function AmbientBackground() {
     window.addEventListener("storage", onStorage);
 
     return () => {
+      cancelAnimationFrame(frameId);
       observer.disconnect();
       window.removeEventListener("storage", onStorage);
     };
   }, []);
+
+  // Falling sakura petals canvas effect
+  useEffect(() => {
+    if (skin !== "sakura-zen") return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    let isActive = true;
+
+    // Resize handler
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    // Track mouse coordinates for interactive displacement force field
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseRef.current = { x: e.clientX, y: e.clientY };
+    };
+    const handleMouseLeave = () => {
+      mouseRef.current = { x: null, y: null };
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseleave", handleMouseLeave);
+
+    // Pause canvas updates when app is in background to preserve system resources
+    const handleVisibilityChange = () => {
+      isActive = document.visibilityState === "visible";
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Set up lightweight petal particles
+    const particleCount = 28;
+    const colors = [
+      "rgba(232, 160, 180, 0.65)", // soft accent pink
+      "rgba(242, 191, 206, 0.70)", // light pastel pink
+      "rgba(255, 218, 224, 0.55)", // bright lavender pink
+      "rgba(220, 100, 150, 0.45)", // deep rose pink
+    ];
+
+    const petals: Array<{
+      x: number;
+      y: number;
+      r: number;
+      d: number;
+      color: string;
+      tiltAngle: number;
+      tiltAngleIncremental: number;
+    }> = [];
+
+    for (let i = 0; i < particleCount; i++) {
+      petals.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: Math.random() * 8 + 6, // 6px to 14px size
+        d: Math.random() * 2 + 1, // weight/fall speed factor
+        color: colors[Math.floor(Math.random() * colors.length)],
+        tiltAngle: Math.random() * Math.PI,
+        tiltAngleIncremental: Math.random() * 0.02 + 0.01,
+      });
+    }
+
+    const animate = () => {
+      if (!isActive) {
+        animationFrameId = requestAnimationFrame(animate);
+        return;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < petals.length; i++) {
+        const p = petals[i];
+
+        // Update angle rotation and drift coordinates
+        p.tiltAngle += p.tiltAngleIncremental;
+        p.y += (1 + p.r / 10) * 0.4 * p.d;
+        p.x += Math.sin(p.tiltAngle) * 0.25;
+
+        // Interactive mouse avoidance physics (displacement force field)
+        if (mouseRef.current.x !== null && mouseRef.current.y !== null) {
+          const dx = p.x - mouseRef.current.x;
+          const dy = p.y - mouseRef.current.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 130) {
+            const force = (130 - dist) / 130;
+            // Push petals away from the cursor
+            p.x += (dx / dist) * force * 4.5;
+            p.y += (dy / dist) * force * 4.5;
+          }
+        }
+
+        // Screen wraps to keep constant falling cycle
+        if (p.y > canvas.height + 20) {
+          p.y = -20;
+          p.x = Math.random() * canvas.width;
+        }
+        if (p.x > canvas.width + 20) {
+          p.x = -20;
+        } else if (p.x < -20) {
+          p.x = canvas.width + 20;
+        }
+
+        // Render petal
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.tiltAngle);
+
+        ctx.beginPath();
+        // Create realistic petal geometry using ellipse
+        ctx.ellipse(0, 0, p.r, p.r / 1.7, 0, 0, 2 * Math.PI);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+
+        // Draw organic crease lines
+        ctx.beginPath();
+        ctx.moveTo(-p.r, 0);
+        ctx.lineTo(p.r, 0);
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener("resize", resizeCanvas);
+      window.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseleave", handleMouseLeave);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [skin]);
 
   const config = SKIN_CONFIGS[skin] ?? SKIN_CONFIGS["neon-abyss"];
 
@@ -178,6 +327,14 @@ export default function AmbientBackground() {
           }}
         />
       ))}
+
+      {/* Falling Sakura Canvas */}
+      {skin === "sakura-zen" && (
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full pointer-events-none"
+        />
+      )}
 
       {/* Noise texture overlay */}
       <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
