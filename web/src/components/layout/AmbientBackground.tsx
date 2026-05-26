@@ -158,9 +158,9 @@ export default function AmbientBackground() {
     };
   }, []);
 
-  // Falling sakura petals canvas effect
+  // Falling sakura petals / forest leaves canvas effect
   useEffect(() => {
-    if (skin !== "sakura-zen") return;
+    if (skin !== "sakura-zen" && skin !== "forest-moss") return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -195,16 +195,24 @@ export default function AmbientBackground() {
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Set up lightweight petal particles
+    // Set up lightweight particles (petals for sakura, leaves for forest)
+    const isSakura = skin === "sakura-zen";
     const particleCount = 28;
-    const colors = [
-      "rgba(232, 160, 180, 0.65)", // soft accent pink
-      "rgba(242, 191, 206, 0.70)", // light pastel pink
-      "rgba(255, 218, 224, 0.55)", // bright lavender pink
-      "rgba(220, 100, 150, 0.45)", // deep rose pink
-    ];
+    const colors = isSakura
+      ? [
+          "rgba(232, 160, 180, 0.65)", // soft accent pink
+          "rgba(242, 191, 206, 0.70)", // light pastel pink
+          "rgba(255, 218, 224, 0.55)", // bright lavender pink
+          "rgba(220, 100, 150, 0.45)", // deep rose pink
+        ]
+      : [
+          "rgba(16, 185, 129, 0.50)",  // emerald green
+          "rgba(52, 211, 153, 0.55)",  // minty leaf green
+          "rgba(4, 120, 87, 0.40)",    // deep forest pine
+          "rgba(110, 190, 150, 0.45)", // pale foliage green
+        ];
 
-    const petals: Array<{
+    const particles: Array<{
       x: number;
       y: number;
       r: number;
@@ -215,7 +223,7 @@ export default function AmbientBackground() {
     }> = [];
 
     for (let i = 0; i < particleCount; i++) {
-      petals.push({
+      particles.push({
         x: Math.random() * window.innerWidth,
         y: Math.random() * window.innerHeight,
         r: Math.random() * 8 + 6, // 6px to 14px size
@@ -234,8 +242,8 @@ export default function AmbientBackground() {
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      for (let i = 0; i < petals.length; i++) {
-        const p = petals[i];
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
 
         // Update angle rotation and drift coordinates
         p.tiltAngle += p.tiltAngleIncremental;
@@ -249,7 +257,7 @@ export default function AmbientBackground() {
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < 130) {
             const force = (130 - dist) / 130;
-            // Push petals away from the cursor
+            // Push particles away from the cursor
             p.x += (dx / dist) * force * 4.5;
             p.y += (dy / dist) * force * 4.5;
           }
@@ -266,14 +274,15 @@ export default function AmbientBackground() {
           p.x = canvas.width + 20;
         }
 
-        // Render petal
+        // Render particle
         ctx.save();
         ctx.translate(p.x, p.y);
         ctx.rotate(p.tiltAngle);
 
         ctx.beginPath();
-        // Create realistic petal geometry using ellipse
-        ctx.ellipse(0, 0, p.r, p.r / 1.7, 0, 0, 2 * Math.PI);
+        // Elongated slender shape for forest leaves, more rounded shape for sakura petals
+        const aspect = isSakura ? 1.7 : 2.4;
+        ctx.ellipse(0, 0, p.r, p.r / aspect, 0, 0, 2 * Math.PI);
         ctx.fillStyle = p.color;
         ctx.fill();
 
@@ -281,7 +290,7 @@ export default function AmbientBackground() {
         ctx.beginPath();
         ctx.moveTo(-p.r, 0);
         ctx.lineTo(p.r, 0);
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+        ctx.strokeStyle = isSakura ? "rgba(255, 255, 255, 0.18)" : "rgba(255, 255, 255, 0.22)";
         ctx.lineWidth = 0.5;
         ctx.stroke();
 
@@ -328,8 +337,8 @@ export default function AmbientBackground() {
         />
       ))}
 
-      {/* Falling Sakura Canvas */}
-      {skin === "sakura-zen" && (
+      {/* Falling Sakura / Forest Leaves Canvas */}
+      {(skin === "sakura-zen" || skin === "forest-moss") && (
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full pointer-events-none"
