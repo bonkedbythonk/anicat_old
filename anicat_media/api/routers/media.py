@@ -258,7 +258,7 @@ async def get_smart_playlist():
             UserMediaListSearchParams(
                 status=UserMediaListStatus.COMPLETED,
                 type=MediaType.ANIME,
-                sort=UserMediaListSort.MEDIA_SCORE_DESC,
+                sort=UserMediaListSort.SCORE_DESC,
                 per_page=5,
             )
         )

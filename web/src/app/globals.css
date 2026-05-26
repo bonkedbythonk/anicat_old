@@ -84,10 +84,87 @@ html.light {
   --glass-border: rgba(15, 23, 42, 0.08);
 }
 
+/* Anicat Logo color management based on HTML theme classes instead of OS media queries */
+.anicat-logo {
+  filter: none !important;
+  transition: filter 0.3s ease, opacity 0.2s ease !important;
+}
+html.light .anicat-logo {
+  filter: invert(1) !important;
+}
+
+/* Always keep detail banner gradient dark/cinematic to ensure white text readability */
+.detail-banner-gradient {
+  background-image: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.2) 60%, transparent 100%) !important;
+}
+
+/* Synopsis Fade Gradient override in light modes to prevent white fog cutting off text */
+.synopsis-fade {
+  background-image: linear-gradient(to top, var(--card-color) 0%, transparent 100%) !important;
+}
+
+/* Standard / Neon Abyss Light Mode detail drawer override */
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .media-detail-drawer {
+  background-color: var(--card-color) !important;
+  border-left: 1px solid var(--border-color) !important;
+}
+
+/* Standard / Neon Abyss Light Mode text overrides */
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-white { color: var(--foreground) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-gray-100 { color: rgba(38, 35, 31, 0.90) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-gray-200 { color: rgba(38, 35, 31, 0.80) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-gray-300 { color: rgba(38, 35, 31, 0.70) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-gray-400 { color: rgba(38, 35, 31, 0.58) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-gray-500 { color: rgba(38, 35, 31, 0.46) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-gray-600 { color: rgba(38, 35, 31, 0.34) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-gray-700 { color: rgba(38, 35, 31, 0.24) !important; }
+html.light:not([data-style="sakura-zen"]):not([data-style="retro-manga"]) .text-gray-800 { color: rgba(38, 35, 31, 0.16) !important; }
+
+/* Ambient background blobs overrides in light mode */
+html.light .ambient-blob {
+  mix-blend-mode: multiply !important;
+  opacity: 0.05 !important;
+}
+
+/* Standard Tailwind opacity class overrides for light mode */
+html.light .text-white\/90 { color: color-mix(in srgb, var(--foreground) 90%, transparent) !important; }
+html.light .text-white\/80 { color: color-mix(in srgb, var(--foreground) 80%, transparent) !important; }
+html.light .text-white\/75 { color: color-mix(in srgb, var(--foreground) 75%, transparent) !important; }
+html.light .text-white\/70 { color: color-mix(in srgb, var(--foreground) 70%, transparent) !important; }
+html.light .text-white\/60 { color: color-mix(in srgb, var(--foreground) 60%, transparent) !important; }
+html.light .text-white\/55 { color: color-mix(in srgb, var(--foreground) 55%, transparent) !important; }
+html.light .text-white\/50 { color: color-mix(in srgb, var(--foreground) 50%, transparent) !important; }
+html.light .text-white\/45 { color: color-mix(in srgb, var(--foreground) 45%, transparent) !important; }
+html.light .text-white\/40 { color: color-mix(in srgb, var(--foreground) 40%, transparent) !important; }
+html.light .text-white\/30 { color: color-mix(in srgb, var(--foreground) 30%, transparent) !important; }
+html.light .text-white\/20 { color: color-mix(in srgb, var(--foreground) 20%, transparent) !important; }
+
+/* Hero card container should always remain dark themed for cinematic contrast */
+.hero-card-container {
+  --background: #050505 !important;
+  --foreground: #ffffff !important;
+}
+.hero-card-container .text-white,
+.hero-card-container [class*="text-white/"] {
+  color: #ffffff !important;
+}
+.hero-card-container .text-white\/90 { color: rgba(255, 255, 255, 0.90) !important; }
+.hero-card-container .text-white\/80 { color: rgba(255, 255, 255, 0.80) !important; }
+.hero-card-container .text-white\/75 { color: rgba(255, 255, 255, 0.75) !important; }
+.hero-card-container .text-white\/70 { color: rgba(255, 255, 255, 0.70) !important; }
+.hero-card-container .text-white\/60 { color: rgba(255, 255, 255, 0.60) !important; }
+.hero-card-container .text-white\/55 { color: rgba(255, 255, 255, 0.55) !important; }
+.hero-card-container .text-white\/50 { color: rgba(255, 255, 255, 0.50) !important; }
+.hero-card-container .text-white\/45 { color: rgba(255, 255, 255, 0.45) !important; }
+.hero-card-container .text-white\/40 { color: rgba(255, 255, 255, 0.40) !important; }
+.hero-card-container .text-white\/30 { color: rgba(255, 255, 255, 0.30) !important; }
+.hero-card-container .text-white\/20 { color: rgba(255, 255, 255, 0.20) !important; }
+
 @layer base {
   html {
     scroll-behavior: smooth;
     overscroll-behavior: none;
+    overflow: hidden;
   }
   
   body {
@@ -95,6 +172,7 @@ html.light {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
   }
   
   /* Add smooth transition to interactive/hover states without affecting layouts on initial page load */
@@ -241,42 +319,297 @@ textarea:focus-visible {
   box-shadow: 0 0 0 2px var(--accent-color), 0 0 0 4px rgba(99, 102, 241, 0.2);
 }
 
-/* Color Presets */
-/* Ocean: Cool indigo-blue */
-html.preset-ocean {
-  --accent-color: #818cf8;
-  --accent-light: #a5b4fc;
-  --secondary-color: #93c5fd;
+/* ═══════════════════════════════════════════════════════════════════════════
+   UI Skin: Sakura Zen
+   Emotional Functionalism — soft pastel, Japanese editorial, wabi-sabi space.
+   Activated by:  html[data-style="sakura-zen"]
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Sakura Zen — Dark variant (default) */
+html[data-style="sakura-zen"] {
+  --background: #130910;
+  --foreground: #f5eef0;
+  --accent-color: #e8a0b4;
+  --accent-light: #f2bfce;
+  --secondary-color: #9ab89a;
+  --card-color: rgba(244, 180, 196, 0.05);
+  --surface-color: rgba(244, 180, 196, 0.05);
+  --border-color: rgba(232, 160, 180, 0.16);
+  --dynamic-white: #f5eef0;
+  --dynamic-black: #130910;
+  --glass-bg: rgba(30, 12, 22, 0.70);
+  --glass-border: rgba(232, 160, 180, 0.22);
+
+  --sk-heading-font: 'Noto Serif JP', Georgia, serif;
+  --sk-card-shadow: 0 8px 32px -4px rgba(200, 100, 130, 0.18);
+  --sk-card-hover-shadow: 0 20px 52px -10px rgba(200, 100, 130, 0.38);
+  --sk-surface-tint: rgba(232, 140, 165, 0.08);
+  --sk-surface-tint-md: rgba(232, 140, 165, 0.12);
+  --sk-border-tint: rgba(232, 160, 180, 0.14);
+  --sk-border-tint-md: rgba(232, 160, 180, 0.20);
 }
-/* Sakura: Cherry blossom pink */
-html.preset-sakura {
-  --accent-color: #f472b6;
-  --accent-light: #f9a8d4;
-  --secondary-color: #c084fc;
+
+/* Sakura Zen — Light variant */
+html[data-style="sakura-zen"].light,
+html[data-style="sakura-zen"].system:not(.dark) {
+  --background: #fdf6f0;
+  --foreground: #3a2535;
+  --accent-color: #c06080;
+  --accent-light: #d4849c;
+  --secondary-color: #6a9468;
+  --card-color: rgba(255, 228, 220, 0.6);
+  --surface-color: rgba(255, 228, 220, 0.6);
+  --border-color: rgba(192, 96, 128, 0.14);
+  --dynamic-white: #3a2535;
+  --dynamic-black: #fdf6f0;
+  --glass-bg: rgba(255, 242, 238, 0.88);
+  --glass-border: rgba(192, 96, 128, 0.16);
+
+  --sk-card-shadow: 0 4px 20px -4px rgba(180, 80, 110, 0.14);
+  --sk-card-hover-shadow: 0 14px 40px -6px rgba(180, 80, 110, 0.28);
+  --sk-surface-tint: rgba(255, 210, 220, 0.28);
+  --sk-surface-tint-md: rgba(255, 210, 220, 0.38);
+  --sk-border-tint: rgba(192, 96, 128, 0.10);
+  --sk-border-tint-md: rgba(192, 96, 128, 0.18);
 }
-/* Forest: Warm teal-green */
-html.preset-forest {
-  --accent-color: #2dd4bf;
-  --accent-light: #5eead4;
-  --secondary-color: #34d399;
+
+/* ── Typography — applied to every text-bearing element ── */
+html[data-style="sakura-zen"] body,
+html[data-style="sakura-zen"] span:not(.font-mono):not(code),
+html[data-style="sakura-zen"] p,
+html[data-style="sakura-zen"] button,
+html[data-style="sakura-zen"] input,
+html[data-style="sakura-zen"] select,
+html[data-style="sakura-zen"] label,
+html[data-style="sakura-zen"] li,
+html[data-style="sakura-zen"] td,
+html[data-style="sakura-zen"] th {
+  font-family: 'Noto Serif JP', Georgia, serif !important;
 }
-/* Sunset: Amber-red */
-html.preset-sunset {
-  --accent-color: #fb923c;
-  --accent-light: #fdba74;
-  --secondary-color: #f87171;
+
+html[data-style="sakura-zen"] h1,
+html[data-style="sakura-zen"] h2,
+html[data-style="sakura-zen"] h3,
+html[data-style="sakura-zen"] h4 {
+  font-family: 'Noto Serif JP', Georgia, serif !important;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
-/* Amethyst: Purple */
-html.preset-amethyst {
-  --accent-color: #a855f7;
-  --accent-light: #d8b4fe;
-  --secondary-color: #c084fc;
+
+html[data-style="sakura-zen"] kbd,
+html[data-style="sakura-zen"] code,
+html[data-style="sakura-zen"] pre {
+  font-family: ui-monospace, monospace !important;
 }
-/* Ruby: Rose-red */
-html.preset-ruby {
-  --accent-color: #f43f5e;
-  --accent-light: #fda4af;
-  --secondary-color: #fb7185;
+
+/* ── Muted text: gray-100 to gray-800 → soft sakura muted ── */
+html[data-style="sakura-zen"] .text-gray-100 { color: rgba(245, 238, 240, 0.95) !important; }
+html[data-style="sakura-zen"] .text-gray-200 { color: rgba(245, 238, 240, 0.88) !important; }
+html[data-style="sakura-zen"] .text-gray-300 { color: rgba(235, 185, 198, 0.88) !important; }
+html[data-style="sakura-zen"] .text-gray-400 { color: rgba(225, 168, 183, 0.78) !important; }
+html[data-style="sakura-zen"] .text-gray-500 { color: rgba(215, 155, 173, 0.65) !important; }
+html[data-style="sakura-zen"] .text-gray-600 { color: rgba(210, 150, 168, 0.55) !important; }
+html[data-style="sakura-zen"] .text-gray-700 { color: rgba(200, 140, 158, 0.45) !important; }
+html[data-style="sakura-zen"] .text-gray-800 { color: rgba(200, 140, 158, 0.35) !important; }
+html[data-style="sakura-zen"] .text-white     { color: var(--foreground) !important; }
+
+/* Sakura Zen — Light variant overrides */
+html[data-style="sakura-zen"].light .text-gray-100 { color: rgba(58, 37, 53, 0.95) !important; }
+html[data-style="sakura-zen"].light .text-gray-200 { color: rgba(58, 37, 53, 0.88) !important; }
+html[data-style="sakura-zen"].light .text-gray-300 { color: rgba(58, 37, 53, 0.78) !important; }
+html[data-style="sakura-zen"].light .text-gray-400 { color: rgba(58, 37, 53, 0.65) !important; }
+html[data-style="sakura-zen"].light .text-gray-500 { color: rgba(58, 37, 53, 0.52) !important; }
+html[data-style="sakura-zen"].light .text-gray-600 { color: rgba(58, 37, 53, 0.40) !important; }
+html[data-style="sakura-zen"].light .text-gray-700 { color: rgba(58, 37, 53, 0.28) !important; }
+html[data-style="sakura-zen"].light .text-gray-800 { color: rgba(58, 37, 53, 0.18) !important; }
+
+html[data-style="sakura-zen"].light aside nav button svg {
+  color: rgba(90, 50, 75, 0.5) !important;
+}
+html[data-style="sakura-zen"].light aside nav button:hover svg,
+html[data-style="sakura-zen"].light aside nav button[class*="from-accent"] svg {
+  color: var(--accent-color) !important;
+}
+html[data-style="sakura-zen"].light aside nav button > span,
+html[data-style="sakura-zen"].light aside nav button span > span:first-child {
+  color: rgba(90, 50, 75, 0.6) !important;
+}
+html[data-style="sakura-zen"].light aside nav button:hover > span,
+html[data-style="sakura-zen"].light aside nav button[class*="from-accent"] > span {
+  color: var(--foreground) !important;
+}
+
+/* ── Sidebar ── */
+html[data-style="sakura-zen"] aside {
+  background: rgba(18, 6, 14, 0.85) !important;
+  backdrop-filter: blur(44px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(44px) saturate(170%) !important;
+  border-right: 1px solid rgba(232, 160, 180, 0.20) !important;
+  box-shadow: 2px 0 56px -6px rgba(200, 100, 130, 0.32) !important;
+}
+
+html[data-style="sakura-zen"].light aside,
+html[data-style="sakura-zen"].system:not(.dark) aside {
+  background: rgba(255, 237, 242, 0.92) !important;
+  border-right: 1px solid rgba(192, 96, 128, 0.20) !important;
+  box-shadow: 2px 0 40px -8px rgba(180, 80, 110, 0.18) !important;
+}
+
+/* Inactive sidebar icons */
+html[data-style="sakura-zen"] aside nav button svg {
+  color: rgba(220, 155, 175, 0.42) !important;
+}
+
+html[data-style="sakura-zen"] aside nav button:hover svg,
+html[data-style="sakura-zen"] aside nav button[class*="from-accent"] svg {
+  color: var(--accent-color) !important;
+}
+
+/* Inactive nav text labels */
+html[data-style="sakura-zen"] aside nav button > span,
+html[data-style="sakura-zen"] aside nav button span > span:first-child {
+  color: rgba(225, 168, 183, 0.55) !important;
+}
+
+html[data-style="sakura-zen"] aside nav button:hover > span,
+html[data-style="sakura-zen"] aside nav button[class*="from-accent"] > span {
+  color: var(--foreground) !important;
+}
+
+/* Active nav pill: pink→sage gradient */
+html[data-style="sakura-zen"] aside nav button[class*="from-accent"] {
+  background: linear-gradient(to right, rgba(232,160,180,0.24), rgba(154,184,154,0.09)) !important;
+  border-color: rgba(232, 160, 180, 0.30) !important;
+  box-shadow: 0 0 24px -4px rgba(200, 100, 130, 0.22) !important;
+}
+
+/* Nav section divider */
+html[data-style="sakura-zen"] aside nav div[class*="border-t"],
+html[data-style="sakura-zen"] aside nav hr {
+  border-color: rgba(232, 160, 180, 0.14) !important;
+}
+
+/* ── Surface & border overrides — proper escaped Tailwind class names ── */
+@layer utilities {
+  html[data-style="sakura-zen"] .bg-white\/\[0\.02\] { background-color: var(--sk-surface-tint) !important; }
+  html[data-style="sakura-zen"] .bg-white\/\[0\.03\] { background-color: var(--sk-surface-tint) !important; }
+  html[data-style="sakura-zen"] .bg-white\/\[0\.04\] { background-color: var(--sk-surface-tint-md) !important; }
+  html[data-style="sakura-zen"] .bg-white\/\[0\.05\] { background-color: var(--sk-surface-tint-md) !important; }
+  html[data-style="sakura-zen"] .bg-white\/\[0\.08\] { background-color: var(--sk-surface-tint-md) !important; }
+  html[data-style="sakura-zen"] .bg-white\/\[0\.10\] { background-color: rgba(232, 140, 165, 0.16) !important; }
+  html[data-style="sakura-zen"] .bg-black\/20       { background-color: rgba(30, 8, 18, 0.42) !important; }
+
+  html[data-style="sakura-zen"] .border-white\/\[0\.04\] { border-color: var(--sk-border-tint) !important; }
+  html[data-style="sakura-zen"] .border-white\/\[0\.05\] { border-color: var(--sk-border-tint) !important; }
+  html[data-style="sakura-zen"] .border-white\/\[0\.06\] { border-color: var(--sk-border-tint) !important; }
+  html[data-style="sakura-zen"] .border-white\/\[0\.07\] { border-color: var(--sk-border-tint) !important; }
+  html[data-style="sakura-zen"] .border-white\/\[0\.08\] { border-color: var(--sk-border-tint-md) !important; }
+  html[data-style="sakura-zen"] .border-white\/\[0\.10\] { border-color: var(--sk-border-tint-md) !important; }
+  html[data-style="sakura-zen"] .border-white\/5         { border-color: var(--sk-border-tint) !important; }
+  html[data-style="sakura-zen"] .border-white\/10        { border-color: var(--sk-border-tint-md) !important; }
+}
+
+/* ── Inputs and selects ── */
+html[data-style="sakura-zen"] input:not([type="checkbox"]):not([type="radio"]),
+html[data-style="sakura-zen"] select,
+html[data-style="sakura-zen"] textarea {
+  background-color: rgba(232, 160, 180, 0.07) !important;
+  border-color: rgba(232, 160, 180, 0.18) !important;
+  color: var(--foreground) !important;
+}
+
+html[data-style="sakura-zen"] input:focus,
+html[data-style="sakura-zen"] select:focus,
+html[data-style="sakura-zen"] textarea:focus {
+  border-color: rgba(232, 160, 180, 0.52) !important;
+  box-shadow: 0 0 0 3px rgba(232, 160, 180, 0.14) !important;
+}
+
+html[data-style="sakura-zen"] input::placeholder,
+html[data-style="sakura-zen"] textarea::placeholder {
+  color: rgba(220, 160, 178, 0.38) !important;
+}
+
+/* ── Glass classes ── */
+html[data-style="sakura-zen"] .glass-panel {
+  background-color: rgba(26, 10, 18, 0.75) !important;
+  backdrop-filter: blur(36px) saturate(150%);
+  -webkit-backdrop-filter: blur(36px) saturate(150%);
+  border: 1px solid rgba(232, 160, 180, 0.20) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 200, 220, 0.16), var(--sk-card-shadow) !important;
+  border-radius: 26px !important;
+}
+
+html[data-style="sakura-zen"].light .glass-panel {
+  background-color: rgba(255, 236, 241, 0.85) !important;
+  border: 1px solid rgba(192, 96, 128, 0.18) !important;
+}
+
+html[data-style="sakura-zen"] .glass-fixed {
+  background-color: rgba(18, 6, 14, 0.80) !important;
+  border-right: 1px solid rgba(232, 160, 180, 0.18) !important;
+  box-shadow: 2px 0 40px -8px rgba(200, 100, 130, 0.26) !important;
+}
+
+html[data-style="sakura-zen"] .media-detail-drawer {
+  background-color: rgba(26, 10, 18, 0.96) !important;
+  border-left: 1px solid rgba(232, 160, 180, 0.22) !important;
+}
+html[data-style="sakura-zen"].light .media-detail-drawer {
+  background-color: rgba(255, 236, 241, 0.96) !important;
+  border-left: 1px solid rgba(192, 96, 128, 0.22) !important;
+}
+
+html[data-style="sakura-zen"] .glass-button {
+  background-color: rgba(232, 160, 180, 0.16) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 200, 220, 0.32),
+              inset 0 0 0 1px rgba(232, 160, 180, 0.22),
+              0 4px 10px rgba(0,0,0,0.22) !important;
+}
+
+html[data-style="sakura-zen"] .glass-button:hover {
+  background-color: rgba(232, 160, 180, 0.26) !important;
+}
+
+/* ── Cards ── */
+html[data-style="sakura-zen"] .card-glow {
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  border-radius: 20px;
+}
+
+html[data-style="sakura-zen"] .card-glow:hover {
+  transform: translateY(-7px);
+  box-shadow: var(--sk-card-hover-shadow);
+}
+
+/* ── Gradients ── */
+html[data-style="sakura-zen"] .hero-gradient {
+  background: linear-gradient(to top, var(--background) 0%, rgba(19, 9, 16, 0.74) 40%, transparent 100%);
+}
+
+html[data-style="sakura-zen"].light .hero-gradient,
+html[data-style="sakura-zen"].system:not(.dark) .hero-gradient {
+  background: linear-gradient(to top, var(--background) 0%, rgba(253, 246, 240, 0.70) 40%, transparent 100%);
+}
+
+/* ── Focus ring ── */
+html[data-style="sakura-zen"] button:focus-visible,
+html[data-style="sakura-zen"] a:focus-visible,
+html[data-style="sakura-zen"] [role="button"]:focus-visible,
+html[data-style="sakura-zen"] input:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent-color), 0 0 0 4px rgba(232, 160, 180, 0.24) !important;
+}
+
+/* ── Ambient animation ── */
+@keyframes sakuraDrift {
+  0%   { transform: translateY(0px) rotate(0deg);  opacity: 0.5; }
+  50%  { transform: translateY(-8px) rotate(4deg); opacity: 0.85; }
+  100% { transform: translateY(0px) rotate(0deg);  opacity: 0.5; }
+}
+
+html[data-style="sakura-zen"] .animate-blob {
+  animation: sakuraDrift 14s ease-in-out infinite alternate;
 }
 
 /* Slide in from right */
@@ -295,6 +628,434 @@ html.preset-ruby {
 }
 .animate-pulse-glow {
   animation: pulseGlow 2s infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UI Skin: Retro Manga
+   Aged paper, halftone screentone dots, thick ink borders, flat offset shadows.
+   Activated by:  html[data-style="retro-manga"]
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Retro Manga — Dark variant (default) */
+html[data-style="retro-manga"] {
+  --background: #191410;
+  --foreground: #f4efe6;
+  --accent-color: #e8272c;
+  --accent-light: #f54e52;
+  --secondary-color: #ede8e0;
+  --card-color: #241e17;
+  --surface-color: #241e17;
+  --border-color: #000000;
+  --dynamic-white: #f4efe6;
+  --dynamic-black: #191410;
+  --glass-bg: #241e17;
+  --glass-border: #000000;
+}
+
+/* Retro Manga — Light variant */
+html[data-style="retro-manga"].light,
+html[data-style="retro-manga"].system:not(.dark) {
+  --background: #f4efe6;
+  --foreground: #191410;
+  --accent-color: #c01f24;
+  --accent-light: #e8272c;
+  --secondary-color: #241e17;
+  --card-color: #ede8e0;
+  --surface-color: #ede8e0;
+  --border-color: #191410;
+  --dynamic-white: #191410;
+  --dynamic-black: #f4efe6;
+  --glass-bg: #ede8e0;
+  --glass-border: #191410;
+}
+
+/* ── Typography ── */
+html[data-style="retro-manga"] body,
+html[data-style="retro-manga"] span:not(.font-mono):not(code),
+html[data-style="retro-manga"] p,
+html[data-style="retro-manga"] input,
+html[data-style="retro-manga"] select,
+html[data-style="retro-manga"] label,
+html[data-style="retro-manga"] li,
+html[data-style="retro-manga"] td,
+html[data-style="retro-manga"] th {
+  font-family: 'Noto Sans JP', sans-serif !important;
+}
+
+html[data-style="retro-manga"] h1,
+html[data-style="retro-manga"] h2,
+html[data-style="retro-manga"] h3,
+html[data-style="retro-manga"] h4,
+html[data-style="retro-manga"] aside nav button span,
+html[data-style="retro-manga"] aside div[data-tauri-drag-region] span,
+html[data-style="retro-manga"] .font-black {
+  font-family: 'Bangers', Impact, sans-serif !important;
+  font-weight: normal !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+}
+
+html[data-style="retro-manga"] h1 {
+  font-size: 3.5rem !important;
+  line-height: 1.05 !important;
+  text-shadow: 3px 3px 0px #000000;
+}
+html[data-style="retro-manga"].light h1 {
+  text-shadow: 3px 3px 0px #f4efe6, 5px 5px 0px #191410;
+}
+
+html[data-style="retro-manga"] h2 {
+  font-size: 2rem !important;
+  text-shadow: 2px 2px 0px #000000;
+}
+html[data-style="retro-manga"].light h2 {
+  text-shadow: none;
+  color: var(--foreground) !important;
+}
+
+/* ── Paper Background Texture ── */
+html[data-style="retro-manga"] body {
+  background-image: radial-gradient(rgba(244, 239, 230, 0.04) 15%, transparent 16%) !important;
+  background-size: 10px 10px !important;
+  background-color: var(--background) !important;
+}
+
+html[data-style="retro-manga"].light body {
+  background-image: radial-gradient(rgba(25, 20, 16, 0.05) 15%, transparent 16%) !important;
+}
+
+/* ── Sidebar (Manga panel gutter layout) ── */
+html[data-style="retro-manga"] aside {
+  background: var(--background) !important;
+  border-right: 4px solid #000000 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-style="retro-manga"].light aside {
+  border-right: 4px solid #191410 !important;
+}
+
+/* Active sidebar nav item: solid red block stamp */
+html[data-style="retro-manga"] aside nav button[class*="from-accent"] {
+  background: var(--accent-color) !important;
+  border: 3px solid #000000 !important;
+  box-shadow: 4px 4px 0px #000000 !important;
+  color: #ffffff !important;
+  transform: translate(-2px, -2px);
+}
+
+html[data-style="retro-manga"] aside nav button[class*="from-accent"] svg,
+html[data-style="retro-manga"] aside nav button[class*="from-accent"] span {
+  color: #ffffff !important;
+}
+
+/* Inactive buttons border hover */
+html[data-style="retro-manga"] aside nav button:not([class*="from-accent"]) {
+  border: 3px solid transparent !important;
+  box-shadow: none !important;
+}
+
+html[data-style="retro-manga"] aside nav button:not([class*="from-accent"]):hover {
+  background: var(--card-color) !important;
+  border: 3px solid #000000 !important;
+  box-shadow: 4px 4px 0px #000000 !important;
+  color: var(--foreground) !important;
+  transform: translate(-2px, -2px);
+}
+
+/* ── Interactive buttons, inputs and select panels ── */
+html[data-style="retro-manga"] button:not(.card-glow button):not(aside nav button),
+html[data-style="retro-manga"] select,
+html[data-style="retro-manga"] input:not([type="checkbox"]) {
+  border: 3px solid #000000 !important;
+  border-radius: 6px !important;
+  box-shadow: 3px 3px 0px #000000 !important;
+  background-color: var(--card-color) !important;
+  color: var(--foreground) !important;
+  text-transform: uppercase;
+  font-family: 'Bangers', Impact, sans-serif !important;
+  letter-spacing: 0.05em !important;
+  transition: transform 0.1s ease, box-shadow 0.1s ease !important;
+}
+
+html[data-style="retro-manga"] button:not(.card-glow button):not(aside nav button):hover:not(:disabled),
+html[data-style="retro-manga"] select:hover {
+  transform: translate(-2px, -2px) !important;
+  box-shadow: 5px 5px 0px #000000 !important;
+}
+
+html[data-style="retro-manga"] button:not(.card-glow button):not(aside nav button):active:not(:disabled) {
+  transform: translate(1px, 1px) !important;
+  box-shadow: 1px 1px 0px #000000 !important;
+}
+
+/* White elements (primary buttons) become manga red */
+html[data-style="retro-manga"] .bg-white {
+  background-color: var(--accent-color) !important;
+  color: #ffffff !important;
+  border-color: #000000 !important;
+}
+
+/* ── Cards (Halftone screen, thick outline, flat shadow) ── */
+html[data-style="retro-manga"] .card-glow {
+  background-image: radial-gradient(rgba(244, 239, 230, 0.07) 15%, transparent 16%) !important;
+  background-size: 6px 6px !important;
+  background-color: var(--card-color) !important;
+  border: 3px solid #000000 !important;
+  box-shadow: 4px 4px 0px #000000 !important;
+  border-radius: 6px !important;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+html[data-style="retro-manga"].light .card-glow {
+  background-image: radial-gradient(rgba(25, 20, 16, 0.08) 15%, transparent 16%) !important;
+  border-color: #191410 !important;
+  box-shadow: 4px 4px 0px #191410 !important;
+}
+
+html[data-style="retro-manga"] .card-glow:hover {
+  transform: translate(-4px, -4px) !important;
+  box-shadow: 8px 8px 0px #000000 !important;
+}
+
+html[data-style="retro-manga"].light .card-glow:hover {
+  box-shadow: 8px 8px 0px #191410 !important;
+}
+
+/* Cover Image vintage print tint filter */
+html[data-style="retro-manga"] .card-glow img {
+  filter: grayscale(35%) sepia(18%) contrast(108%) !important;
+  transition: filter 0.3s ease, transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+html[data-style="retro-manga"] .card-glow:hover img {
+  filter: grayscale(0%) sepia(0%) contrast(100%) !important;
+}
+
+/* ── Glass Containers Overrides (Solidified as manga panels) ── */
+html[data-style="retro-manga"] .glass-panel {
+  background-color: var(--card-color) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 3px solid #000000 !important;
+  box-shadow: 5px 5px 0px #000000 !important;
+  border-radius: 8px !important;
+}
+
+html[data-style="retro-manga"].light .glass-panel {
+  border: 3px solid #191410 !important;
+  box-shadow: 5px 5px 0px #191410 !important;
+}
+
+html[data-style="retro-manga"] .glass-fixed {
+  background-color: var(--background) !important;
+  border-right: 3px solid #000000 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+/* Halftone pattern for AmbientBackground when Retro Manga is active */
+html[data-style="retro-manga"] .ambient-bg-manga {
+  background-image: radial-gradient(rgba(244, 239, 230, 0.04) 15%, transparent 16%) !important;
+  background-size: 10px 10px !important;
+}
+html[data-style="retro-manga"].light .ambient-bg-manga {
+  background-image: radial-gradient(rgba(25, 20, 16, 0.05) 15%, transparent 16%) !important;
+}
+
+/* Details Drawer override */
+html[data-style="retro-manga"] .media-detail-drawer {
+  background-color: var(--card-color) !important;
+  border-left: 4px solid #000000 !important;
+  box-shadow: none !important;
+}
+html[data-style="retro-manga"].light .media-detail-drawer {
+  border-left: 4px solid #191410 !important;
+}
+
+/* Detail Drawer Tabs */
+html[data-style="retro-manga"] .media-detail-drawer div[class*="space-x-1"] {
+  background: var(--background) !important;
+  border: 3px solid #000000 !important;
+  border-radius: 6px !important;
+  padding: 3px !important;
+}
+html[data-style="retro-manga"].light .media-detail-drawer div[class*="space-x-1"] {
+  border-color: #191410 !important;
+}
+
+html[data-style="retro-manga"] .media-detail-drawer div[class*="space-x-1"] button {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: var(--foreground) !important;
+  font-family: 'Bangers', Impact, sans-serif !important;
+  font-size: 0.8rem !important;
+  letter-spacing: 0.05em !important;
+  transform: none !important;
+  border-radius: 4px !important;
+  padding: 6px 0 !important;
+}
+
+html[data-style="retro-manga"] .media-detail-drawer div[class*="space-x-1"] button:hover {
+  background: rgba(232, 39, 44, 0.15) !important;
+  transform: none !important;
+}
+
+/* Active tab button: solid red stamp */
+html[data-style="retro-manga"] .media-detail-drawer div[class*="space-x-1"] button[class*="bg-accent"] {
+  background-color: var(--accent-color) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Synopsis narrative box */
+html[data-style="retro-manga"] .media-detail-drawer .synopsis-container {
+  background-color: var(--background) !important;
+  background-image: radial-gradient(rgba(244, 239, 230, 0.05) 15%, transparent 16%) !important;
+  background-size: 8px 8px !important;
+  border: 3px solid #000000 !important;
+  border-radius: 6px !important;
+  box-shadow: 4px 4px 0px #000000 !important;
+}
+html[data-style="retro-manga"].light .media-detail-drawer .synopsis-container {
+  background-image: radial-gradient(rgba(25, 20, 16, 0.04) 15%, transparent 16%) !important;
+  border-color: #191410 !important;
+  box-shadow: 4px 4px 0px #191410 !important;
+}
+
+/* Next Episode announcement box */
+html[data-style="retro-manga"] .media-detail-drawer .next-episode-banner {
+  background-color: var(--background) !important;
+  border: 3px solid var(--accent-color) !important;
+  border-radius: 6px !important;
+  box-shadow: 4px 4px 0px #000000 !important;
+}
+html[data-style="retro-manga"].light .media-detail-drawer .next-episode-banner {
+  box-shadow: 4px 4px 0px #191410 !important;
+}
+
+/* Sound badge style genre tags */
+html[data-style="retro-manga"] .media-detail-drawer .genre-chip {
+  background-color: var(--background) !important;
+  border: 2px solid #000000 !important;
+  border-radius: 4px !important;
+  color: var(--foreground) !important;
+  font-family: 'Bangers', Impact, sans-serif !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+}
+html[data-style="retro-manga"].light .media-detail-drawer .genre-chip {
+  border-color: #191410 !important;
+}
+
+/* Character & Review cards */
+html[data-style="retro-manga"] .media-detail-drawer .character-card,
+html[data-style="retro-manga"] .media-detail-drawer .review-card {
+  background-color: var(--background) !important;
+  border: 2px solid #000000 !important;
+  border-radius: 6px !important;
+  box-shadow: 3px 3px 0px #000000 !important;
+}
+html[data-style="retro-manga"].light .media-detail-drawer .character-card,
+html[data-style="retro-manga"].light .media-detail-drawer .review-card {
+  border-color: #191410 !important;
+  box-shadow: 3px 3px 0px #191410 !important;
+}
+
+/* Episode row item list */
+html[data-style="retro-manga"] .media-detail-drawer .episode-row-item {
+  background-color: var(--background) !important;
+  border: 2px solid #000000 !important;
+  border-radius: 6px !important;
+  box-shadow: 2.5px 2.5px 0px #000000 !important;
+  margin-bottom: 6px !important;
+}
+html[data-style="retro-manga"].light .media-detail-drawer .episode-row-item {
+  border-color: #191410 !important;
+  box-shadow: 2.5px 2.5px 0px #191410 !important;
+}
+
+/* Active next episode block in list */
+html[data-style="retro-manga"] .media-detail-drawer .episode-row-item[class*="bg-accent/10"] {
+  border-color: var(--accent-color) !important;
+}
+
+/* Episode Badge Box */
+html[data-style="retro-manga"] .media-detail-drawer .episode-badge-box {
+  border: 2px solid #000000 !important;
+  border-radius: 4px !important;
+  font-family: 'Bangers', Impact, sans-serif !important;
+  font-size: 0.95rem !important;
+}
+html[data-style="retro-manga"].light .media-detail-drawer .episode-badge-box {
+  border-color: #191410 !important;
+}
+
+/* Empty states sfx text */
+html[data-style="retro-manga"] .media-detail-drawer div[class*="text-center py-12"],
+html[data-style="retro-manga"] .media-detail-drawer div[class*="py-20 text-center"] {
+  font-family: 'Bangers', Impact, sans-serif !important;
+  font-size: 1.6rem !important;
+  color: var(--accent-color) !important;
+  letter-spacing: 0.05em !important;
+  text-shadow: 1.5px 1.5px 0px #000000;
+  text-transform: uppercase;
+}
+html[data-style="retro-manga"].light .media-detail-drawer div[class*="text-center py-12"],
+html[data-style="retro-manga"].light .media-detail-drawer div[class*="py-20 text-center"] {
+  text-shadow: 1.5px 1.5px 0px #ede8e0;
+}
+
+/* ── Muted text: gray-100 to gray-800 ── */
+html[data-style="retro-manga"] .text-gray-100 { color: rgba(244, 239, 230, 0.95) !important; }
+html[data-style="retro-manga"] .text-gray-200 { color: rgba(244, 239, 230, 0.88) !important; }
+html[data-style="retro-manga"] .text-gray-300 { color: rgba(244, 239, 230, 0.80) !important; }
+html[data-style="retro-manga"] .text-gray-400 { color: rgba(244, 239, 230, 0.65) !important; }
+html[data-style="retro-manga"] .text-gray-500 { color: rgba(244, 239, 230, 0.45) !important; }
+html[data-style="retro-manga"] .text-gray-600 { color: rgba(244, 239, 230, 0.45) !important; }
+html[data-style="retro-manga"] .text-gray-700 { color: rgba(244, 239, 230, 0.35) !important; }
+html[data-style="retro-manga"] .text-gray-800 { color: rgba(244, 239, 230, 0.25) !important; }
+html[data-style="retro-manga"] .text-white     { color: var(--foreground) !important; }
+
+/* Retro Manga — Light variant overrides */
+html[data-style="retro-manga"].light .text-gray-100 { color: rgba(25, 20, 16, 0.95) !important; }
+html[data-style="retro-manga"].light .text-gray-200 { color: rgba(25, 20, 16, 0.88) !important; }
+html[data-style="retro-manga"].light .text-gray-300 { color: rgba(25, 20, 16, 0.78) !important; }
+html[data-style="retro-manga"].light .text-gray-400 { color: rgba(25, 20, 16, 0.65) !important; }
+html[data-style="retro-manga"].light .text-gray-500 { color: rgba(25, 20, 16, 0.55) !important; }
+html[data-style="retro-manga"].light .text-gray-600 { color: rgba(25, 20, 16, 0.45) !important; }
+html[data-style="retro-manga"].light .text-gray-700 { color: rgba(25, 20, 16, 0.35) !important; }
+html[data-style="retro-manga"].light .text-gray-800 { color: rgba(25, 20, 16, 0.25) !important; }
+
+/* ── Hero section custom rules (Flat Manga Panels) ── */
+html[data-style="retro-manga"] .hero-card-container {
+  border: 3px solid #000000 !important;
+  box-shadow: 4px 4px 0px #000000 !important;
+}
+html[data-style="retro-manga"].light .hero-card-container {
+  border-color: #191410 !important;
+  box-shadow: 4px 4px 0px #191410 !important;
+}
+html[data-style="retro-manga"] .hero-card-container .bg-gradient-to-t,
+html[data-style="retro-manga"] .hero-card-container .bg-gradient-to-r {
+  display: none !important;
+}
+html[data-style="retro-manga"] .hero-card-container .absolute.inset-0.bg-background {
+  background: #000000 !important;
+}
+html[data-style="retro-manga"] .hero-card-container .absolute.inset-0.bg-background img {
+  opacity: 0.60 !important;
+}
+
+/* ── Remove rounded corners for this skin entirely (manga panel aesthetics) ── */
+html[data-style="retro-manga"] *:not([class*="rounded-full"]) {
+  border-radius: 0px !important;
 }
 
 /* Custom select styling */

@@ -104,9 +104,9 @@ export default function DownloadsView() {
         };
       default:
         return {
-          icon: <Download className="text-zinc-500" size={18} />,
-          bg: "bg-zinc-800/40 border-zinc-700/30",
-          text: "text-zinc-400",
+          icon: <Download className="text-muted-foreground" size={18} />,
+          bg: "bg-foreground/5 border-border",
+          text: "text-muted-foreground",
           label: "Idle"
         };
     }
@@ -146,22 +146,22 @@ export default function DownloadsView() {
         <div className="absolute -left-10 -top-10 w-72 h-72 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
         
         <div className="space-y-1.5 relative z-10">
-          <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-white bg-gradient-to-r from-white via-white to-zinc-500 bg-clip-text text-transparent">
+          <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-white bg-gradient-to-r from-foreground via-foreground/90 to-muted-foreground bg-clip-text text-transparent">
             Offline Downloads
           </h1>
-          <p className="text-sm text-zinc-400 max-w-xl font-medium">
+          <p className="text-sm text-muted-foreground max-w-xl font-medium">
             Manage your offline library, track active downloads, and play complete episodes without an active connection.
           </p>
         </div>
       </div>
 
       {/* Tabs bar */}
-      <div className="flex items-center justify-between border-b border-white/[0.04] pb-0.5 relative z-10">
+      <div className="flex items-center justify-between border-b border-border pb-0.5 relative z-10">
         <div className="flex space-x-6">
           <button
             onClick={() => setActiveTab("library")}
             className={`pb-4 text-sm font-bold tracking-wide transition-all relative cursor-pointer ${
-              activeTab === "library" ? "text-white" : "text-zinc-500 hover:text-zinc-300"
+              activeTab === "library" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <span className="flex items-center gap-2">
@@ -180,7 +180,7 @@ export default function DownloadsView() {
           <button
             onClick={() => setActiveTab("queue")}
             className={`pb-4 text-sm font-bold tracking-wide transition-all relative cursor-pointer ${
-              activeTab === "queue" ? "text-white" : "text-zinc-500 hover:text-zinc-300"
+              activeTab === "queue" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <span className="flex items-center gap-2">
@@ -237,7 +237,7 @@ export default function DownloadsView() {
                           whileHover={{ y: -6 }}
                           className="group cursor-pointer space-y-3"
                         >
-                          <div className="relative aspect-[2/3] rounded-2xl overflow-hidden bg-zinc-950/80 border border-white/[0.05] group-hover:border-accent/40 shadow-xl group-hover:shadow-accent/5 transition-all duration-300">
+                          <div className="relative aspect-[2/3] rounded-2xl overflow-hidden bg-card border border-border group-hover:border-accent/40 shadow-xl group-hover:shadow-accent/5 transition-all duration-300">
                             {group.cover ? (
                               <img
                                 src={group.cover}
@@ -245,13 +245,13 @@ export default function DownloadsView() {
                                 className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                               />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-zinc-600">
+                              <div className="w-full h-full flex items-center justify-center bg-foreground/5 text-muted-foreground">
                                 <Download size={32} />
                               </div>
                             )}
                             
                             {/* Frosted / dark gradient overlay */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/35 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-300" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-300" />
                             
                             {/* Glowing background blur on hover */}
                             <div className="absolute inset-0 bg-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-md pointer-events-none" />
@@ -270,7 +270,7 @@ export default function DownloadsView() {
                           </div>
                           
                           <div className="px-1.5 space-y-1">
-                            <h3 className="font-extrabold text-sm text-zinc-200 group-hover:text-white line-clamp-2 leading-snug transition-colors duration-200">
+                            <h3 className="font-extrabold text-sm text-foreground/90 group-hover:text-foreground line-clamp-2 leading-snug transition-colors duration-200">
                               {group.title}
                             </h3>
                           </div>
@@ -279,13 +279,13 @@ export default function DownloadsView() {
                     })}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-20 px-4 border border-dashed border-white/[0.04] bg-white/[0.01] rounded-3xl text-center space-y-4 max-w-xl mx-auto mt-6">
-                    <div className="p-4 bg-zinc-900/60 border border-white/[0.05] text-zinc-500 rounded-2xl">
+                  <div className="flex flex-col items-center justify-center py-20 px-4 border border-dashed border-border bg-foreground/[0.01] rounded-3xl text-center space-y-4 max-w-xl mx-auto mt-6">
+                    <div className="p-4 bg-foreground/5 border border-border text-muted-foreground rounded-2xl">
                       <Download size={32} />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-white font-extrabold text-base">Offline Library is Empty</p>
-                      <p className="text-zinc-500 text-sm max-w-sm">
+                      <p className="text-foreground font-extrabold text-base">Offline Library is Empty</p>
+                      <p className="text-muted-foreground text-sm max-w-sm">
                         Episodes you download in AniCat will automatically download to your local drive and populate here.
                       </p>
                     </div>
@@ -307,7 +307,7 @@ export default function DownloadsView() {
                       return (
                         <div
                           key={`${item.media_id}-${item.episode_number}-${idx}`}
-                          className="flex items-center justify-between p-4.5 rounded-2xl bg-zinc-900/35 border border-white/[0.04] hover:bg-zinc-900/60 transition-all duration-300 group relative overflow-hidden"
+                          className="flex items-center justify-between p-4.5 rounded-2xl bg-foreground/[0.02] border border-border hover:bg-foreground/[0.04] transition-all duration-300 group relative overflow-hidden"
                         >
                           <div className="flex items-center space-x-5 min-w-0 z-10">
                             {/* Status Icon Wrapper */}
@@ -318,7 +318,7 @@ export default function DownloadsView() {
                             </div>
                             
                             <div className="min-w-0 space-y-1">
-                              <h3 className="font-extrabold text-sm text-white truncate max-w-[280px] sm:max-w-[400px]">
+                              <h3 className="font-extrabold text-sm text-foreground truncate max-w-[280px] sm:max-w-[400px]">
                                 {item.media_title}
                               </h3>
                               <div className="flex items-center gap-2.5">
@@ -341,7 +341,7 @@ export default function DownloadsView() {
                             )}
                             <button
                               onClick={() => handleRemove(item.media_id, item.episode_number)}
-                              className="p-2.5 rounded-xl bg-white/[0.03] text-zinc-500 hover:bg-rose-500/10 hover:text-rose-400 border border-white/[0.04] transition-all cursor-pointer hover:border-rose-500/20 active:scale-95"
+                              className="p-2.5 rounded-xl bg-foreground/5 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-400 border border-border transition-all cursor-pointer hover:border-rose-500/20 active:scale-95"
                               title="Remove"
                             >
                               <X size={15} />
@@ -350,7 +350,7 @@ export default function DownloadsView() {
 
                           {/* Downloading bar shimmer */}
                           {item.status === "downloading" && (
-                            <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-white/[0.02]">
+                            <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-foreground/5">
                               <div className="h-full bg-accent/70 animate-shimmer w-[70%]" />
                             </div>
                           )}
@@ -359,14 +359,14 @@ export default function DownloadsView() {
                     })}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-20 px-4 border border-dashed border-white/[0.04] bg-white/[0.01] rounded-3xl text-center space-y-4 max-w-xl mx-auto mt-6">
-                    <div className="p-4 bg-zinc-900/60 border border-white/[0.05] text-zinc-500 rounded-2xl">
+                  <div className="flex flex-col items-center justify-center py-20 px-4 border border-dashed border-border bg-foreground/[0.01] rounded-3xl text-center space-y-4 max-w-xl mx-auto mt-6">
+                    <div className="p-4 bg-foreground/5 border border-border text-muted-foreground rounded-2xl">
                       <Clock size={32} />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-white font-extrabold text-base">Active Queue is Idle</p>
-                      <p className="text-zinc-500 text-sm max-w-sm">
-                        You don't have any in-progress, queued, or failed downloads right now.
+                      <p className="text-foreground font-extrabold text-base">Active Queue is Idle</p>
+                      <p className="text-muted-foreground text-sm max-w-sm">
+                        {"You don't have any in-progress, queued, or failed downloads right now."}
                       </p>
                     </div>
                   </div>
@@ -387,7 +387,7 @@ export default function DownloadsView() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedMediaId(null)}
-              className="absolute inset-0 bg-black/75 backdrop-blur-md"
+              className="absolute inset-0 bg-background/80 backdrop-blur-md"
             />
 
             {/* Modal Body */}
@@ -396,18 +396,18 @@ export default function DownloadsView() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: "spring", duration: 0.4 }}
-              className="bg-zinc-900/95 border border-white/[0.08] rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl relative z-10 flex flex-col max-h-[80vh]"
+              className="bg-card border border-border rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl relative z-10 flex flex-col max-h-[80vh]"
             >
               {/* Close Button */}
               <button
                 onClick={() => setSelectedMediaId(null)}
-                className="absolute top-5 right-5 p-2.5 rounded-full bg-white/[0.04] text-zinc-400 hover:bg-white/10 hover:text-white border border-white/[0.04] transition-all z-10 cursor-pointer active:scale-95"
+                className="absolute top-5 right-5 p-2.5 rounded-full bg-foreground/5 text-muted-foreground hover:bg-foreground/10 hover:text-foreground border border-border transition-all z-10 cursor-pointer active:scale-95"
               >
                 <X size={16} />
               </button>
 
               {/* Banner Area */}
-              <div className="relative h-56 sm:h-64 bg-zinc-950 overflow-hidden shrink-0">
+              <div className="relative h-56 sm:h-64 bg-[#050505] overflow-hidden shrink-0">
                 {/* Blurred background cover */}
                 {selectedMedia.cover && (
                   <img
@@ -417,7 +417,7 @@ export default function DownloadsView() {
                   />
                 )}
                 
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent" />
                 
                 {/* Content on Banner */}
                 <div className="absolute bottom-6 left-6 right-6 flex items-end space-x-6">
@@ -440,23 +440,23 @@ export default function DownloadsView() {
               </div>
 
               {/* Episode List Scroll Container */}
-              <div className="p-6 overflow-y-auto space-y-3 flex-1 scrollbar-thin bg-zinc-900/50">
+              <div className="p-6 overflow-y-auto space-y-3 flex-1 scrollbar-thin bg-foreground/[0.02]">
                 {selectedMedia.episodes.map((ep) => {
                   const isCurrentPlaying = playingItem?.mediaId === ep.media_id && playingItem?.ep === ep.episode_number;
                   return (
                     <div
                       key={ep.episode_number}
-                      className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-all group"
+                      className="flex items-center justify-between p-4 rounded-2xl bg-foreground/[0.02] border border-border hover:bg-foreground/[0.04] transition-all group"
                     >
                       <div className="flex items-center space-x-4 min-w-0">
                         <div className="w-11 h-11 rounded-xl bg-accent/10 border border-accent/15 flex items-center justify-center text-accent font-black text-sm shrink-0">
                           EP {ep.episode_number}
                         </div>
                         <div className="min-w-0">
-                          <span className="font-extrabold text-sm text-white block truncate">
+                          <span className="font-extrabold text-sm text-foreground block truncate">
                             Episode {ep.episode_number}
                           </span>
-                          <span className="text-[10px] text-zinc-500 font-extrabold tracking-wider uppercase block mt-0.5">
+                          <span className="text-[10px] text-muted-foreground font-extrabold tracking-wider uppercase block mt-0.5">
                             Ready Offline
                           </span>
                         </div>
@@ -483,7 +483,7 @@ export default function DownloadsView() {
                               setSelectedMediaId(null);
                             }
                           }}
-                          className="p-2.5 rounded-xl bg-white/[0.03] text-zinc-500 hover:bg-rose-500/10 hover:text-rose-400 border border-white/[0.04] transition-colors cursor-pointer active:scale-95"
+                          className="p-2.5 rounded-xl bg-foreground/5 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-400 border border-border transition-colors cursor-pointer active:scale-95"
                           title="Delete Cache"
                         >
                           <Trash2 size={14} />

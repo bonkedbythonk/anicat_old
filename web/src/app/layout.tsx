@@ -20,11 +20,11 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/pwa-logo.png?v=4" />
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
-            const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            var isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             document.write('<link rel="manifest" href="/manifest.json?v=4">');
-            
+
             // Fast theme injection to prevent light/dark flash on load
-            const theme = localStorage.getItem('anicat_theme') || 'system';
+            var theme = localStorage.getItem('anicat_theme') || 'system';
             document.documentElement.classList.remove('light', 'dark', 'system');
             document.documentElement.classList.add(theme);
             if (theme === 'light' || (theme === 'system' && !isDark)) {
@@ -32,6 +32,10 @@ export default function RootLayout({
             } else {
               document.documentElement.classList.add('dark');
             }
+
+            // Fast skin injection to prevent style flash on load
+            var style = localStorage.getItem('anicat_ui_style') || 'neon-abyss';
+            document.documentElement.setAttribute('data-style', style);
           })();
         ` }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -39,6 +43,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://www.youtube-nocookie.com" />
         <link rel="preconnect" href="https://s.ytimg.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="bg-background overflow-hidden relative">
         <AmbientBackground />

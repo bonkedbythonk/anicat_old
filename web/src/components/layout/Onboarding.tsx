@@ -129,7 +129,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
             <img
               src="/anicat_logo.png"
               alt="Anicat"
-              className="w-32 h-auto dark:[filter:brightness(0)_invert(1)] [filter:invert(1)]"
+              className="w-32 h-auto anicat-logo"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">

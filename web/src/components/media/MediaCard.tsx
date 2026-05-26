@@ -73,9 +73,9 @@ const MediaCard = memo(function MediaCard({ item, onSelect }: MediaCardProps) {
       onClick={() => onSelect?.(item)} 
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="group cursor-pointer flex flex-col space-y-2.5 w-full text-left relative transition-all duration-300 group-hover/card:translate-y-[-2px]"
+      className="group cursor-pointer flex flex-col space-y-2.5 w-full text-left relative"
     >
-      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-surface card-glow border border-white/[0.04] group-hover:border-accent/25 group-hover:shadow-[0_12px_36px_rgba(0,0,0,0.7)] transition-all duration-300">
+      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-surface card-glow border border-white/[0.04] group-hover:border-accent/25 group-hover:shadow-[0_12px_36px_rgba(0,0,0,0.7)]">
         <img 
           src={item.cover_image.large} 
           alt={title} 

@@ -85,7 +85,7 @@ export default function NowPlaying({ onPlay }: NowPlayingProps) {
   if (!playback || dismissed) return null;
 
   return (
-    <div className="fixed bottom-0 left-[72px] lg:left-60 right-0 z-[90] animate-slide-up">
+    <div className="fixed bottom-0 left-[72px] lg:left-[248px] right-0 z-[90] animate-slide-up">
       <div className="mx-4 mb-4 bg-surface/95 border border-white/[0.08] rounded-2xl p-4 flex items-center justify-between shadow-2xl shadow-black/50">
         <div className="flex items-center space-x-4 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0 animate-pulse-glow">

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Loader2, CheckCircle2, Save, Cpu, PlayCircle, HardDrive, Globe, Activity, RotateCcw, XCircle, AlertCircle, Download } from "lucide-react";
 import { mediaApi, type HealthStatus, API_BASE_ORIGIN } from "@/lib/api";
-import { useTheme } from "@/lib/useTheme";
+import { useTheme, type UiStyle } from "@/lib/useTheme";
 import ErrorBanner from "@/components/ErrorBanner";
 
 interface SettingsViewProps {
@@ -30,7 +30,7 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [autoSkip, setAutoSkip] = useState(false);
   const [theme, setTheme] = useState<"system" | "dark" | "light">("system");
-  const [colorPreset, setColorPreset] = useState<string>("seasonal");
+  const [uiStyle, setUiStyle] = useState<UiStyle>("neon-abyss");
   const hasUpdate = Boolean(health?.update_available || stagedHasUpdate);
 
   useEffect(() => {
@@ -43,9 +43,9 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
         setTheme(savedTheme);
       }
 
-      const savedPreset = localStorage.getItem("anicat_color_preset");
-      if (savedPreset) {
-        setColorPreset(savedPreset);
+      const savedStyle = localStorage.getItem("anicat_ui_style") as UiStyle | null;
+      if (savedStyle) {
+        setUiStyle(savedStyle);
       }
     }
   }, []);
@@ -73,12 +73,32 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
     }, 300);
   };
 
-  const handleColorPresetChange = (newPreset: string) => {
+  const handleStyleChange = (newStyle: UiStyle) => {
     document.documentElement.classList.add("theme-transition");
-    setColorPreset(newPreset);
-    localStorage.setItem("anicat_color_preset", newPreset);
-    window.dispatchEvent(new StorageEvent('storage', { key: 'anicat_color_preset', newValue: newPreset }));
-    
+
+    // Apply immediately — don't wait for the StorageEvent roundtrip
+    document.documentElement.setAttribute("data-style", newStyle);
+    if (newStyle === "sakura-zen") {
+      if (!document.getElementById("font-noto-serif-jp")) {
+        const link = document.createElement("link");
+        link.id = "font-noto-serif-jp";
+        link.rel = "stylesheet";
+        link.href = "https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&display=swap";
+        document.head.appendChild(link);
+      }
+    } else if (newStyle === "retro-manga") {
+      if (!document.getElementById("font-retro-manga")) {
+        const link = document.createElement("link");
+        link.id = "font-retro-manga";
+        link.rel = "stylesheet";
+        link.href = "https://fonts.googleapis.com/css2?family=Bangers&family=Noto+Sans+JP:wght@400;700&display=swap";
+        document.head.appendChild(link);
+      }
+    }
+
+    setUiStyle(newStyle);
+    localStorage.setItem("anicat_ui_style", newStyle);
+    window.dispatchEvent(new StorageEvent("storage", { key: "anicat_ui_style", newValue: newStyle }));
     setTimeout(() => {
       document.documentElement.classList.remove("theme-transition");
     }, 300);
@@ -332,23 +352,91 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                 </SettingField>
 
                 <SettingField
-                  label="Color Preset"
-                  description="Choose your preferred accent color."
+                  label="Style"
+                  description="Choose a complete visual skin for the interface."
                 >
-                  <select
-                    value={colorPreset}
-                    onChange={(e) => handleColorPresetChange(e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
-                  >
-                    <option value="preset-default">Default (Indigo)</option>
-                    <option value="preset-sakura">Sakura (Pink)</option>
-                    <option value="preset-ocean">Ocean (Blue)</option>
-                    <option value="preset-forest">Forest (Teal)</option>
-                    <option value="preset-sunset">Sunset (Orange)</option>
-                    <option value="preset-amethyst">Amethyst (Purple)</option>
-                    <option value="preset-ruby">Ruby (Red)</option>
-                    <option value="seasonal">Seasonal (Auto-changing)</option>
-                  </select>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Neon Abyss */}
+                    <button
+                      onClick={() => handleStyleChange("neon-abyss")}
+                      className={`relative rounded-2xl overflow-hidden border-2 transition-all text-left ${
+                        uiStyle === "neon-abyss"
+                          ? "border-[#0A84FF] shadow-lg shadow-[#0A84FF]/20"
+                          : "border-white/[0.06] hover:border-white/[0.15]"
+                      }`}
+                    >
+                      {/* Preview swatch */}
+                      <div className="h-20 w-full" style={{ background: "linear-gradient(135deg, #050505 0%, #0d0d1a 60%, #1a1025 100%)" }}>
+                        <div className="flex gap-1 p-2 h-full items-end">
+                          <div className="flex-1 h-8 rounded-lg" style={{ background: "rgba(28,28,30,0.6)", border: "1px solid rgba(255,255,255,0.08)" }} />
+                          <div className="flex-1 h-5 rounded-lg" style={{ background: "rgba(10,132,255,0.3)", border: "1px solid rgba(10,132,255,0.4)" }} />
+                        </div>
+                      </div>
+                      <div className="px-3 py-2 bg-white/[0.02]">
+                        <div className="text-xs font-bold text-white">Neon Abyss</div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">Deep black / Apple glass</div>
+                      </div>
+                      {uiStyle === "neon-abyss" && (
+                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-[#0A84FF] flex items-center justify-center">
+                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Sakura Zen */}
+                    <button
+                      onClick={() => handleStyleChange("sakura-zen")}
+                      className={`relative rounded-2xl overflow-hidden border-2 transition-all text-left ${
+                        uiStyle === "sakura-zen"
+                          ? "border-[#e8a0b4] shadow-lg shadow-[#e8a0b4]/20"
+                          : "border-white/[0.06] hover:border-white/[0.15]"
+                      }`}
+                    >
+                      {/* Preview swatch */}
+                      <div className="h-20 w-full" style={{ background: "linear-gradient(135deg, #0f0b10 0%, #1a1018 60%, #1f1222 100%)" }}>
+                        <div className="flex gap-1 p-2 h-full items-end">
+                          <div className="flex-1 h-8 rounded-xl" style={{ background: "rgba(244,180,196,0.08)", border: "1px solid rgba(232,160,180,0.2)" }} />
+                          <div className="flex-1 h-5 rounded-xl" style={{ background: "rgba(232,160,180,0.25)", border: "1px solid rgba(232,160,180,0.4)" }} />
+                        </div>
+                      </div>
+                      <div className="px-3 py-2" style={{ background: "rgba(244,180,196,0.04)" }}>
+                        <div className="text-xs font-bold" style={{ color: "#f2bfce" }}>Sakura Zen</div>
+                        <div className="text-[10px] mt-0.5" style={{ color: "#9ab89a" }}>Soft pastel / Japanese editorial</div>
+                      </div>
+                      {uiStyle === "sakura-zen" && (
+                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "#e8a0b4" }}>
+                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Retro Manga */}
+                    <button
+                      onClick={() => handleStyleChange("retro-manga")}
+                      className={`relative rounded-2xl overflow-hidden border-2 transition-all text-left ${
+                        uiStyle === "retro-manga"
+                          ? "border-[#e8272c] shadow-lg shadow-[#e8272c]/20"
+                          : "border-white/[0.06] hover:border-white/[0.15]"
+                      }`}
+                    >
+                      {/* Preview swatch */}
+                      <div className="h-20 w-full" style={{ background: "linear-gradient(135deg, #1a1510 0%, #231e18 100%)" }}>
+                        <div className="flex gap-1 p-2 h-full items-end">
+                          <div className="flex-1 h-8 rounded" style={{ background: "#ede8e0", border: "3px solid #1a1a1a" }} />
+                          <div className="flex-1 h-5 rounded" style={{ background: "#e8272c", border: "2px solid #1a1a1a" }} />
+                        </div>
+                      </div>
+                      <div className="px-3 py-2" style={{ background: "rgba(232, 39, 44, 0.04)" }}>
+                        <div className="text-xs font-bold" style={{ color: "#e8272c" }}>Retro Manga</div>
+                        <div className="text-[10px] mt-0.5 text-gray-500">Halftone dot / Manga panel style</div>
+                      </div>
+                      {uiStyle === "retro-manga" && (
+                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "#e8272c" }}>
+                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                      )}
+                    </button>
+                  </div>
                 </SettingField>
 
                 <SettingField

@@ -203,7 +203,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
         exit={{ x: "100%" }}
         transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
         style={{ willChange: "transform" }}
-        className="relative w-full max-w-2xl h-full bg-[#050505]/95 border-l border-border shadow-[-20px_0_50px_rgba(0,0,0,0.15)] dark:shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col transform-gpu overflow-hidden"
+        className="relative w-full max-w-2xl h-full bg-[#050505]/95 border-l border-border shadow-[-20px_0_50px_rgba(0,0,0,0.15)] dark:shadow-[-20px_0_50px_rgba(0,0,0,0.5)] flex flex-col transform-gpu overflow-hidden media-detail-drawer"
       >
         {/* Ambient Glow Backdrop Lighting */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -252,7 +252,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
               }
             }}
           >
-             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent z-[1]" />
+             <div className="absolute inset-0 z-[1] detail-banner-gradient" />
              {/* Banner image — fades out when trailer starts */}
              <img
                src={banner}
@@ -354,12 +354,12 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                     disabled={isUpdatingStatus}
                     className="w-full bg-foreground/5 border border-border text-foreground hover:bg-foreground/10 rounded-2xl pl-4 pr-10 py-3.5 text-sm font-bold focus:outline-none focus:border-accent active:scale-95 transition-all cursor-pointer appearance-none"
                   >
-                    <option value="none" className="bg-[#050505] text-muted-foreground">-- Add to List --</option>
-                    <option value="planning" className="bg-[#050505] text-white">Planning</option>
-                    <option value="watching" className="bg-[#050505] text-white">{isManga ? "Reading" : "Watching"}</option>
-                    <option value="completed" className="bg-[#050505] text-white">Completed</option>
-                    <option value="paused" className="bg-[#050505] text-white">Paused</option>
-                    <option value="dropped" className="bg-[#050505] text-white">Dropped</option>
+                    <option value="none" className="text-muted-foreground">-- Add to List --</option>
+                    <option value="planning" className="text-foreground">Planning</option>
+                    <option value="watching" className="text-foreground">{isManga ? "Reading" : "Watching"}</option>
+                    <option value="completed" className="text-foreground">Completed</option>
+                    <option value="paused" className="text-foreground">Paused</option>
+                    <option value="dropped" className="text-foreground">Dropped</option>
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
                     <ChevronDown size={16} />
@@ -455,14 +455,14 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
             {fullItem.genres && (
               <div className="flex flex-wrap gap-2">
                 {fullItem.genres.map(g => (
-                  <span key={g} className="px-3 py-1 bg-foreground/5 border border-border rounded-lg text-[11px] font-bold text-muted-foreground">{g}</span>
+                  <span key={g} className="px-3 py-1 bg-foreground/5 border border-border rounded-lg text-[11px] font-bold text-muted-foreground genre-chip">{g}</span>
                 ))}
               </div>
             )}
 
             {/* Synopsis with Read More */}
             {fullItem.description && (
-              <div className="space-y-3 p-6 rounded-2xl bg-foreground/[0.02] border border-border">
+              <div className="space-y-3 p-6 rounded-2xl bg-foreground/[0.02] border border-border synopsis-container">
                 <h3 className="text-[10px] font-black text-accent uppercase tracking-[0.2em]">Synopsis</h3>
                 <div className="relative">
                   <p 
@@ -470,7 +470,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                     dangerouslySetInnerHTML={{ __html: fullItem.description }} 
                   />
                   {!isExpanded && fullItem.description.length > 200 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none synopsis-fade" />
                   )}
                 </div>
                 {fullItem.description.length > 200 && (
@@ -487,7 +487,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
 
             {/* Next Episode Banner */}
             {!isManga && fullItem.next_airing && (
-              <div className="bg-accent/5 border border-accent/10 rounded-2xl p-5 flex items-center space-x-4">
+              <div className="bg-accent/5 border border-accent/10 rounded-2xl p-5 flex items-center space-x-4 next-episode-banner">
                 <div className="p-3 bg-accent/10 rounded-xl text-accent shadow-inner"><Calendar size={20} /></div>
                 <div>
                   <div className="text-[10px] font-bold text-accent uppercase tracking-widest">Next Episode</div>
@@ -538,7 +538,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                       </div>
                     ) : characters.length > 0 ? (
                       characters.map(char => (
-                        <div key={char.id || char.name.full} className="flex items-center space-x-3 p-3 bg-foreground/[0.02] border border-border rounded-2xl hover:bg-foreground/[0.04] transition-colors group">
+                        <div key={char.id || char.name.full} className="flex items-center space-x-3 p-3 bg-foreground/[0.02] border border-border rounded-2xl hover:bg-foreground/[0.04] transition-colors group character-card">
                           {char.image?.large && <img src={char.image.large} alt={char.name.full} className="w-14 h-14 rounded-xl object-cover shadow-lg" />}
                           <div className="min-w-0">
                             <div className="text-[13px] font-bold text-foreground group-hover:text-accent transition-colors truncate">{char.name.full}</div>
@@ -555,7 +555,7 @@ export default function MediaDetail({ item, onClose, initialAction, onRead, onPl
                   <div className="space-y-4">
                     {reviews.length > 0 ? (
                       reviews.map((rev, idx) => (
-                        <div key={idx} className="p-5 bg-foreground/[0.02] border border-border rounded-2xl space-y-3">
+                        <div key={idx} className="p-5 bg-foreground/[0.02] border border-border rounded-2xl space-y-3 review-card">
                            {rev.summary && <div className="text-xs font-black text-foreground/90 tracking-wide uppercase italic leading-snug">"{rev.summary}"</div>}
                            <div className="text-xs text-muted-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: rev.body.substring(0, 300) + '...' }} />
                         </div>

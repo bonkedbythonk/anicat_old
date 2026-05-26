@@ -470,7 +470,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen relative">
+    <div className="flex h-screen w-screen overflow-hidden relative">
       <Sidebar
         activeView={activeView}
         onNavigate={setActiveView}
@@ -493,7 +493,7 @@ export default function App() {
 
       {/* Main content */}
       <main
-        className="flex-1 ml-[72px] lg:ml-[248px] overflow-y-auto scrollbar-hide scroll-container relative z-10 transform-gpu translate-z-0 will-change-scroll"
+        className="flex-1 ml-[72px] lg:ml-[248px] overflow-y-auto overflow-x-hidden scrollbar-hide scroll-container relative z-10 transform-gpu translate-z-0 will-change-scroll"
         // UX-25: Pull-to-refresh — refresh all queries when scrolling to top
         onScroll={handleScroll}
       >
@@ -549,7 +549,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className={`p-6 lg:pr-10 max-w-[1600px] ${activeView === 'home' ? 'lg:pl-0' : 'lg:pl-10'} ${isOffline && !dismissedOffline ? 'pt-24 lg:pt-28' : activeView === 'home' ? 'pt-6 lg:pt-8 pb-10 lg:pb-14' : 'lg:py-10'}`}
+            className={`p-6 lg:pl-10 lg:pr-10 max-w-[1600px] ${isOffline && !dismissedOffline ? 'pt-24 lg:pt-28' : activeView === 'home' ? 'pt-6 lg:pt-8 pb-10 lg:pb-14' : 'lg:py-10'}`}
           >
             {renderView()}
           </motion.div>

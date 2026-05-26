@@ -269,7 +269,7 @@ const Hero = memo(function Hero({
   return (
     <div className="flex flex-col gap-4">
       {/* Hero card container */}
-      <div ref={containerRef} className="relative h-[52vh] lg:h-[58vh] w-full overflow-hidden group -mx-6 lg:mx-0 lg:rounded-2xl">
+      <div ref={containerRef} className="relative h-[52vh] lg:h-[58vh] w-full overflow-hidden group -mx-6 lg:mx-0 lg:rounded-2xl hero-card-container">
         {/* Background */}
         <div className="absolute inset-0 bg-background">
           {/* eslint-disable-next-line @next/next/no-img-element */}
