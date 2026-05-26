@@ -49,8 +49,8 @@ user_list_status_map = {
 
 # Map of local UserMediaListSort values to AniList MediaListSort string representations
 anilist_media_list_sort_map = {
-    "MEDIA_SCORE": "SCORE",
-    "MEDIA_SCORE_DESC": "SCORE_DESC",
+    "SCORE": "SCORE",
+    "SCORE_DESC": "SCORE_DESC",
 }
 
 # TODO: Just remove and have consistent variable naming between the two

@@ -401,28 +401,27 @@ class MpvPlayer(BasePlayer):
                     "GPU upscaling shaders are disabled (Battery Saver / Low-End profile)."
                 )
 
-        # DISABLED: AniCat UI overlay script is not loaded
-        # if skip_times:
-        #     try:
-        #         parts = []
-        #         for s in skip_times:
-        #             t = s.get("type")
-        #             start = int(s.get("start") or 0)
-        #             end = int(s.get("end") or 0)
-        #             parts.append(f"{t},{start},{end}")
-        #         encoded = ";".join(parts)
-        #         encoded_escaped = f"[{encoded}]"
-        #         mpv_args.append(f"--script-opts=anicat_ui-skip_times={encoded_escaped}")
-        #         logger.debug(f"Injected AniCat skip_times script-opts: {encoded}")
-        #     except Exception:
-        #         logger.debug("Failed to append AniCat skip_times to MPV args")
-        # 
-        # auto_next = getattr(params, "auto_next", False)
-        # val = "yes" if auto_next else "no"
-        # mpv_args.append(f"--script-opts-append=anicat_ui-auto_next={val}")
-        # 
-        # accent = getattr(params, "accent", None) or "0A84FF"
-        # mpv_args.append(f"--script-opts-append=anicat_ui-accent={accent}")
+        if skip_times:
+            try:
+                parts = []
+                for s in skip_times:
+                    t = s.get("type")
+                    start = int(s.get("start") or 0)
+                    end = int(s.get("end") or 0)
+                    parts.append(f"{t},{start},{end}")
+                encoded = ";".join(parts)
+                encoded_escaped = f"[{encoded}]"
+                mpv_args.append(f"--script-opts=anicat_ui-skip_times={encoded_escaped}")
+                logger.debug(f"Injected AniCat skip_times script-opts: {encoded}")
+            except Exception:
+                logger.debug("Failed to append AniCat skip_times to MPV args")
+
+        auto_next = getattr(params, "auto_next", False)
+        val = "yes" if auto_next else "no"
+        mpv_args.append(f"--script-opts-append=anicat_ui-auto_next={val}")
+
+        accent = getattr(params, "accent", None) or "0A84FF"
+        mpv_args.append(f"--script-opts-append=anicat_ui-accent={accent}")
 
         if params.headers:
             # mpv prefers no spaces after commas and colons in http-header-fields

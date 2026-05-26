@@ -211,7 +211,7 @@ def test_search_media_list_sort_mapping():
 
     params = UserMediaListSearchParams(
         status=UserMediaListStatus.WATCHING,
-        sort=UserMediaListSort.MEDIA_SCORE_DESC,
+        sort=UserMediaListSort.SCORE_DESC,
         page=1
     )
 
