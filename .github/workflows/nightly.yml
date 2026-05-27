@@ -81,12 +81,10 @@ jobs:
             args: '--target aarch64-apple-darwin'
             triple: 'aarch64-apple-darwin'
             sidecar_suffix: ''
-            tauri_extra_env: 'TAURI_BUNDLER_DMG_IGNORE_CI: "true"'
           - platform: 'windows-latest'
             args: '--target x86_64-pc-windows-msvc'
             triple: 'x86_64-pc-windows-msvc'
             sidecar_suffix: '.exe'
-            tauri_extra_env: ''
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -168,7 +166,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEXT_TELEMETRY_DISABLED: 1
-          TAURI_BUNDLER_DMG_IGNORE_CI: "true"
         with:
           projectPath: web
           tagName: ${{ needs.setup.outputs.tag }}
