@@ -159,6 +159,11 @@ if sys.platform == "darwin":
 - **Cross-view refresh** → `dispatchRefresh()` from [web/src/lib/events.ts](web/src/lib/events.ts).
 - **Shared hooks** live in `web/src/lib/` (`useHealthPolling`, `useAmbientColor`, `usePaginatedList`, `useProgressEditor`, `useRemoteLogging`, `useTheme`, `useKeyboardShortcuts`).
 
+### 7. Branching and Pushing Guidelines
+
+- **Develop and push to `nightly` branch for testing.** All new features, fixes, and nightly updates must be pushed to the `nightly` branch first for validation.
+- **Do not automatically push to `master`.** The `master` branch must remain strictly stable. Only push/merge to `master` once a release has been fully verified and is ready to be published as a stable version.
+
 ---
 
 ## File Naming
