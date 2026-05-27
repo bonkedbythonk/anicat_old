@@ -183,7 +183,7 @@ export default function App() {
       if (activeUpdateOverlay && activeUpdateOverlay.active) {
         setPersistedUpdateOverlay(null);
         clearUpdateOverlayTimeout();
-        
+
         // Reload page to apply frontend changes
         window.location.reload();
       }

@@ -13,6 +13,7 @@ export default function UpdateLogViewer() {
   const [showLogs, setShowLogs] = useState(false);
   const [logs, setLogs] = useState("");
   const [updating, setUpdating] = useState(true);
+  const [pollFailed, setPollFailed] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
 
   // Poll update logs
@@ -26,8 +27,9 @@ export default function UpdateLogViewer() {
         if (cancelled) return;
         setLogs(res.logs);
         setUpdating(res.updating);
+        setPollFailed(false);
       } catch {
-        // Ignore poll failures
+        if (!cancelled) setPollFailed(true);
       }
     };
 
@@ -46,6 +48,12 @@ export default function UpdateLogViewer() {
     }
   }, [logs, showLogs]);
 
+  const displayMessage = useCallback(() => {
+    if (logs) return logs;
+    if (pollFailed) return "Update in progress - the application will restart automatically.\n";
+    return "Waiting for update to start...";
+  }, [logs, pollFailed]);
+
   return (
     <div className="w-full max-w-lg mx-auto">
       <button
@@ -59,7 +67,7 @@ export default function UpdateLogViewer() {
 
       {showLogs && (
         <div className="mt-3 p-3 rounded-xl bg-black/60 border border-white/[0.06] max-h-48 overflow-y-auto text-left font-mono text-[10px] leading-relaxed whitespace-pre-wrap break-all text-gray-400 scrollbar-hide">
-          {logs || "Waiting for update to start..."}
+          {displayMessage()}
           <div ref={logEndRef} />
         </div>
       )}
