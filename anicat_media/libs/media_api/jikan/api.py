@@ -196,7 +196,7 @@ class JikanApi(BaseApiClient):
         logger.warning("Jikan API does not support authentication.")
         return None
 
-    def get_viewer_profile(self) -> Optional[UserProfile]:
+    def get_viewer_profile(self, force_refresh: bool = False) -> Optional[UserProfile]:
         logger.warning("Jikan API does not support user profiles.")
         return None
 

@@ -935,7 +935,7 @@ def reconnect():
         api = ctx.media_api
 
         # Attempt to fetch profile to verify real connectivity
-        profile = api.get_viewer_profile()
+        profile = api.get_viewer_profile(force_refresh=True)
 
         if profile:
             ctx.is_offline = False

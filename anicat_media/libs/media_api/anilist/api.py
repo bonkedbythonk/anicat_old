@@ -100,7 +100,7 @@ class AniListApi(BaseApiClient):
         self.http_client.headers["Authorization"] = f"Bearer {token}"
 
         try:
-            profile = self.get_viewer_profile()
+            profile = self.get_viewer_profile(force_refresh=True)
             if profile:
                 self.user_profile = profile
                 return profile
@@ -160,12 +160,18 @@ class AniListApi(BaseApiClient):
         """Returns True if we have successfully fetched the user profile."""
         return self.user_profile is not None
 
-    def get_viewer_profile(self) -> Optional[UserProfile]:
+    def get_viewer_profile(self, force_refresh: bool = False) -> Optional[UserProfile]:
         if not self.token:
             return None
         try:
             response = execute_graphql(
-                ANILIST_ENDPOINT, self.http_client, gql.GET_LOGGED_IN_USER, {}
+                ANILIST_ENDPOINT,
+                self.http_client,
+                gql.GET_LOGGED_IN_USER,
+                {},
+                use_cache=True,
+                ttl=300,
+                force_refresh=force_refresh,
             )
 
             if response.status_code != 200:

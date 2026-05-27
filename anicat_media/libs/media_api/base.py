@@ -44,7 +44,7 @@ class BaseApiClient(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_viewer_profile(self) -> Optional[UserProfile]:
+    def get_viewer_profile(self, force_refresh: bool = False) -> Optional[UserProfile]:
         pass
 
     @abc.abstractmethod
