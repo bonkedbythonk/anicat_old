@@ -44,20 +44,32 @@ export default function DownloadsView() {
   }, [fetchQueue]);
 
   const handleRetry = async () => {
+    // Optimistically set all failed items to queued state in local UI
+    setQueue(prev =>
+      prev.map(item =>
+        item.status === "failed" ? { ...item, status: "queued" } : item
+      )
+    );
     try {
       await mediaApi.retryQueue();
       fetchQueue();
     } catch (err) {
       console.error("Failed to retry queue:", err);
+      fetchQueue();
     }
   };
 
   const handleRemove = async (mediaId: number, ep: string) => {
+    // Optimistically remove the item from local UI state
+    setQueue(prev =>
+      prev.filter(item => !(item.media_id === mediaId && item.episode_number === ep))
+    );
     try {
       await mediaApi.removeFromQueue(mediaId, ep);
       fetchQueue();
     } catch (err) {
       console.error("Failed to remove item:", err);
+      fetchQueue();
     }
   };
 

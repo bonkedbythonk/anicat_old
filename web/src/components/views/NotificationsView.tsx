@@ -28,12 +28,34 @@ export default function NotificationsView({ onSelect }: NotificationsViewProps) 
   const config = data?.config ?? null;
 
   const handleMarkAllRead = useCallback(async () => {
+    const oldNotifications = queryClient.getQueryData(["notifications", "config"]);
+    const oldHealth = queryClient.getQueryData(["health"]);
+
+    // Optimistically empty the notifications list
+    queryClient.setQueryData(["notifications", "config"], (old: { notifications: unknown[]; config: unknown } | undefined) => {
+      if (!old) return old;
+      return { ...old, notifications: [] };
+    });
+
+    // Optimistically clear the unread notifications count in health query
+    queryClient.setQueryData(["health"], (old: { unread_notifications?: number } | undefined) => {
+      if (!old) return old;
+      return { ...old, unread_notifications: 0 };
+    });
+
     try {
       await mediaApi.markNotificationsAsRead();
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({ queryKey: ["health"] });
     } catch (err) {
       console.error("Failed to mark notifications as read:", err);
+      // Rollback on error
+      if (oldNotifications) {
+        queryClient.setQueryData(["notifications", "config"], oldNotifications);
+      }
+      if (oldHealth) {
+        queryClient.setQueryData(["health"], oldHealth);
+      }
     }
   }, [queryClient]);
 

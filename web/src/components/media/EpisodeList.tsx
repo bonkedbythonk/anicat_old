@@ -37,6 +37,7 @@ export default function EpisodeList({
   const [batchStart, setBatchStart] = useState("");
   const [batchEnd, setBatchEnd] = useState("");
   const [batchQueuing, setBatchQueuing] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   // Local overrides for download status so the icon updates immediately
   // after queuing, without waiting for a full episode-list refetch.
   const [localDownloadStatus, setLocalDownloadStatus] = useState<Record<string, string>>({});
@@ -46,6 +47,18 @@ export default function EpisodeList({
   useEffect(() => {
     // Manual scroll only
   }, [mediaId]);
+
+  const handleRetry = async () => {
+    if (!onRetry || retrying) return;
+    setRetrying(true);
+    try {
+      await onRetry();
+    } catch (error) {
+      console.error("Failed to retry search:", error);
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   const handlePlay = async (epNum: string) => {
     if (isManga && onRead) {
@@ -138,11 +151,12 @@ export default function EpisodeList({
           <p>No {isManga ? "chapters" : "episodes"} found from this provider.</p>
           {onRetry && (
             <button
-              onClick={onRetry}
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent rounded-xl text-xs font-bold transition-all active:scale-95"
+              onClick={handleRetry}
+              disabled={retrying}
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent rounded-xl text-xs font-bold transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
             >
-              <RefreshCw size={14} />
-              <span>Retry Search</span>
+              <RefreshCw size={14} className={retrying ? "animate-spin" : ""} />
+              <span>{retrying ? "Retrying..." : "Retry Search"}</span>
             </button>
           )}
         </div>

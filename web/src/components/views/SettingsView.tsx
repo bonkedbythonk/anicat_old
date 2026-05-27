@@ -707,11 +707,22 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                     onClick={async () => {
                       const btn = document.getElementById('logout-btn');
                       if (btn?.getAttribute('data-confirmed') === 'true') {
+                        if (btn) {
+                          btn.innerHTML = '<span>Logging out...</span>';
+                          btn.setAttribute('disabled', 'true');
+                          btn.className = "mt-2 text-xs font-bold text-red-400/40 transition-colors flex items-center space-x-1 cursor-not-allowed pointer-events-none";
+                        }
                         mediaApi.updateConfig({ anilist: { token: "" } })
                           .then(() => window.location.reload())
                           .catch(err => {
                             console.error("Logout failed:", err);
                             alert("Logout failed. Please try again.");
+                            if (btn) {
+                              btn.removeAttribute('disabled');
+                              btn.setAttribute('data-confirmed', 'false');
+                              btn.innerHTML = '<span>Logout</span>';
+                              btn.className = "mt-2 text-xs font-bold text-red-400/60 hover:text-red-400 transition-colors flex items-center space-x-1";
+                            }
                           });
                       } else {
                         if (btn) {
@@ -901,11 +912,24 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                   onClick={() => {
                     const btn = document.getElementById('clear-registry-btn');
                     if (btn?.getAttribute('data-confirmed') === 'true') {
+                      if (btn) {
+                        btn.innerHTML = 'Wiping Registry...';
+                        btn.setAttribute('disabled', 'true');
+                        btn.className = "w-full py-3 bg-red-500/10 text-red-400/40 rounded-xl text-sm font-bold transition-all border border-red-500/10 cursor-not-allowed pointer-events-none";
+                      }
                       mediaApi.wipeRegistry().then(() => {
                         if (btn) {
                           btn.innerHTML = 'Registry Wiped! Restarting...';
                           btn.className = "w-full py-3 bg-green-500/20 text-green-400 rounded-xl text-sm font-bold transition-all border border-green-500/30";
                           setTimeout(() => window.location.reload(), 1500);
+                        }
+                      }).catch((err) => {
+                        console.error("Wipe failed:", err);
+                        if (btn) {
+                          btn.removeAttribute('disabled');
+                          btn.setAttribute('data-confirmed', 'false');
+                          btn.innerHTML = 'Clear Local Registry';
+                          btn.className = "w-full py-3 border border-red-500/20 text-red-400/60 rounded-xl text-sm font-bold hover:bg-red-500/10 transition-all";
                         }
                       });
                     } else {
