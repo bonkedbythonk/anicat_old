@@ -57,11 +57,6 @@ elif echo "$COMMIT_MSG" | grep -qiE '^feat(\([^)]*\))?!?\s*:'; then
     # MINOR bump
     new_minor=$((MINOR + 1))
     bump_and_stage "${MAJOR}.${new_minor}.0"
-
-elif echo "$COMMIT_MSG" | grep -qiE '^fix(\([^)]*\))?!?\s*:'; then
-    # PATCH bump
-    new_patch=$((PATCH + 1))
-    bump_and_stage "${MAJOR}.${MINOR}.${new_patch}"
 fi
 
 # If none of the patterns matched, no bump happens — commit as-is.
