@@ -133,24 +133,20 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
     setStep(3);
   };
 
-  const handleSavePlaybackSettings = async () => {
-    setSaving(true);
+  const handleSavePlaybackSettings = () => {
     setError(null);
-    try {
-      await mediaApi.updateConfig({
-        stream: {
-          player_type: playerType,
-          shader_profile: shaderProfile,
-          translation_type: translationType,
-        }
-      });
-      localStorage.setItem("anicat_auto_skip", String(localAutoSkip));
-      setStep(4); // Advance to AniList connection step
-    } catch (err: any) {
-      setError("Failed to save playback preferences.");
-    } finally {
-      setSaving(false);
-    }
+    // Save playback preferences in the background to prevent UI lag
+    mediaApi.updateConfig({
+      stream: {
+        player_type: playerType,
+        shader_profile: shaderProfile,
+        translation_type: translationType,
+      }
+    }).catch((err) => {
+      console.error("Failed to save playback preferences in background:", err);
+    });
+    localStorage.setItem("anicat_auto_skip", String(localAutoSkip));
+    setStep(4); // Advance to AniList connection step instantly
   };
 
   const handleConnectAnilist = async () => {
@@ -191,7 +187,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
       title: "Welcome to Anicat",
       subtitle: "Your Anime & Manga Hub",
       content: (
-        <div className="space-y-8 animate-fade-in">
+        <div className="space-y-8 animate-fade-in-fast">
           {/* Logo */}
           <div className="flex justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -248,7 +244,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
       title: "Choose Your Look",
       subtitle: "Pick a theme and style that suits you",
       content: (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6 animate-fade-in-fast">
           {/* Theme selection */}
           <div className="space-y-3">
             <label className="text-xs font-bold text-gray-400 uppercase tracking-wider text-left block">Theme</label>
@@ -434,7 +430,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
       title: "Set Up Playback",
       subtitle: "Choose how you want to watch",
       content: (
-        <div className="space-y-5 text-left animate-fade-in">
+        <div className="space-y-5 text-left animate-fade-in-fast">
           <div className="space-y-4 bg-white/[0.01] border border-white/[0.04] p-5 rounded-xl">
             {/* Player Type Selection */}
             <div className="space-y-2">
@@ -505,22 +501,16 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
           <div className="flex gap-3 pt-2">
             <button 
               onClick={() => setStep(2)}
-              disabled={saving}
-              className="flex-1 bg-white/[0.04] hover:bg-white/[0.08] text-white font-bold py-4 rounded-2xl transition-all active:scale-95 border border-white/[0.08] disabled:opacity-50"
+              className="flex-1 bg-white/[0.04] hover:bg-white/[0.08] text-white font-bold py-4 rounded-2xl transition-all active:scale-95 border border-white/[0.08]"
             >
               Back
             </button>
             <button 
               onClick={handleSavePlaybackSettings}
-              disabled={saving}
-              className="flex-[2] bg-accent hover:bg-accent-light text-white font-bold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-accent/20 active:scale-95 disabled:opacity-50"
+              className="flex-[2] bg-accent hover:bg-accent-light text-white font-bold py-4 rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-accent/20 active:scale-95"
             >
-              {saving ? <Loader2 size={20} className="animate-spin" /> : (
-                <>
-                  <span>Save & Continue</span>
-                  <ArrowRight size={18} />
-                </>
-              )}
+              <span>Save & Continue</span>
+              <ArrowRight size={18} />
             </button>
           </div>
         </div>
@@ -531,7 +521,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
       title: "Connect AniList",
       subtitle: "Sync your watch history and lists",
       content: (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6 animate-fade-in-fast">
           <p className="text-gray-400 text-sm leading-relaxed">
             Anicat works best with <span className="text-white font-semibold">AniList</span>. 
             It keeps your watch history, ratings, and lists synced across all your devices. Your data stays private — the token only reads and updates your lists.
