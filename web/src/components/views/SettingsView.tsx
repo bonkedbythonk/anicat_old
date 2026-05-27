@@ -484,6 +484,22 @@ export default function SettingsView({ health, onUpdateStarted }: SettingsViewPr
                 </SettingField>
               </CardSection>
 
+              <CardSection title="Integrations">
+                <SettingField
+                  label="Discord Rich Presence"
+                  description="Enable Discord Rich Presence to show your current activity."
+                >
+                  <select
+                    value={config.general?.discord ? "true" : "false"}
+                    onChange={(e) => updateField("general", "discord", e.target.value === "true")}
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3.5 text-sm font-medium focus:border-accent/40 outline-none transition-all appearance-none cursor-pointer text-white"
+                  >
+                    <option value="false">Disabled</option>
+                    <option value="true">Enabled</option>
+                  </select>
+                </SettingField>
+              </CardSection>
+
               <CardSection title="Content Sources">
                 <SettingField
                   label="Anime Provider"

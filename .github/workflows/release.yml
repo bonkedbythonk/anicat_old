@@ -81,7 +81,7 @@ jobs:
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
       - name: install python dependencies
-        run: uv sync
+        run: uv sync --all-extras
 
       - name: build sidecar
         run: |
