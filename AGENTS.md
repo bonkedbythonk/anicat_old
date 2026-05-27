@@ -22,6 +22,11 @@
 | Bump version | Auto-bumps on `git commit` via `.githooks/pre-commit` (see below) |
 | Frontend build | `cd web && npm run build` |
 | Frontend lint | `cd web && npm run lint` |
+| Tauri dev (dev mode, no sidecar) | `cd web && npm run tauri:dev` |
+| Tauri build (full .app + .dmg) | `cd web && npx tauri build` |
+| Local nightly release | `bash scripts/release.sh --nightly` |
+| Local stable release | `bash scripts/release.sh --stable` |
+| Dry-run build only | `bash scripts/release.sh --dry-run` |
 
 ---
 
@@ -163,6 +168,37 @@ if sys.platform == "darwin":
 
 - **Develop and push to `nightly` branch for testing.** All new features, fixes, and nightly updates must be pushed to the `nightly` branch first for validation.
 - **Do not automatically push to `master`.** The `master` branch must remain strictly stable. Only push/merge to `master` once a release has been fully verified and is ready to be published as a stable version.
+- **CI workflow fixes that affect the release pipeline** can go directly to `master` since they're not app code.
+
+### 8. Release Workflow
+
+Three tiers of builds, from fastest to slowest:
+
+**Local dev (instant):** Run the Tauri app with hot-reload. No build, no version change, no upload.
+- Command: `cd web && npm run tauri:dev` (uses `tauri.dev.conf.json` — separate dev identity, no sidecar)
+- After frontend-only changes: `cd web && npm run build && npm run tauri:dev`
+
+**Local nightly (for testing the real DMG on your laptop, ~5 min):** Build the full DMG locally and optionally upload to GitHub as a pre-release.
+- Command: `bash scripts/release.sh --nightly` (build + upload) or `--dry-run` (build only)
+- **No version change.** Always uploads to the `nightly` tag, replacing the previous nightly.
+- Users install via the normal install script — it always points to `nightly`.
+- Never use CI for nightlies — build locally and upload directly.
+
+**Stable release (public):** Tag and ship a version to all users.
+- `bash scripts/release.sh --stable` builds + uploads to `v{version}` tag.
+- Before running this, ensure the version in `version.txt` is correct.
+
+### 9. When to Bump vs Push vs Release
+
+| Action | Branch | Version bump? | Push? | Upload DMG? |
+|---|---|---|---|---|
+| Tiny change (refactor, comment, style) | nightly | No | Yes | No |
+| Bug fix | nightly | PATCH | Yes | Optionally (nightly) |
+| New feature | nightly | MINOR | Yes | Optionally (nightly) |
+| Ready to ship to all users | master | FINAL via merge | Yes + tag | Stable DMG |
+
+- Pushing to `nightly` is safe anytime — the CI workflow runs as a backup but you don't need it.
+- Only bump and push to `master` when the feature/fix is fully tested and ready for all users.
 
 ---
 
