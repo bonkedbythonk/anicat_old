@@ -77,7 +77,8 @@ class DownloadService:
                 if ep.episode_number == episode_number:
                     if (
                         ep.download_status == DownloadStatus.FAILED
-                        and ep.download_attempts > self.app_config.downloads.max_retry_attempts
+                        and ep.download_attempts
+                        > self.app_config.downloads.max_retry_attempts
                     ):
                         logger.warning(
                             f"Episode '{episode_number}' of '{media_item.title.english}' "
@@ -261,23 +262,29 @@ class DownloadService:
                     provider_search_results = provider.search(
                         SearchParams(
                             query=normalize_title(
-                                media_title, self.app_config.general.provider.value, True
+                                media_title,
+                                self.app_config.general.provider.value,
+                                True,
                             ),
                             translation_type=self.app_config.stream.translation_type,
                         )
                     )
-                    if not provider_search_results or not provider_search_results.results:
-                        last_error = (
-                            f"Could not find '{media_title}' on provider '{provider_name}'"
-                        )
+                    if (
+                        not provider_search_results
+                        or not provider_search_results.results
+                    ):
+                        last_error = f"Could not find '{media_title}' on provider '{provider_name}'"
                         continue
 
                     # 2. Find best match
                     provider_results_map = {
-                        result.title: result for result in provider_search_results.results
+                        result.title: result
+                        for result in provider_search_results.results
                     }
                     best_match_title = find_best_match_title(
-                        provider_results_map, self.app_config.general.provider, media_item
+                        provider_results_map,
+                        self.app_config.general.provider,
+                        media_item,
                     )
                     provider_anime_ref = provider_results_map[best_match_title]
 
@@ -302,7 +309,9 @@ class DownloadService:
                         )
                     )
                     if not streams_iterator:
-                        last_error = f"Provider '{provider_name}' returned no stream iterator."
+                        last_error = (
+                            f"Provider '{provider_name}' returned no stream iterator."
+                        )
                         continue
 
                     server = next(streams_iterator, None)
@@ -317,7 +326,10 @@ class DownloadService:
                         while True:
                             try:
                                 _server = next(streams_iterator)
-                                if _server.name == self.app_config.downloads.server.value:
+                                if (
+                                    _server.name
+                                    == self.app_config.downloads.server.value
+                                ):
                                     server = _server
                                     break
                             except StopIteration:
@@ -325,7 +337,11 @@ class DownloadService:
 
                     preferred_quality = self.app_config.stream.quality
                     stream_link = next(
-                        (link for link in server.links if link.quality == preferred_quality),
+                        (
+                            link
+                            for link in server.links
+                            if link.quality == preferred_quality
+                        ),
                         None,
                     )
                     if not stream_link:
@@ -336,11 +352,16 @@ class DownloadService:
                         except Exception:
                             stream_link = server.links[-1]
 
-                    episode_title = f"{media_item.title.english}; Episode {episode_number}"
-                    if media_item.streaming_episodes and media_item.streaming_episodes.get(
-                        episode_number
+                    episode_title = (
+                        f"{media_item.title.english}; Episode {episode_number}"
+                    )
+                    if (
+                        media_item.streaming_episodes
+                        and media_item.streaming_episodes.get(episode_number)
                     ):
-                        episode_title = media_item.streaming_episodes[episode_number].title
+                        episode_title = media_item.streaming_episodes[
+                            episode_number
+                        ].title
 
                     # 5. Perform the download
                     download_params = DownloadParams(

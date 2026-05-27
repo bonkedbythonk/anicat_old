@@ -167,7 +167,7 @@ def test_delete_list_entry_success():
                     "id": 12345,
                     "status": "CURRENT",
                     "progress": 3,
-                    "score": 8
+                    "score": 8,
                 }
             }
         }
@@ -175,14 +175,12 @@ def test_delete_list_entry_success():
 
     mock_response_del = MagicMock(spec=httpx.Response)
     mock_response_del.json.return_value = {
-        "data": {
-            "DeleteMediaListEntry": {
-                "deleted": True
-            }
-        }
+        "data": {"DeleteMediaListEntry": {"deleted": True}}
     }
 
-    with patch("anicat_media.libs.media_api.anilist.api.execute_graphql") as mock_execute:
+    with patch(
+        "anicat_media.libs.media_api.anilist.api.execute_graphql"
+    ) as mock_execute:
         mock_execute.side_effect = [mock_response_get, mock_response_del]
 
         success = api.delete_list_entry(9999)
@@ -193,7 +191,7 @@ def test_delete_list_entry_success():
             "https://graphql.anilist.co",
             mock_client,
             gql.GET_MEDIA_LIST_ITEM,
-            {"mediaId": 9999}
+            {"mediaId": 9999},
         )
 
 
@@ -210,9 +208,7 @@ def test_search_media_list_sort_mapping():
     api.user_profile.id = 123
 
     params = UserMediaListSearchParams(
-        status=UserMediaListStatus.WATCHING,
-        sort=UserMediaListSort.SCORE_DESC,
-        page=1
+        status=UserMediaListStatus.WATCHING, sort=UserMediaListSort.SCORE_DESC, page=1
     )
 
     mock_response = MagicMock(spec=httpx.Response)
@@ -223,14 +219,16 @@ def test_search_media_list_sort_mapping():
                     "total": 0,
                     "currentPage": 1,
                     "hasNextPage": False,
-                    "perPage": 15
+                    "perPage": 15,
                 },
-                "mediaList": []
+                "mediaList": [],
             }
         }
     }
 
-    with patch("anicat_media.libs.media_api.anilist.api.execute_graphql") as mock_execute:
+    with patch(
+        "anicat_media.libs.media_api.anilist.api.execute_graphql"
+    ) as mock_execute:
         mock_execute.return_value = mock_response
 
         api.search_media_list(params)
@@ -246,10 +244,8 @@ def test_search_media_list_sort_mapping():
                 "status": "CURRENT",
                 "page": 1,
                 "perPage": 15,
-                "type": "ANIME"
+                "type": "ANIME",
             },
             use_cache=True,
-            ttl=300
+            ttl=300,
         )
-
-

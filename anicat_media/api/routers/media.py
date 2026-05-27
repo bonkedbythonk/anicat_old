@@ -472,9 +472,7 @@ def get_manga_ref(ctx, media, media_id: int):
 
     search_results = None
     for query in search_queries:
-        search_results = ctx.manga_provider.search(
-            MangaSearchParams(query=query)
-        )
+        search_results = ctx.manga_provider.search(MangaSearchParams(query=query))
         if search_results and search_results.results:
             break
 

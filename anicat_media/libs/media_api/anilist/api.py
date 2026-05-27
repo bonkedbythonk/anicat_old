@@ -278,9 +278,7 @@ class AniListApi(BaseApiClient):
         # TODO: use consistent variable naming btw graphql and params
         # so variables can be dynamically filled
         raw_sort = (
-            params.sort.value
-            if params.sort
-            else self.config.media_list_sort_by.value
+            params.sort.value if params.sort else self.config.media_list_sort_by.value
         )
         sort_val = anilist_media_list_sort_map.get(raw_sort, raw_sort)
 
@@ -532,8 +530,12 @@ class AniListApi(BaseApiClient):
 
         try:
             response = execute_graphql(
-                ANILIST_ENDPOINT, self.http_client, gql.GET_NOTIFICATIONS, {},
-                use_cache=True, ttl=60,  # 1-minute cache to avoid re-fetching on tab switches
+                ANILIST_ENDPOINT,
+                self.http_client,
+                gql.GET_NOTIFICATIONS,
+                {},
+                use_cache=True,
+                ttl=60,  # 1-minute cache to avoid re-fetching on tab switches
             )
             if response and "errors" not in response.json():
                 return mapper.to_generic_notifications(response.json())

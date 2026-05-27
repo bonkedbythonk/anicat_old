@@ -177,15 +177,18 @@ def _start_parent_monitor() -> None:
             try:
                 if sys.platform == "win32":
                     import ctypes
+
                     PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
                     kernel32 = ctypes.windll.kernel32
-                    handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, parent_pid)
+                    handle = kernel32.OpenProcess(
+                        PROCESS_QUERY_LIMITED_INFORMATION, False, parent_pid
+                    )
                     if handle:
                         exit_code = ctypes.c_ulong()
                         kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code))
                         kernel32.CloseHandle(handle)
                         STILL_ACTIVE = 259
-                        alive = (exit_code.value == STILL_ACTIVE)
+                        alive = exit_code.value == STILL_ACTIVE
                 else:
                     current_parent = os.getppid()
                     if current_parent == parent_pid:
