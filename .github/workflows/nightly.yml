@@ -12,7 +12,60 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.release_params.outputs.tag }}
+      name: ${{ steps.release_params.outputs.name }}
+      body: ${{ steps.release_params.outputs.body }}
+      prerelease: ${{ steps.release_params.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set release parameters
+        id: release_params
+        run: |
+          VERSION=$(cat version.txt)
+          if [ "${{ github.ref_name }}" = "master" ]; then
+            echo "tag=v${VERSION}-stable" >> $GITHUB_OUTPUT
+            echo "name=Anicat v${VERSION}" >> $GITHUB_OUTPUT
+            echo "body=Auto-built from master branch — Anicat v${VERSION}." >> $GITHUB_OUTPUT
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          else
+            echo "tag=nightly" >> $GITHUB_OUTPUT
+            echo "name=Anicat Nightly Build" >> $GITHUB_OUTPUT
+            {
+              echo "body<<EOF"
+              echo "Automated rolling pre-release built from nightly branch. Last updated: ${{ github.event.head_commit.timestamp || 'Manual Trigger' }} (commit ${{ github.sha }})."
+              echo ""
+              echo "### Installation"
+              echo ""
+              echo "**macOS App (Recommended):**"
+              echo "\`\`\`bash"
+              echo "curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/nightly/scripts/install_macos.sh | bash"
+              echo "\`\`\`"
+              echo ""
+              echo "**Terminal CLI Only:**"
+              echo "\`\`\`bash"
+              echo "curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/nightly/scripts/install_cli.sh | bash"
+              echo "\`\`\`"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Pre-clean release tag (re-run safety)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.release_params.outputs.tag }}"
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          echo "Pre-cleaned tag: $TAG"
+
   build:
+    needs: setup
     permissions:
       contents: write
     env:
@@ -111,80 +164,41 @@ jobs:
           NEXT_TELEMETRY_DISABLED: 1
         run: npm run build
 
-      - name: Set release parameters
-        id: release_params
-        run: |
-          VERSION=$(cat version.txt)
-          if [ "${{ github.ref_name }}" = "master" ]; then
-            echo "tag=v${VERSION}-stable" >> $GITHUB_OUTPUT
-            echo "name=Anicat v${VERSION}" >> $GITHUB_OUTPUT
-            echo "body=Auto-built from master branch — Anicat v${VERSION}." >> $GITHUB_OUTPUT
-            echo "draft=false" >> $GITHUB_OUTPUT
-            echo "prerelease=false" >> $GITHUB_OUTPUT
-            # Also export as env vars for downstream shell steps
-            echo "RELEASE_TAG=v${VERSION}-stable" >> $GITHUB_ENV
-            echo "RELEASE_NAME=Anicat v${VERSION}" >> $GITHUB_ENV
-            echo "RELEASE_BODY=Auto-built from master branch — Anicat v${VERSION}." >> $GITHUB_ENV
-            echo "RELEASE_DRAFT=false" >> $GITHUB_ENV
-            echo "RELEASE_PRERELEASE=false" >> $GITHUB_ENV
-          else
-            echo "tag=nightly" >> $GITHUB_OUTPUT
-            echo "name=Anicat Nightly Build" >> $GITHUB_OUTPUT
-            {
-              echo "body<<EOF"
-              echo "Automated rolling pre-release built from nightly branch. Last updated: ${{ github.event.head_commit.timestamp || 'Manual Trigger' }} (commit ${{ github.sha }})."
-              echo ""
-              echo "### Installation"
-              echo ""
-              echo "**macOS App (Recommended):**"
-              echo "\`\`\`bash"
-              echo "curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/nightly/scripts/install_macos.sh | bash"
-              echo "\`\`\`"
-              echo ""
-              echo "**Terminal CLI Only:**"
-              echo "\`\`\`bash"
-              echo "curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/nightly/scripts/install_cli.sh | bash"
-              echo "\`\`\`"
-              echo "EOF"
-            } >> $GITHUB_OUTPUT
-            echo "draft=false" >> $GITHUB_OUTPUT
-            echo "prerelease=true" >> $GITHUB_OUTPUT
-            # Also export as env vars for downstream shell steps
-            echo "RELEASE_TAG=nightly" >> $GITHUB_ENV
-            echo "RELEASE_NAME=Anicat Nightly Build" >> $GITHUB_ENV
-            {
-              echo "RELEASE_BODY<<EOF"
-              echo "Automated rolling pre-release built from nightly branch. Last updated: ${{ github.event.head_commit.timestamp || 'Manual Trigger' }} (commit ${{ github.sha }})."
-              echo ""
-              echo "### Installation"
-              echo ""
-              echo "**macOS App (Recommended):**"
-              echo "\`\`\`bash"
-              echo "curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/nightly/scripts/install_macos.sh | bash"
-              echo "\`\`\`"
-              echo ""
-              echo "**Terminal CLI Only:**"
-              echo "\`\`\`bash"
-              echo "curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/nightly/scripts/install_cli.sh | bash"
-              echo "\`\`\`"
-              echo "EOF"
-            } >> $GITHUB_ENV
-            echo "RELEASE_DRAFT=false" >> $GITHUB_ENV
-            echo "RELEASE_PRERELEASE=true" >> $GITHUB_ENV
-          fi
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT_TELEMETRY_DISABLED: 1
+          TAURI_BUNDLER_DMG_IGNORE_CI: "true"
+        with:
+          projectPath: web
+          tagName: ${{ needs.setup.outputs.tag }}
+          releaseName: ${{ needs.setup.outputs.name }}
+          releaseBody: ${{ needs.setup.outputs.body }}
+          releaseDraft: true
+          prerelease: ${{ needs.setup.outputs.prerelease }}
+          uploadWorkflowArtifacts: true
+          args: ${{ matrix.args }}
 
-      - name: Pre-clean release tag (re-run safety)
-        if: matrix.platform == 'macos-14'
+  publish:
+    needs: [setup, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete "$RELEASE_TAG" --yes --cleanup-tag 2>/dev/null || true
-          echo "Pre-cleaned tag: $RELEASE_TAG"
+          TAG="${{ needs.setup.outputs.tag }}"
+          echo "Publishing release for tag: $TAG"
+          gh release edit "$TAG" --draft=false
 
       # Auto-push the semver tag (e.g. v4.19.0) for master builds so
       # release.yml (triggered by v* tags) also fires after the build.
       - name: Push version tag (master only)
-        if: github.ref_name == 'master' && matrix.platform == 'macos-14'
+        if: github.ref_name == 'master'
         run: |
           VERSION=$(cat version.txt)
           TAG="v${VERSION}"
@@ -193,31 +207,14 @@ jobs:
           git push origin "$TAG" || echo "Tag $TAG already exists remotely"
           echo "Pushed version tag: $TAG"
 
-      - uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NEXT_TELEMETRY_DISABLED: 1
-          TAURI_BUNDLER_DMG_IGNORE_CI: "true"
-        with:
-          projectPath: web
-          # Both macOS and Windows will upload their built assets to the release.
-          # Pre-cleaning is restricted to macOS to prevent race conditions.
-          tagName: ${{ steps.release_params.outputs.tag }}
-          releaseName: ${{ steps.release_params.outputs.name }}
-          releaseBody: ${{ steps.release_params.outputs.body }}
-          releaseDraft: ${{ steps.release_params.outputs.draft }}
-          prerelease: ${{ steps.release_params.outputs.prerelease }}
-          uploadWorkflowArtifacts: true
-          args: ${{ matrix.args }}
-
       - name: Clean up older rolling releases
-        if: github.ref_name == 'master' && matrix.platform == 'macos-14'
+        if: github.ref_name == 'master'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set +e
-          CURRENT_TAG="$RELEASE_TAG"
+          CURRENT_TAG="${{ needs.setup.outputs.tag }}"
           # Only clean up if the current release was actually created
           if gh release view "$CURRENT_TAG" --json tagName --jq '.tagName' 2>/dev/null; then
             VERSION=$(cat version.txt)
