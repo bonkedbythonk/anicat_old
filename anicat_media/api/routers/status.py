@@ -686,28 +686,22 @@ def trigger_update(req: Optional[UpdateTriggerRequest] = None):
                 local_script = os.path.join(repo_root, "scripts", "install_macos.sh")
                 if os.path.exists(local_script):
                     _log_update(f"Running: {local_script}")
-                    with open(UPDATE_LOG_FILE, "a") as log:
-                        proc = subprocess.Popen(
-                            ["bash", local_script],
-                            start_new_session=True,
-                            stdout=log,
-                            stderr=subprocess.STDOUT,
-                        )
+                    # Use osascript to launch completely detached from the app process hierarchy, preventing SIGKILL on app exit
+                    shell_cmd = f'bash "{local_script}" >> "{UPDATE_LOG_FILE}" 2>&1 &'
+                    applescript = f'do shell script "{shell_cmd.replace(chr(34), chr(92) + chr(34))}"'
+                    proc = subprocess.Popen(["osascript", "-e", applescript])
                     if proc:
-                        _log_update(f"DMG installer started (PID {proc.pid})")
+                        proc.wait()
+                        _log_update("DMG installer started in detached session")
                 else:
                     _log_update("No local installer — downloading from GitHub")
                     branch_name = "nightly" if update_branch == "nightly" else "master"
-                    with open(UPDATE_LOG_FILE, "a") as log:
-                        proc = subprocess.Popen(
-                            f"curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/{branch_name}/scripts/install_macos.sh | bash",
-                            shell=True,
-                            start_new_session=True,
-                            stdout=log,
-                            stderr=subprocess.STDOUT,
-                        )
+                    shell_cmd = f'curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/{branch_name}/scripts/install_macos.sh | bash >> "{UPDATE_LOG_FILE}" 2>&1 &'
+                    applescript = f'do shell script "{shell_cmd.replace(chr(34), chr(92) + chr(34))}"'
+                    proc = subprocess.Popen(["osascript", "-e", applescript])
                     if proc:
-                        _log_update(f"Remote installer started (PID {proc.pid})")
+                        proc.wait()
+                        _log_update("Remote installer started in detached session")
                 _last_update_check = datetime.now()
                 _cached_update_available = False
                 return {
@@ -834,26 +828,25 @@ def trigger_update(req: Optional[UpdateTriggerRequest] = None):
             local_script = os.path.join(repo_root, "scripts", "install_macos.sh")
             branch_name = "nightly" if update_branch == "nightly" else "master"
             if os.path.exists(local_script):
-                with open(UPDATE_LOG_FILE, "a") as log:
-                    proc = subprocess.Popen(
-                        ["bash", local_script],
-                        start_new_session=True,
-                        stdout=log,
-                        stderr=subprocess.STDOUT,
-                    )
+                # Use osascript to launch completely detached from the app process hierarchy, preventing SIGKILL on app exit
+                shell_cmd = f'bash "{local_script}" >> "{UPDATE_LOG_FILE}" 2>&1 &'
+                applescript = (
+                    f'do shell script "{shell_cmd.replace(chr(34), chr(92) + chr(34))}"'
+                )
+                proc = subprocess.Popen(["osascript", "-e", applescript])
                 if proc:
-                    _log_update(f"Installer script started (PID {proc.pid})")
+                    proc.wait()
+                    _log_update("DMG installer started in detached session")
             else:
-                with open(UPDATE_LOG_FILE, "a") as log:
-                    proc = subprocess.Popen(
-                        f"curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/{branch_name}/scripts/install_macos.sh | bash",
-                        shell=True,
-                        start_new_session=True,
-                        stdout=log,
-                        stderr=subprocess.STDOUT,
-                    )
+                _log_update("No local installer — downloading from GitHub")
+                shell_cmd = f'curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/{branch_name}/scripts/install_macos.sh | bash >> "{UPDATE_LOG_FILE}" 2>&1 &'
+                applescript = (
+                    f'do shell script "{shell_cmd.replace(chr(34), chr(92) + chr(34))}"'
+                )
+                proc = subprocess.Popen(["osascript", "-e", applescript])
                 if proc:
-                    _log_update(f"Remote installer started (PID {proc.pid})")
+                    proc.wait()
+                    _log_update("Remote installer started in detached session")
             _last_update_check = datetime.now()
             _cached_update_available = False
             return {
