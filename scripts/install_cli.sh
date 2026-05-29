@@ -3,12 +3,12 @@ set -e
 
 # Anicat CLI Installer — single-command install for the terminal version
 #
-# Usage:  curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/master/scripts/install_cli.sh | bash
+# Usage:  curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat_old/master/scripts/install_cli.sh | bash
 #
 # Installs the `anicat` CLI command globally via uv (recommended) or pip.
 # After installation you can run: anicat --help
 
-REPO="bonkedbythonk/anicat"
+REPO="bonkedbythonk/anicat_old"
 CLONE_URL="git+https://github.com/$REPO.git@nightly"
 
 echo "=== Anicat CLI Installer ==="

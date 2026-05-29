@@ -224,6 +224,7 @@ class MediaItem(BaseMediaApiModel):
     average_score: Optional[float] = None
     popularity: Optional[int] = None
     favourites: Optional[int] = None
+    is_adult: Optional[bool] = None
 
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None

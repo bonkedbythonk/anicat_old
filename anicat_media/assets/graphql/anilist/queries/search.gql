@@ -25,6 +25,7 @@ query (
   $type: MediaType
   $season: MediaSeason
   $on_list: Boolean
+  $isAdult: Boolean
 ) {
   Page(perPage: $per_page, page: $page) {
     pageInfo {
@@ -57,6 +58,7 @@ query (
       seasonYear: $seasonYear
       type: $type
       onList: $on_list
+      isAdult: $isAdult
     ) {
       id
       idMal
@@ -117,6 +119,7 @@ query (
       bannerImage
       season
       seasonYear
+      isAdult
       nextAiringEpisode {
         timeUntilAiring
         airingAt

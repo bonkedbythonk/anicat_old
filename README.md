@@ -25,7 +25,7 @@ The Terminal app will open — it's a black or white window where you can type c
 Click inside the Terminal window, then paste (Command + V) this line:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/master/scripts/install_macos.sh | bash
+curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat_old/master/scripts/install_macos.sh | bash
 ```
 
 Then press **Enter**. The installer will download and set up everything automatically.
@@ -45,7 +45,7 @@ After the install finishes:
 ### Windows
 
 #### 1. Download the Installer
-Go to the [GitHub Releases](https://github.com/bonkedbythonk/anicat/releases) page.
+Go to the [GitHub Releases](https://github.com/bonkedbythonk/anicat_old/releases) page.
 
 #### 2. Install Anicat
 - Download the latest installer file ending with `_x64-setup.exe` (e.g. `Anicat_4.36.4_x64-setup.exe`).
@@ -63,7 +63,7 @@ That's it! Anicat will start and you can search for anime right away.
 If you're comfortable with the terminal, you can install just the command-line version:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/master/scripts/install_cli.sh | bash
+curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat_old/master/scripts/install_cli.sh | bash
 ```
 
 Then type **`anicat`** to open the home screen and see what to watch next. Use `anicat search -t "Attack on Titan"` to find and stream specific shows.

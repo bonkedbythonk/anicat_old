@@ -68,6 +68,7 @@ query (
         seasonYear
         duration
         description
+        isAdult
         mediaListEntry {
           status
           id

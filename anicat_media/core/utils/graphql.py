@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import random
 import time
 import threading
 from pathlib import Path
@@ -20,48 +21,115 @@ logger = logging.getLogger(__name__)
 GRAPHQL_CACHE_DIR = APP_CACHE_DIR / "network" / "graphql"
 
 # ── Rate Limiting ────────────────────────────────────────────────────────────
-# AniList allows 90 requests per minute per user token.  We throttle at
-# 80 req/min to leave headroom for other concurrent activity and always
-# apply a minimum 700ms inter-request delay.  When a 429 is received,
-# subsequent requests wait with exponential backoff (1s / 2s / 4s / 8s).
+# AniList allows 90 requests per minute per user token. We use a token-bucket
+# algorithm with a maximum burst of 5 tokens to allow for initial request
+# batches, then refill at 90 tokens/min. When a 429 is received, the domain
+# enters a global "cool-down" period that blocks ALL requests to that domain
+# until the cooldown expires (driven by the Retry-After header or exponential
+# backoff with jitter).
+#
+# Key improvements over the old interval-only limiter:
+#   • Token bucket: tracks consumption over a 60s rolling window
+#   • Retry-After: respects the server's requested wait time
+#   • Jitter: randomizes backoff to prevent thundering herds
+#   • Global cool-down: a single 429 pauses ALL requests to that domain
 
-_DOMAIN_LOCKS: dict[str, threading.Lock] = {}
-_DOMAIN_LAST_REQUEST: dict[str, float] = {}
-_MIN_INTERVAL = 0.75  # seconds between requests (80 req/min, safely under 90 limit)
-_BACKOFF_SECONDS = 1.0  # initial backoff on 429
-_MAX_BACKOFF = 8.0  # cap backoff growth
-_RETRIES_ON_429 = 2  # how many times to retry a 429 with backoff
+_DOMAIN_LOCKS: dict[str, threading.RLock] = {}
+_DOMAIN_COOLDOWN_UNTIL: dict[str, float] = {}  # epoch when cool-down ends
+_DOMAIN_IN_FLIGHT: dict[str, threading.Semaphore] = {}  # max 1 in-flight request per domain
+
+# Token bucket state (per-domain)
+_TOKEN_BUCKET_TOKENS: dict[str, float] = {}
+_TOKEN_BUCKET_LAST_REFILL: dict[str, float] = {}
+_TOKEN_BUCKET_CAPACITY = 90  # max tokens (requests per minute)
+_TOKEN_BUCKET_REFILL_RATE = 90 / 60.0  # tokens per second
+_TOKEN_BUCKET_BURST = 5  # initial burst to allow first batch through
+
+_MIN_INTERVAL = 0.75  # minimum seconds between requests when within limit
+_RETRIES_ON_429 = 3  # how many times to retry a 429 with backoff
+_MAX_JITTER = 0.3  # max jitter fraction added to backoff delays
 
 
-def _domain_rate_limit(url: str) -> None:
-    """Sleep if necessary to maintain the per-domain minimum request interval."""
+def _get_domain(url: str) -> str:
+    """Extract the domain (netloc) from a URL."""
     from urllib.parse import urlparse
 
-    domain = urlparse(url).netloc or url
-    lock = _DOMAIN_LOCKS.setdefault(domain, threading.Lock())
-    with lock:
-        now = time.time()
-        last = _DOMAIN_LAST_REQUEST.get(domain, 0)
-        wait = _MIN_INTERVAL - (now - last)
-        if wait > 0:
-            time.sleep(wait)
-            now = time.time()
-        _DOMAIN_LAST_REQUEST[domain] = now
+    return urlparse(url).netloc or url
 
 
-def _handle_429_backoff(url: str, attempt: int) -> bool:
-    """Calculate and sleep the backoff delay for a 429 response.
+def _domain_rate_limit(url: str) -> float:
+    """Check and enforce rate limits for the given domain.
 
-    Returns True if we should retry, False if we've exhausted retries.
+    MUST be called while holding the domain RLock.
+
+    Returns the number of seconds to wait before sending (0 = go ahead).
+    The caller should sleep OUTSIDE the lock after releasing it.
     """
-    if attempt >= _RETRIES_ON_429:
-        return False
-    delay = min(_BACKOFF_SECONDS * (2**attempt), _MAX_BACKOFF)
-    logger.warning(
-        f"[RATE LIMIT] 429 from {url}, backing off {delay:.1f}s (attempt {attempt + 1}/{_RETRIES_ON_429})"
-    )
-    time.sleep(delay)
-    return True
+    domain = _get_domain(url)
+    now = time.time()
+
+    # Check if domain is in cool-down (from a previous 429)
+    cooldown_until = _DOMAIN_COOLDOWN_UNTIL.get(domain, 0)
+    cool_down_wait = max(0.0, cooldown_until - now)
+
+    # Token bucket: try to consume a token
+    token_wait = 0.0
+    last = _TOKEN_BUCKET_LAST_REFILL.get(domain, now)
+    tokens = _TOKEN_BUCKET_TOKENS.get(domain, _TOKEN_BUCKET_BURST)
+
+    # Refill tokens based on elapsed time
+    elapsed = now - last
+    tokens = min(_TOKEN_BUCKET_CAPACITY, tokens + elapsed * _TOKEN_BUCKET_REFILL_RATE)
+
+    if tokens >= 1.0:
+        tokens -= 1.0
+    else:
+        # Calculate wait time until next token is available
+        token_wait = (1.0 - tokens) / _TOKEN_BUCKET_REFILL_RATE
+        tokens = 0.0
+
+    _TOKEN_BUCKET_TOKENS[domain] = tokens
+    _TOKEN_BUCKET_LAST_REFILL[domain] = now
+
+    # Return the maximum of the two waits (cool-down or token)
+    return max(cool_down_wait, token_wait)
+
+
+def _drain_token_bucket(url: str) -> None:
+    """Drain all tokens for a domain after receiving a 429.
+
+    MUST be called while holding the domain RLock.
+    This prevents a burst of queued requests from all firing
+    simultaneously after a cool-down period ends.
+    """
+    domain = _get_domain(url)
+    _TOKEN_BUCKET_TOKENS[domain] = 0.0
+    _TOKEN_BUCKET_LAST_REFILL[domain] = time.time()
+
+
+def _compute_cool_down_delay(
+    url: str, retry_after: float | None = None, attempt: int = 0
+) -> float:
+    """Compute the cool-down delay after receiving a 429.
+
+    Uses the Retry-After header if available, otherwise falls back to
+    jittered exponential backoff.
+
+    Returns the delay in seconds. Does NOT sleep — caller is responsible.
+    """
+    import random as _random
+
+    if retry_after is not None and retry_after > 0:
+        # Use server-specified delay (add small jitter up to 10% or 1s)
+        delay = retry_after + _random.uniform(0, min(1.0, retry_after * _MAX_JITTER))
+    else:
+        # Jittered exponential backoff: base * 2^attempt + random jitter
+        base = 2.0
+        delay = min(base * (2**attempt), 30.0)
+        jitter = _random.uniform(0, delay * _MAX_JITTER)
+        delay += jitter
+
+    return delay
 
 
 class GraphQLCache:
@@ -161,6 +229,29 @@ def load_graphql_from_file(file: Path) -> str:
         raise
 
 
+def _parse_retry_after(response: Response) -> float | None:
+    """Parse the Retry-After header from a 429 response.
+
+    Returns the number of seconds to wait, or None if the header
+    is absent or unparseable.
+    """
+    retry_after = response.headers.get("Retry-After")
+    if retry_after is None:
+        return None
+    try:
+        # Try parsing as integer seconds
+        return float(retry_after)
+    except ValueError:
+        # Try parsing as HTTP-date
+        try:
+            from email.utils import parsedate_to_datetime
+            retry_time = parsedate_to_datetime(retry_after)
+            wait = (retry_time.timestamp() - time.time())
+            return max(0, wait)
+        except Exception:
+            return None
+
+
 def execute_graphql_query_with_get_request(
     url: str, httpx_client: Client, graphql_file: Path, variables: dict
 ) -> Response:
@@ -193,22 +284,42 @@ def execute_graphql(
             )
 
     json_body = {"query": query, "variables": variables}
+    domain = _get_domain(url)
+    lock = _DOMAIN_LOCKS.setdefault(domain, threading.RLock())
+    in_flight = _DOMAIN_IN_FLIGHT.setdefault(domain, threading.Semaphore(1))
 
-    # Rate-limit and retry-with-backoff loop
+    # ── Retry loop ──────────────────────────────────────────────────────
+    # KEY DESIGN: The RLock is held ONLY for microsecond-scale state
+    # mutations (token bucket, cool-down) — NEVER for I/O or sleep.
+    # A semaphore limits in-flight HTTP requests to 1 per domain,
+    # preventing the race where multiple threads get tokens before
+    # a 429 triggers the global cool-down.
     for attempt in range(_RETRIES_ON_429 + 1):
-        _domain_rate_limit(url)
+        # ── Phase 1: Rate-limit check (inside lock) ──
+        with lock:
+            wait = _domain_rate_limit(url)
 
+        # ── Phase 2: Wait for rate limit / cool-down (outside lock) ──
+        if wait > 0:
+            time.sleep(wait)
+
+        # ── Phase 3: Acquire in-flight slot, then make HTTP request ──
+        in_flight.acquire()
         try:
             response = httpx_client.post(
                 url, json=json_body, headers=headers, timeout=TIMEOUT
             )
         except httpx.RequestError as e:
-            logger.warning(f"GraphQL request failed for {graphql_file.name}: {e}")
+            in_flight.release()
+            logger.warning(
+                f"GraphQL request failed for {graphql_file.name}: {e}"
+            )
             # Offline fallback for network-level failures
             cached_data = _cache.get(url, query, variables, ttl=float("inf"))
             if cached_data:
                 logger.info(
-                    f"Returning expired cached response for {graphql_file.name} as offline fallback."
+                    f"Returning expired cached response for {graphql_file.name} "
+                    f"as offline fallback."
                 )
                 return Response(
                     status_code=200,
@@ -220,7 +331,9 @@ def execute_graphql(
                 )
             raise
 
+        # ── Phase 4: Success ──
         if response.status_code == 200:
+            in_flight.release()
             if use_cache:
                 try:
                     _cache.set(url, query, variables, response.json())
@@ -228,35 +341,57 @@ def execute_graphql(
                     logger.warning(f"Failed to cache response: {e}")
             return response
 
-        # 429 — retry with backoff
+        # ── Phase 5: 429 — set cool-down, drain tokens, sleep ──
         if response.status_code == 429:
-            if _handle_429_backoff(url, attempt):
-                continue
-            # Exhausted retries — try offline cache fallback
-            cached_data = _cache.get(url, query, variables, ttl=float("inf"))
-            if cached_data:
-                logger.info(
-                    f"Returning cached response for {graphql_file.name} after 429 exhaustion."
+            if attempt >= _RETRIES_ON_429:
+                in_flight.release()
+                cached_data = _cache.get(url, query, variables, ttl=float("inf"))
+                if cached_data:
+                    logger.info(
+                        f"Returning cached response for {graphql_file.name} "
+                        f"after 429 exhaustion."
+                    )
+                    return Response(
+                        status_code=200,
+                        content=json.dumps(cached_data).encode("utf-8"),
+                        headers={
+                            "Content-Type": "application/json",
+                            "X-Offline-Fallback": "true",
+                        },
+                    )
+                logger.error(
+                    f"[AniList] Rate limited (429) exhausted "
+                    f"{_RETRIES_ON_429} retries. Giving up."
                 )
-                return Response(
-                    status_code=200,
-                    content=json.dumps(cached_data).encode("utf-8"),
-                    headers={
-                        "Content-Type": "application/json",
-                        "X-Offline-Fallback": "true",
-                    },
-                )
-            logger.warning(
-                f"GraphQL 429 exhausted retries for {graphql_file.name}: {response.text}"
-            )
-            response.raise_for_status()
+                response.raise_for_status()
 
-        # 5xx — treat as potentially transient, try cache fallback
+            # Compute cool-down delay and set state (inside lock)
+            in_flight.release()  # release before sleeping
+            retry_after = _parse_retry_after(response)
+            delay = _compute_cool_down_delay(url, retry_after=retry_after, attempt=attempt)
+
+            with lock:
+                _DOMAIN_COOLDOWN_UNTIL[domain] = time.time() + delay
+                _drain_token_bucket(url)  # prevent burst after cool-down
+
+            logger.warning(
+                f"[AniList] Rate limited (429). Cooling down {delay:.1f}s "
+                f"(attempt {attempt + 1}/{_RETRIES_ON_429}, "
+                f"source: {'server' if retry_after else 'jittered'})"
+            )
+
+            # ── Sleep outside lock ──
+            time.sleep(delay)
+            continue
+
+        # ── Phase 6: 5xx — try cache fallback ──
         if response.status_code >= 500:
+            in_flight.release()
             cached_data = _cache.get(url, query, variables, ttl=float("inf"))
             if cached_data:
                 logger.info(
-                    f"Returning cached response for {graphql_file.name} after 5xx."
+                    f"Returning cached response for {graphql_file.name} "
+                    f"after 5xx."
                 )
                 return Response(
                     status_code=200,
@@ -266,14 +401,17 @@ def execute_graphql(
                         "X-Offline-Fallback": "true",
                     },
                 )
-            logger.warning(
-                f"GraphQL request failed with status code {response.status_code}: {response.text}"
+            logger.error(
+                f"[AniList] API request failed with status code "
+                f"{response.status_code}"
             )
             response.raise_for_status()
 
-        # Other errors (4xx except 429)
-        logger.warning(
-            f"GraphQL request failed with status code {response.status_code}: {response.text}"
+        # ── Phase 7: Other 4xx — don't retry ──
+        in_flight.release()
+        logger.error(
+            f"[AniList] API request failed with status code "
+            f"{response.status_code}"
         )
         response.raise_for_status()
 

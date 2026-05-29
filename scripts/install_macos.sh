@@ -7,7 +7,7 @@ set -e
 # Options:
 #   --cli-only    Install the CLI version only (no GUI app)
 
-REPO="bonkedbythonk/anicat"
+REPO="bonkedbythonk/anicat_old"
 APP_NAME="Anicat.app"
 INSTALL_PATH="/Applications/$APP_NAME"
 
@@ -66,12 +66,12 @@ else
     LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$REPO/releases/latest")
 fi
 
-DOWNLOAD_URL=$(echo "$LATEST_RELEASE" | grep -o "https://github.com/bonkedbythonk/anicat/releases/download/[^\"]*\.dmg" | head -n 1)
+DOWNLOAD_URL=$(echo "$LATEST_RELEASE" | grep -o "https://github.com/bonkedbythonk/anicat_old/releases/download/[^\"]*\.dmg" | head -n 1)
 
 if [ -z "$DOWNLOAD_URL" ]; then
     echo "Couldn't find a download link. The latest release might still be building."
     echo "Try again in a few minutes, or download manually from:"
-    echo "  https://github.com/bonkedbythonk/anicat/releases"
+    echo "  https://github.com/bonkedbythonk/anicat_old/releases"
     exit 1
 fi
 

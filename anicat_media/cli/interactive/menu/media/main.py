@@ -833,7 +833,7 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
                                 "tool",
                                 "install",
                                 "--force",
-                                "git+https://github.com/bonkedbythonk/anicat.git",
+                                "git+https://github.com/bonkedbythonk/anicat_old.git",
                             ],
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT,
@@ -877,12 +877,12 @@ def _check_for_updates_action(ctx: Context, state: State) -> MenuAction:
                         "The download or build may be taking longer than expected."
                     )
                     console.print(
-                        "Try upgrading manually with:\n[bold yellow]uv tool install --force git+https://github.com/bonkedbythonk/anicat.git[/bold yellow]"
+                        "Try upgrading manually with:\n[bold yellow]uv tool install --force git+https://github.com/bonkedbythonk/anicat_old.git[/bold yellow]"
                     )
                     feedback.pause_for_user("return to menu")
                 except Exception as e:
                     error_panel = Panel(
-                        f"[bold red]Update Failed![/bold red]\n\n{e}\n\nPlease try running the command manually:\n[bold yellow]uv tool install --force git+https://github.com/bonkedbythonk/anicat.git[/bold yellow]",
+                        f"[bold red]Update Failed![/bold red]\n\n{e}\n\nPlease try running the command manually:\n[bold yellow]uv tool install --force git+https://github.com/bonkedbythonk/anicat_old.git[/bold yellow]",
                         title="Error",
                         border_style="red",
                     )

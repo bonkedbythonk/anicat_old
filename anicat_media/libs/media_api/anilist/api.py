@@ -228,6 +228,9 @@ class AniListApi(BaseApiClient):
             else ["Hentai"]
         )
 
+        # filter adult content by default
+        variables["isAdult"] = False
+
         # anime by default
         variables["type"] = params.type.value if params.type else "ANIME"
         try:

@@ -1,6 +1,6 @@
 [project]
 name = "anicat"
-version = "4.1.0"
+version = "4.2.0"
 description = "Minimalist Media CLI for macOS."
 authors = [
     { name = "Thomas (bonkedbythonk)" },
@@ -22,8 +22,8 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/bonkedbythonk/anicat"
-Homepage = "https://github.com/bonkedbythonk/anicat"
+Repository = "https://github.com/bonkedbythonk/anicat_old"
+Homepage = "https://github.com/bonkedbythonk/anicat_old"
 
 [tool.hatch.build.targets.wheel]
 packages = ["anicat_media"]

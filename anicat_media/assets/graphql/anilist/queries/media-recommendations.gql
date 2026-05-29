@@ -54,6 +54,7 @@ query ($id: Int, $page: Int, $per_page: Int) {
           airingAt
           episode
         }
+        isAdult
       }
     }
   }

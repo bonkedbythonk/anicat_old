@@ -182,7 +182,7 @@ def _check_github_update(update_branch: str) -> dict:
 
     try:
         ctx_ssl = ssl._create_unverified_context()
-        url = "https://api.github.com/repos/bonkedbythonk/anicat/releases"
+        url = "https://api.github.com/repos/bonkedbythonk/anicat_old/releases"
 
         req = urllib.request.Request(url, headers={"User-Agent": "Anicat-App"})
         with urllib.request.urlopen(req, timeout=5, context=ctx_ssl) as response:
@@ -696,7 +696,7 @@ def trigger_update(req: Optional[UpdateTriggerRequest] = None):
                 else:
                     _log_update("No local installer — downloading from GitHub")
                     branch_name = "nightly" if update_branch == "nightly" else "master"
-                    shell_cmd = f'curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/{branch_name}/scripts/install_macos.sh | bash >> "{UPDATE_LOG_FILE}" 2>&1 &'
+                    shell_cmd = f'curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat_old/{branch_name}/scripts/install_macos.sh | bash >> "{UPDATE_LOG_FILE}" 2>&1 &'
                     applescript = f'do shell script "{shell_cmd.replace(chr(34), chr(92) + chr(34))}"'
                     proc = subprocess.Popen(["osascript", "-e", applescript])
                     if proc:
@@ -839,7 +839,7 @@ def trigger_update(req: Optional[UpdateTriggerRequest] = None):
                     _log_update("DMG installer started in detached session")
             else:
                 _log_update("No local installer — downloading from GitHub")
-                shell_cmd = f'curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/{branch_name}/scripts/install_macos.sh | bash >> "{UPDATE_LOG_FILE}" 2>&1 &'
+                shell_cmd = f'curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat_old/{branch_name}/scripts/install_macos.sh | bash >> "{UPDATE_LOG_FILE}" 2>&1 &'
                 applescript = (
                     f'do shell script "{shell_cmd.replace(chr(34), chr(92) + chr(34))}"'
                 )

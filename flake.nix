@@ -18,7 +18,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
         inherit (pkgs) lib python312Packages;
 
-        version = "4.1.0";
+        version = "4.2.0";
       in
       {
         packages.default = python312Packages.buildPythonApplication {
@@ -68,8 +68,8 @@
 
           meta = {
             description = "Minimalist Media CLI for macOS.";
-            homepage = "https://github.com/bonkedbythonk/anicat";
-            changelog = "https://github.com/bonkedbythonk/anicat/releases/tag/v${version}";
+            homepage = "https://github.com/bonkedbythonk/anicat_old";
+            changelog = "https://github.com/bonkedbythonk/anicat_old/releases/tag/v${version}";
             mainProgram = "anicat";
             license = lib.licenses.unlicense;
             maintainers = with lib.maintainers; [ theobori ];

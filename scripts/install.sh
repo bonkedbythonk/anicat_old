@@ -22,7 +22,7 @@ elif [ "$IS_PIPED" = true ]; then
         echo "Existing 'anicat' directory found but seems incomplete. Removing and re-cloning..."
         rm -rf anicat
     fi
-    git clone https://github.com/bonkedbythonk/anicat.git
+    git clone https://github.com/bonkedbythonk/anicat_old.git
     cd anicat || exit 1
     PROJECT_DIR="$(pwd)"
 else

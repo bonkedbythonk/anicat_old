@@ -36,7 +36,7 @@
           "cmd": "bash",
           "args": [
             "-c",
-            "curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat/main/scripts/install_macos.sh | bash"
+            "curl -fsSL https://raw.githubusercontent.com/bonkedbythonk/anicat_old/main/scripts/install_macos.sh | bash"
           ]
         }
       ]

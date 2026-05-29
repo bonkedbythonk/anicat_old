@@ -5,7 +5,7 @@
 
 set -e
 
-REPO_URL="https://github.com/bonkedbythonk/anicat.git"
+REPO_URL="https://github.com/bonkedbythonk/anicat_old.git"
 TARGET_DIR="$HOME/anicat"
 
 echo "🌟 Welcome to Anicat Setup! 🌟"

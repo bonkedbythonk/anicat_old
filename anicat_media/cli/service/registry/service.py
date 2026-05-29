@@ -371,6 +371,9 @@ class MediaRegistryService:
         if type:
             recent_media = [m for m in recent_media if m.type == type]
 
+        # Filter out adult content
+        recent_media = [m for m in recent_media if not m.is_adult]
+
         if limit:
             recent_media = recent_media[:limit]
 

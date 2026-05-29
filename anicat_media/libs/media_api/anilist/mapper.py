@@ -225,6 +225,13 @@ def _to_generic_user_status(
     )
 
 
+def _filter_adult(items: List[MediaItem]) -> List[MediaItem]:
+    """Remove adult content from a list of MediaItems."""
+    if not items:
+        return items
+    return [m for m in items if not m.is_adult]
+
+
 def _to_generic_media_item(
     data: AnilistBaseMediaDataSchema, media_list: AnilistMediaList | None = None
 ) -> MediaItem:
@@ -265,6 +272,7 @@ def _to_generic_media_item(
         average_score=data.get("averageScore"),
         popularity=data.get("popularity"),
         favourites=data.get("favourites"),
+        is_adult=data.get("isAdult"),
         start_date=_to_generic_date(data.get("startDate")),
         end_date=_to_generic_date(data.get("endDate")),
         season=data.get("season"),
@@ -308,6 +316,11 @@ def to_generic_search_result(
             _to_generic_media_item(item) for item in raw_media_list
         ]
         page_info = _to_generic_page_info(page_data["pageInfo"])
+
+    # Filter out adult content
+    media_items = _filter_adult(media_items)
+    if page_info:
+        page_info.total = len(media_items)
 
     return MediaSearchResult(page_info=page_info, media=media_items)
 
@@ -371,15 +384,15 @@ def to_generic_user_profile(data: AnilistViewerData) -> Optional[UserProfile]:
     favs = viewer_data.get("favourites", {}) or {}
     fav_anime = []
     if favs and favs.get("anime") and favs["anime"].get("nodes"):
-        fav_anime = [
+        fav_anime = _filter_adult([
             _to_generic_media_item(node) for node in favs["anime"]["nodes"] if node
-        ]
+        ])
 
     fav_manga = []
     if favs and favs.get("manga") and favs["manga"].get("nodes"):
-        fav_manga = [
+        fav_manga = _filter_adult([
             _to_generic_media_item(node) for node in favs["manga"]["nodes"] if node
-        ]
+        ])
 
     return UserProfile(
         id=viewer_data["id"],
@@ -419,6 +432,7 @@ def to_generic_relations(data: dict) -> Optional[List[MediaItem]]:
         item = _to_generic_media_item(edge["node"])
         item.relation_type = edge.get("relationType")
         result.append(item)
+    result = _filter_adult(result)
     return result if result else None
 
 
@@ -445,6 +459,7 @@ def to_generic_recommendations(data: dict) -> Optional[List[MediaItem]]:
                 logger.warning(f"Failed to map recommendation media item: {e}")
                 continue
 
+    result = _filter_adult(result)
     return result if result else None
 
 
@@ -714,6 +729,9 @@ def to_generic_global_schedule(data: dict) -> dict:
         try:
             media = _to_generic_media_item(schedule.get("media", {}))
             if media:
+                # Skip adult content
+                if media.is_adult:
+                    continue
                 # Attach airing info to the media item for convenience in this view
                 media.next_airing = AiringSchedule(
                     episode=schedule.get("episode") or 0,

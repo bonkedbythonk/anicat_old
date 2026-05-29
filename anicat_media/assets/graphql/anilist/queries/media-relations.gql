@@ -57,6 +57,7 @@ query ($id: Int, $format_not_in: [MediaFormat]) {
             airingAt
             episode
           }
+          isAdult
         }
       }
     }

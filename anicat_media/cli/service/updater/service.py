@@ -26,7 +26,7 @@ def _direct_github_check() -> tuple[bool, str]:
 
     try:
         ctx_ssl = ssl._create_unverified_context()
-        url = "https://api.github.com/repos/bonkedbythonk/anicat/releases/latest"
+        url = "https://api.github.com/repos/bonkedbythonk/anicat_old/releases/latest"
         req = urllib.request.Request(url, headers={"User-Agent": "Anicat-CLI"})
         with urllib.request.urlopen(req, timeout=5, context=ctx_ssl) as response:
             data = json.loads(response.read().decode())
